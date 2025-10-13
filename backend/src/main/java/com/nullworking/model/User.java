@@ -22,11 +22,11 @@ public class User {
     private Integer userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "Role_ID", nullable = false)
+    @JoinColumn(name = "Role_ID", nullable = true)
     private Role role;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "Dept_ID", nullable = false)
+    @JoinColumn(name = "Dept_ID", nullable = true)
     private Department department;
 
     @Column(name = "User_Name", nullable = false, length = 64, unique = true)

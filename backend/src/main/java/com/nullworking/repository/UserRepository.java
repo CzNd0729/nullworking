@@ -7,4 +7,5 @@ import com.nullworking.model.User;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
+	User findByUserName(String userName);
 }
