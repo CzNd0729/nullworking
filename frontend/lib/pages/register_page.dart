@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../services/api_service.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -20,6 +25,9 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -31,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _onLoginPressed() async {
+  Future<void> _onRegisterPressed() async {
     // 输入验证
     if (_usernameController.text.trim().isEmpty) {
       setState(() {
@@ -47,16 +55,41 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    if (_confirmPasswordController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = '请确认密码';
+      });
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      setState(() {
+        _errorMessage = '两次输入的密码不一致';
+      });
+      return;
+    }
+
+    if (_phoneController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = '请输入电话号码';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // 调用云端服务器的登录API
-      final response = await ApiService().login(
+      // 调用云端服务器的注册API
+      final response = await ApiService().register(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
+        _phoneController.text.trim(),
+        email: _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : null,
       );
 
       if (response.statusCode == 200) {
@@ -65,18 +98,23 @@ class _LoginPageState extends State<LoginPage> {
 
         // 检查API返回的code字段
         if (responseData['code'] == 200) {
-          // 登录成功，保存用户信息并跳转到主页
-          final userID = responseData['userID'];
-          final roleID = responseData['roleID'];
-
-          // TODO: 保存用户ID和角色ID到本地存储
-          print('登录成功 - 用户ID: $userID, 角色ID: $roleID');
-
-          Navigator.of(context).pushReplacementNamed('/home');
-        } else {
-          // 根据API返回的message显示错误信息
+          // 注册成功，显示成功消息并返回登录页面
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('注册成功！请登录'),
+                backgroundColor: Color(0xFF00D9A3),
+              ),
+            );
+            Navigator.of(context).pop();
+          }
+        } else if (responseData['code'] == 409) {
           setState(() {
-            _errorMessage = responseData['message'] ?? '登录失败';
+            _errorMessage = '用户名已存在';
+          });
+        } else {
+          setState(() {
+            _errorMessage = responseData['message'] ?? '注册失败，请稍后重试';
           });
         }
       } else {
@@ -97,10 +135,19 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryTeal = const Color(0xFF2CB7B3); // 接近示意图按钮色
+    final Color primaryTeal = const Color(0xFF2CB7B3);
 
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text('注册', style: TextStyle(color: Colors.white)),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -127,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 32),
                 const Text(
-                  '登录',
+                  '创建账户',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 36,
@@ -188,6 +235,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
 
                 const SizedBox(height: 20),
+                // 密码
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -234,6 +282,124 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
+                const SizedBox(height: 20),
+                // 确认密码
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '确认密码',
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (_) => _clearError(),
+                  decoration: InputDecoration(
+                    hintText: '请再次输入密码',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: const Color(0xFFE9EDF2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscureConfirmPassword = !_obscureConfirmPassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                // 电话号码
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '电话号码',
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (_) => _clearError(),
+                  decoration: InputDecoration(
+                    hintText: '请输入电话号码',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: const Color(0xFFE9EDF2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                // 邮箱（可选）
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '邮箱（可选）',
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (_) => _clearError(),
+                  decoration: InputDecoration(
+                    hintText: '请输入邮箱地址',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: const Color(0xFFE9EDF2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(height: 28),
                 SizedBox(
                   width: double.infinity,
@@ -247,7 +413,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       elevation: 0,
                     ),
-                    onPressed: _isLoading ? null : _onLoginPressed,
+                    onPressed: _isLoading ? null : _onRegisterPressed,
                     child: _isLoading
                         ? const SizedBox(
                             width: 20,
@@ -260,7 +426,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           )
                         : const Text(
-                            '登录',
+                            '注册',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -271,11 +437,9 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pushNamed('/register');
-                  },
+                  onTap: () => Navigator.of(context).pop(),
                   child: Text(
-                    '没有账户？注册',
+                    '已有账户？登录',
                     style: TextStyle(
                       color: primaryTeal,
                       fontSize: 16,
