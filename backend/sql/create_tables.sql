@@ -64,7 +64,7 @@ CREATE TABLE `role_permission_relation` (
   CONSTRAINT `fk_rp_permission` FOREIGN KEY (`Permission_ID`) REFERENCES `permission` (`Permission_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色-权限关联表';
 
--- 6. 任务表（依赖用户表）
+-- 6. 任务表（依赖用户表，加入软删除与完成时间字段）
 CREATE TABLE `task` (
   `Task_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Creator_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（任务创建人）',
@@ -74,6 +74,9 @@ CREATE TABLE `task` (
   `Task_Status` TINYINT NOT NULL COMMENT '任务状态（0=未开始，1=进行中，2=完成）',
   `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `Deadline` DATETIME NOT NULL COMMENT '截止时间',
+  `Is_Deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '软删除标记',
+  `Deleted_Time` DATETIME NULL COMMENT '软删除时间',
+  `Finish_Time` DATETIME NULL COMMENT '任务完成时间（taskStatus=2 时填充）',
   PRIMARY KEY (`Task_ID`),
   KEY `fk_task_creator` (`Creator_ID`),
   KEY `idx_task_status` (`Task_Status`),
@@ -111,11 +114,13 @@ CREATE TABLE `ai_analysis_result` (
   CONSTRAINT `fk_analysis_user` FOREIGN KEY (`User_ID`) REFERENCES `user` (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI分析结果表';
 
--- 9. 任务-负责人关联表（依赖用户表和任务表）
+-- 9. 任务-负责人关联表（依赖用户表和任务表，加入任务软删除镜像字段）
 CREATE TABLE `task_executor_relation` (
   `Relation_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Executor_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（任务负责人）',
   `Task_ID` INT(11) NOT NULL COMMENT '外键，关联任务表',
+  `Task_Is_Deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '镜像：任务是否软删除',
+  `Task_Deleted_Time` DATETIME NULL COMMENT '镜像：任务软删除时间',
   PRIMARY KEY (`Relation_ID`),
   UNIQUE KEY `idx_executor_task` (`Executor_ID`,`Task_ID`),
   KEY `fk_te_task` (`Task_ID`),
@@ -123,7 +128,7 @@ CREATE TABLE `task_executor_relation` (
   CONSTRAINT `fk_te_task` FOREIGN KEY (`Task_ID`) REFERENCES `task` (`Task_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务-负责人关联表';
 
--- 10. 日志表（依赖用户表和任务表）
+-- 10. 日志表（依赖用户表和任务表，加入任务软删除镜像字段）
 CREATE TABLE `log` (
   `Log_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `User_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（日志拥有者）',
@@ -133,6 +138,8 @@ CREATE TABLE `log` (
   `Log_Date` DATE NOT NULL COMMENT '日志产生日期',
   `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '日志创建时间',
   `Update_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '日志更新时间',
+  `Task_Is_Deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '镜像：任务是否软删除',
+  `Task_Deleted_Time` DATETIME NULL COMMENT '镜像：任务软删除时间',
   PRIMARY KEY (`Log_ID`),
   KEY `fk_log_user` (`User_ID`),
   KEY `fk_log_task` (`Task_ID`),

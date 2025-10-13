@@ -12,6 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
 @Entity
 @Table(name = "Task")
@@ -44,6 +46,23 @@ public class Task {
 
     @Column(name = "Deadline", nullable = false)
     private LocalDateTime deadline;
+
+    @Column(name = "Is_Deleted", nullable = false)
+    private Boolean isDeleted = false;
+
+    @Column(name = "Deleted_Time")
+    private LocalDateTime deletedTime;
+
+    @Column(name = "Finish_Time")
+    private LocalDateTime finishTime;
+
+    @PrePersist
+    @PreUpdate
+    private void ensureFinishTimeWhenCompleted() {
+        if (this.taskStatus != null && this.taskStatus == (byte)2 && this.finishTime == null) {
+            this.finishTime = LocalDateTime.now();
+        }
+    }
 
     // Getters and Setters
     public Integer getTaskId() {
@@ -108,5 +127,29 @@ public class Task {
 
     public void setDeadline(LocalDateTime deadline) {
         this.deadline = deadline;
+    }
+
+    public Boolean getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Boolean isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
+    public LocalDateTime getDeletedTime() {
+        return deletedTime;
+    }
+
+    public void setDeletedTime(LocalDateTime deletedTime) {
+        this.deletedTime = deletedTime;
+    }
+
+    public LocalDateTime getFinishTime() {
+        return finishTime;
+    }
+
+    public void setFinishTime(LocalDateTime finishTime) {
+        this.finishTime = finishTime;
     }
 }
