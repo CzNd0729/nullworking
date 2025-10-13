@@ -37,6 +37,12 @@ public class Log {
     @Column(name = "Update_Time", nullable = false)
     private LocalDateTime updateTime;
 
+    @Column(name = "Task_Is_Deleted", nullable = false)
+    private Boolean taskIsDeleted = false;
+
+    @Column(name = "Task_Deleted_Time")
+    private LocalDateTime taskDeletedTime;
+
     // Getters and Setters
     public Integer getLogId() {
         return logId;
@@ -100,5 +106,21 @@ public class Log {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public Boolean getTaskIsDeleted() {
+        return taskIsDeleted;
+    }
+
+    public void setTaskIsDeleted(Boolean taskIsDeleted) {
+        this.taskIsDeleted = taskIsDeleted;
+    }
+
+    public LocalDateTime getTaskDeletedTime() {
+        return taskDeletedTime;
+    }
+
+    public void setTaskDeletedTime(LocalDateTime taskDeletedTime) {
+        this.taskDeletedTime = taskDeletedTime;
     }
 }
