@@ -2,6 +2,7 @@ package com.nullworking.model;
 
 import jakarta.persistence.*;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "Task_Executor_Relation")
@@ -19,6 +20,12 @@ public class TaskExecutorRelation implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "Task_ID", nullable = false)
     private Task task;
+
+    @Column(name = "Task_Is_Deleted", nullable = false)
+    private Boolean taskIsDeleted = false;
+
+    @Column(name = "Task_Deleted_Time")
+    private LocalDateTime taskDeletedTime;
 
     // Getters and Setters
     public Integer getRelationId() {
@@ -43,5 +50,21 @@ public class TaskExecutorRelation implements Serializable {
 
     public void setTask(Task task) {
         this.task = task;
+    }
+
+    public Boolean getTaskIsDeleted() {
+        return taskIsDeleted;
+    }
+
+    public void setTaskIsDeleted(Boolean taskIsDeleted) {
+        this.taskIsDeleted = taskIsDeleted;
+    }
+
+    public LocalDateTime getTaskDeletedTime() {
+        return taskDeletedTime;
+    }
+
+    public void setTaskDeletedTime(LocalDateTime taskDeletedTime) {
+        this.taskDeletedTime = taskDeletedTime;
     }
 }

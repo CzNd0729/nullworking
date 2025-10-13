@@ -26,7 +26,6 @@ public class RegisterController {
         // 检查用户名是否已存在
         if (userRepository.findByUserName(userName) != null) {
             result.put("code", 409); // 用户名冲突
-            result.put("message", "用户名已存在");
             return result;
         }
         // 密码加密
@@ -41,7 +40,6 @@ public class RegisterController {
     // 角色和部门可根据实际业务设置，这里默认 null
     userRepository.save(user);
     result.put("code", 200);
-    result.put("message", "注册成功");
     return result;
     }
 }
