@@ -37,8 +37,8 @@ CREATE TABLE `permission` (
 -- 4. 用户表（依赖角色表和部门表）
 CREATE TABLE `user` (
   `User_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `Role_ID` INT(11) NOT NULL COMMENT '外键，关联角色表',
-  `Dept_ID` INT(11) NOT NULL COMMENT '外键，关联部门表',
+  `Role_ID` INT(11) DEFAULT NULL COMMENT '外键，关联角色表，可为空',
+  `Dept_ID` INT(11) DEFAULT NULL COMMENT '外键，关联部门表，可为空',
   `User_Name` VARCHAR(64) NOT NULL COMMENT '用户名（唯一）',
   `Password` VARCHAR(128) DEFAULT NULL COMMENT '密码（加密储存）',
   `Phone_Number` VARCHAR(16) NOT NULL COMMENT '手机号',
