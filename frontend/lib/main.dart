@@ -4,6 +4,7 @@ import 'pages/tasks_page.dart';
 import 'pages/mindmap_page.dart';
 import 'pages/ai_analysis_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,7 +36,8 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const MainPage(),
+      routes: {'/home': (context) => const MainPage()},
+      home: const LoginPage(),
     );
   }
 }
