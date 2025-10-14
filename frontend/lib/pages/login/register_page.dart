@@ -16,6 +16,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _realNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -28,6 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
+    _realNameController.dispose();
     _emailController.dispose();
     super.dispose();
   }
@@ -77,6 +79,13 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    if (_realNameController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = '请输入真实姓名';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -88,6 +97,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _usernameController.text.trim(),
         _passwordController.text.trim(),
         _phoneController.text.trim(),
+        _realNameController.text.trim(),
         email: _emailController.text.trim().isNotEmpty
             ? _emailController.text.trim()
             : null,
@@ -352,6 +362,40 @@ class _RegisterPageState extends State<RegisterPage> {
                   onChanged: (_) => _clearError(),
                   decoration: InputDecoration(
                     hintText: '请输入电话号码',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: const Color(0xFFE9EDF2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                // 真实姓名
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '真实姓名',
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _realNameController,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (_) => _clearError(),
+                  decoration: InputDecoration(
+                    hintText: '请输入真实姓名',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
                     filled: true,
                     fillColor: const Color(0xFFE9EDF2),

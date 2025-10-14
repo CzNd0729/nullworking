@@ -7,7 +7,12 @@ class BaseApi {
   final AuthService _authService = AuthService();
 
   Future<Map<String, String>> _getHeaders({bool authenticated = true}) async {
-    final headers = {'Content-Type': 'application/json'};
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Flutter App',
+      'Cache-Control': 'no-cache',
+    };
     if (authenticated) {
       final token = await _authService.getToken();
       if (token != null) {
@@ -17,28 +22,53 @@ class BaseApi {
     return headers;
   }
 
-  Future<http.Response> get(String endpoint, {Map<String, String>? queryParams, bool authenticated = true}) async {
+  Future<http.Response> get(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    bool authenticated = true,
+  }) async {
     var uri = Uri.parse('$_baseUrl/$endpoint');
     if (queryParams != null) {
       uri = uri.replace(queryParameters: queryParams);
     }
     final headers = await _getHeaders(authenticated: authenticated);
-    return await http.get(uri, headers: headers);
+
+    print('发送GET请求到: $uri');
+    print('请求头: $headers');
+
+    final response = await http.get(uri, headers: headers);
+
+    print('收到响应: ${response.statusCode}');
+    print('响应头: ${response.headers}');
+
+    return response;
   }
 
-  Future<http.Response> post(String endpoint, {Map<String, dynamic>? body, bool authenticated = true}) async {
+  Future<http.Response> post(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
     final url = Uri.parse('$_baseUrl/$endpoint');
     final headers = await _getHeaders(authenticated: authenticated);
     return await http.post(url, headers: headers, body: jsonEncode(body));
   }
 
-  Future<http.Response> put(String endpoint, {Map<String, dynamic>? body, bool authenticated = true}) async {
+  Future<http.Response> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
     final url = Uri.parse('$_baseUrl/$endpoint');
     final headers = await _getHeaders(authenticated: authenticated);
     return await http.put(url, headers: headers, body: jsonEncode(body));
   }
 
-  Future<http.Response> delete(String endpoint, {Map<String, String>? queryParams, bool authenticated = true}) async {
+  Future<http.Response> delete(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    bool authenticated = true,
+  }) async {
     var uri = Uri.parse('$_baseUrl/$endpoint');
     if (queryParams != null) {
       uri = uri.replace(queryParameters: queryParams);
