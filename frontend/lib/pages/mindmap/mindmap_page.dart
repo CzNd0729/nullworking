@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nullworking/services/api_service.dart';
+import 'package:nullworking/services/api/user_api.dart';
 
 class MindMapPage extends StatefulWidget {
   const MindMapPage({super.key});
@@ -19,7 +19,7 @@ class _MindMapPageState extends State<MindMapPage> {
 
   Future<void> _fetchHealthStatus() async {
     try {
-      final response = await ApiService().get('api/health');
+      final response = await UserApi().getHealth();
       if (response.statusCode == 200) {
         setState(() {
           _apiResult = response.body;
