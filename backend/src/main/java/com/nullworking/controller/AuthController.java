@@ -33,11 +33,11 @@ public class AuthController {
 
     @Operation(summary = "用户登录", description = "根据用户名和密码登录，返回用户ID、角色ID和JWT Token")
     @GetMapping("/login")
-    public Map<String, Object> login(@RequestParam String userName, @RequestParam String passWord) {
+    public Map<String, Object> login(@RequestParam String userName, @RequestParam String password) {
         Map<String, Object> result = new HashMap<>();
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(userName, passWord)
+                    new UsernamePasswordAuthenticationToken(userName, password)
             );
             // 如果认证成功
 
@@ -60,10 +60,11 @@ public class AuthController {
         return result;
     }
 
-    @Operation(summary = "用户注册", description = "注册新用户，密码加密存储")
+    @Operation(summary = "用户注册", description = "注册新用户，需填写真实姓名，密码加密存储")
     @GetMapping("/register")
     public Map<String, Object> register(@RequestParam String userName,
                                        @RequestParam String password,
+                                       @RequestParam String realName,
                                        @RequestParam String phone,
                                        @RequestParam(required = false) String email) {
         Map<String, Object> result = new HashMap<>();
@@ -72,12 +73,19 @@ public class AuthController {
             result.put("code", 409); // 用户名冲突
             return result;
         }
+        // 校验真实姓名必填
+        if (realName == null || realName.trim().isEmpty()) {
+            result.put("code", 400);
+            result.put("message", "真实姓名为必填项");
+            return result;
+        }
         // 密码加密
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         String encodedPassword = encoder.encode(password);
         User user = new User();
         user.setUserName(userName);
         user.setPassword(encodedPassword);
+        user.setRealName(realName.trim());
         user.setPhoneNumber(phone);
         user.setEmail(email);
         user.setCreationTime(LocalDateTime.now());

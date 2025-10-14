@@ -20,9 +20,6 @@ public class TaskExecutorRelation implements Serializable {
     @JoinColumn(name = "Task_ID", nullable = false)
     private Task task;
 
-    @Column(name = "Task_Is_Deleted", nullable = false)
-    private Boolean taskIsDeleted = false;
-
     // Getters and Setters
     public Integer getRelationId() {
         return relationId;
@@ -48,11 +45,4 @@ public class TaskExecutorRelation implements Serializable {
         this.task = task;
     }
 
-    public Boolean getTaskIsDeleted() {
-        return taskIsDeleted;
-    }
-
-    public void setTaskIsDeleted(Boolean taskIsDeleted) {
-        this.taskIsDeleted = taskIsDeleted;
-    }
 }
