@@ -33,14 +33,31 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request,@NonNull HttpServletResponse response,@NonNull FilterChain chain)
             throws ServletException, IOException {
 
+        final String requestUri = request.getRequestURI();
+        // Bypass JWT processing for publicly allowed endpoints to avoid 403 caused by bad tokens
+        if ("/api/health".equals(requestUri)
+                || "/api/task/publishTask".equals(requestUri)
+                || "/api/task/updateTask".equals(requestUri)
+                || requestUri.startsWith("/swagger-ui/")
+                || requestUri.startsWith("/v3/api-docs")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         final String authorizationHeader = request.getHeader("Authorization");
 
         String username = null;
         String jwt = null;
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            username = jwtUtil.extractUsername(jwt);
+        try {
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                jwt = authorizationHeader.substring(7);
+                username = jwtUtil.extractUsername(jwt);
+            }
+        } catch (Exception ex) {
+            // Ignore malformed/expired tokens for non-protected endpoints; let security handle auth later
+            username = null;
+            jwt = null;
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
