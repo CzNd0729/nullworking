@@ -15,8 +15,4 @@ public interface LogRepository extends JpaRepository<Log, Integer> {
 	@Modifying
 	@Query("DELETE FROM Log l WHERE l.task.taskId = :taskId")
 	int deleteByTaskId(@Param("taskId") Integer taskId);
-
-	@Modifying
-	@Query("UPDATE Log l SET l.taskIsDeleted = TRUE WHERE l.task.taskId = :taskId")
-	int markTaskDeleted(@Param("taskId") Integer taskId);
 }

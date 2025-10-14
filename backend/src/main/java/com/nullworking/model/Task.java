@@ -47,11 +47,6 @@ public class Task {
     @Column(name = "Deadline", nullable = false)
     private LocalDateTime deadline;
 
-    @Column(name = "Is_Deleted", nullable = false)
-    private Boolean isDeleted = false;
-
-    @Column(name = "Deleted_Time")
-    private LocalDateTime deletedTime;
 
     @Column(name = "Finish_Time")
     private LocalDateTime finishTime;
@@ -127,22 +122,6 @@ public class Task {
 
     public void setDeadline(LocalDateTime deadline) {
         this.deadline = deadline;
-    }
-
-    public Boolean getIsDeleted() {
-        return isDeleted;
-    }
-
-    public void setIsDeleted(Boolean isDeleted) {
-        this.isDeleted = isDeleted;
-    }
-
-    public LocalDateTime getDeletedTime() {
-        return deletedTime;
-    }
-
-    public void setDeletedTime(LocalDateTime deletedTime) {
-        this.deletedTime = deletedTime;
     }
 
     public LocalDateTime getFinishTime() {

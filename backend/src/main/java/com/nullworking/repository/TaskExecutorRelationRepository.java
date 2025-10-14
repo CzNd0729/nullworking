@@ -17,13 +17,9 @@ public interface TaskExecutorRelationRepository extends JpaRepository<TaskExecut
 	@Query("DELETE FROM TaskExecutorRelation r WHERE r.task.taskId = :taskId")
 	int deleteByTaskId(@Param("taskId") Integer taskId);
 
-	@Modifying
-	@Query("UPDATE TaskExecutorRelation r SET r.taskIsDeleted = TRUE WHERE r.task.taskId = :taskId")
-	int markTaskDeleted(@Param("taskId") Integer taskId);
-
-	@Query("SELECT r.task.taskId FROM TaskExecutorRelation r WHERE r.executor.userId = :userId AND r.taskIsDeleted = FALSE")
+	@Query("SELECT r.task.taskId FROM TaskExecutorRelation r WHERE r.executor.userId = :userId AND r.task.taskStatus <> 3")
 	List<Integer> findActiveTaskIdsByExecutor(@Param("userId") Integer userId);
 
-	@Query("SELECT r.executor.userId FROM TaskExecutorRelation r WHERE r.task.taskId = :taskId AND r.taskIsDeleted = FALSE")
+	@Query("SELECT r.executor.userId FROM TaskExecutorRelation r WHERE r.task.taskId = :taskId AND r.task.taskStatus <> 3")
 	List<Integer> findActiveExecutorIdsByTaskId(@Param("taskId") Integer taskId);
 }
