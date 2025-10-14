@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:nullworking/services/auth_service.dart';
 import 'dart:convert';
-import '../services/api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -83,7 +83,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       // 调用云端服务器的注册API
-      final response = await ApiService().register(
+      final response = await AuthService().register(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
         _phoneController.text.trim(),
