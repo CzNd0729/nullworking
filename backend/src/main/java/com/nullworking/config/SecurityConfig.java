@@ -35,6 +35,9 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/api/auth/**",
+                                 "/api/health",
+                                 "/api/task/publishTask",
+                                 "/api/task/updateTask",
                                  "/swagger-ui/**",
                                  "/v3/api-docs/**",
                                  "/swagger-resources/**",
