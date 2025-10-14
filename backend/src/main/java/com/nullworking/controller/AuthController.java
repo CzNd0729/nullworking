@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import com.nullworking.model.User;
 import com.nullworking.repository.UserRepository;
-
+import com.nullworking.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
@@ -23,31 +25,38 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
-    @Operation(summary = "用户登录", description = "根据用户名和密码登录，返回用户ID和角色ID")
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Operation(summary = "用户登录", description = "根据用户名和密码登录，返回用户ID、角色ID和JWT Token")
     @GetMapping("/login")
     public Map<String, Object> login(@RequestParam String userName, @RequestParam String passWord) {
         Map<String, Object> result = new HashMap<>();
-        User user = userRepository.findByUserName(userName);
-        if (user == null) {
-            result.put("code", 404);
-            result.put("message", "用户不存在");
-            result.put("userID", null);
-            result.put("roleID", null);
-            return result;
-        }
-        // 加密密码校验
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        if (user.getPassword() == null || !encoder.matches(passWord, user.getPassword())) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(userName, passWord)
+            );
+            // 如果认证成功
+
+            User user = userRepository.findByUserName(userName);
+            String jwt = jwtUtil.generateToken(user.getUserId(), user.getUserName());
+
+            result.put("code", 200);
+            result.put("message", "登录成功");
+            result.put("userID", user.getUserId());
+            result.put("roleID", user.getRole() != null ? user.getRole().getRoleId() : null);
+            result.put("token", jwt);
+
+        } catch (Exception e) {
             result.put("code", 401);
-            result.put("message", "密码错误");
+            result.put("message", "用户名或密码错误");
             result.put("userID", null);
             result.put("roleID", null);
-            return result;
+            result.put("token", null);
         }
-        result.put("code", 200);
-        result.put("message", "登录成功");
-        result.put("userID", user.getUserId());
-        result.put("roleID", user.getRole() != null ? user.getRole().getRoleId() : null);
         return result;
     }
 
