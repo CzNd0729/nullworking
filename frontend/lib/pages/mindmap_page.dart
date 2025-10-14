@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nullworking/services/api_service.dart';
-import 'package:http/http.dart' as http;
 
 class MindMapPage extends StatefulWidget {
   const MindMapPage({super.key});

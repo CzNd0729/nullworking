@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:nullworking/services/auth_service.dart';
 import 'dart:convert';
-import '../services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // 调用云端服务器的登录API
-      final response = await ApiService().login(
+      final response = await AuthService().login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
