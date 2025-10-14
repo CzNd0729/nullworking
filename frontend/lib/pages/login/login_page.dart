@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nullworking/services/auth_service.dart';
+import 'package:nullworking/services/api/user_api.dart';
 import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       // 调用云端服务器的登录API
-      final response = await AuthService().login(
+      final response = await UserApi().login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
@@ -65,12 +65,8 @@ class _LoginPageState extends State<LoginPage> {
 
         // 检查API返回的code字段
         if (responseData['code'] == 200) {
-          // 登录成功，保存用户信息并跳转到主页
-          final userID = responseData['userID'];
-          final roleID = responseData['roleID'];
-
-          // TODO: 保存用户ID和角色ID到本地存储
-          print('登录成功 - 用户ID: $userID, 角色ID: $roleID');
+          // 登录成功，Token已自动保存，直接跳转到主页
+          print('登录成功');
 
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
