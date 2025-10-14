@@ -52,7 +52,7 @@ public class TaskController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "删除任务(软删除)", description = "根据任务ID将任务标记为已删除，返回code：200成功，208已删除，404不存在，500失败")
+    @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，返回code：200成功，208已关闭，404不存在，500失败")
     @DeleteMapping("/deleteTask")
     @Transactional
     public Map<String, Object> deleteTask(@RequestParam("taskID") Integer taskId) {
@@ -64,18 +64,13 @@ public class TaskController {
         }
         try {
             Task task = taskOpt.get();
-            if (Boolean.TRUE.equals(task.getIsDeleted())) {
-                // 已经是删除状态，返回已删除标识码
+            if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
+                // 已经是关闭状态
                 result.put("code", 208);
                 return result;
             }
-            task.setIsDeleted(true);
-            task.setDeletedTime(LocalDateTime.now());
+            task.setTaskStatus((byte)3);
             taskRepository.save(task);
-
-            // 同步镜像标记到日志与负责人关联表
-            logRepository.markTaskDeleted(taskId);
-            taskExecutorRelationRepository.markTaskDeleted(taskId);
 
             result.put("code", 200);
         } catch (Exception e) {
@@ -103,12 +98,12 @@ public class TaskController {
             return result;
         }
 
-        List<Task> createdTasks = taskRepository.findByCreator_UserIdAndIsDeletedFalse(userId);
+        List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId, (byte)3);
         List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
         Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
         List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
                 : taskRepository.findAllById(executingIdSet).stream()
-                .filter(t -> Boolean.FALSE.equals(t.getIsDeleted()))
+                .filter(t -> t.getTaskStatus() != null && t.getTaskStatus() != (byte)3)
                 .collect(Collectors.toList());
 
         Map<String, Object> data = new HashMap<>();
@@ -123,7 +118,7 @@ public class TaskController {
     private Map<String, Object> toDto(Task t) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("taskID", String.valueOf(t.getTaskId()));
-        m.put("creatorID", t.getCreator() != null ? String.valueOf(t.getCreator().getUserId()) : null);
+        m.put("creatorName", t.getCreator() != null ? t.getCreator().getRealName() : null);
         m.put("taskTitle", t.getTaskTitle());
         m.put("taskContent", t.getTaskContent());
         m.put("taskPriority", String.valueOf(t.getPriority()));
@@ -138,12 +133,15 @@ public class TaskController {
 
     private Map<String, Object> toDtoWithExecutors(Task t) {
         Map<String, Object> m = toDto(t);
-        List<String> executorIds = taskExecutorRelationRepository
+        List<String> executorNames = taskExecutorRelationRepository
                 .findActiveExecutorIdsByTaskId(t.getTaskId())
                 .stream()
-                .map(String::valueOf)
+                .map(id -> {
+                    return userRepository.findById(id).map(User::getRealName).orElse(null);
+                })
+                .filter(n -> n != null)
                 .collect(Collectors.toList());
-        m.put("executorIDs", executorIds);
+        m.put("executorNames", executorNames);
         return m;
     }
 
@@ -208,7 +206,6 @@ public class TaskController {
             task.setTaskStatus((byte) 0); // 0-待开始
             task.setCreationTime(LocalDateTime.now());
             task.setDeadline(deadline);
-            task.setIsDeleted(false);
 
             // 保存任务
             Task savedTask = taskRepository.save(task);
@@ -219,7 +216,6 @@ public class TaskController {
                 TaskExecutorRelation relation = new TaskExecutorRelation();
                 relation.setTask(savedTask);
                 relation.setExecutor(executor);
-                relation.setTaskIsDeleted(false);
                 taskExecutorRelationRepository.save(relation);
             }
 
@@ -264,10 +260,10 @@ public class TaskController {
 
             Task task = taskOpt.get();
 
-            // 检查任务是否已被删除
-            if (Boolean.TRUE.equals(task.getIsDeleted())) {
+            // 检查任务是否已关闭
+            if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
                 result.put("code", 404);
-                result.put("message", "任务已被删除");
+                result.put("message", "任务已关闭");
                 return result;
             }
 
