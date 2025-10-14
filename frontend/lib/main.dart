@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'pages/log_page.dart';
-import 'pages/tasks_page.dart';
-import 'pages/mindmap_page.dart';
-import 'pages/ai_analysis_page.dart';
-import 'pages/profile_page.dart';
-import 'pages/login_page.dart';
-import 'pages/register_page.dart';
+import 'pages/log/log_page.dart';
+import 'pages/task/tasks_page.dart';
+import 'pages/mindmap/mindmap_page.dart';
+import 'pages/ai_analysis/ai_analysis_page.dart';
+import 'pages/profile/profile_page.dart';
+import 'pages/login/login_page.dart';
+import 'pages/login/register_page.dart';
 
 void main() {
   runApp(const MyApp());
