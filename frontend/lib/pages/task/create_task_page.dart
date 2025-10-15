@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/api/task_api.dart';
+import 'dart:convert'; // Added for jsonDecode
+import '../../models/task.dart'; // Added for Task model
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
@@ -309,7 +311,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
-      // 根据API文档调整参数格式
       final taskData = {
         'title': _titleController.text.trim(),
         'content': _descriptionController.text.trim(),
@@ -318,15 +319,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         'deadline': _selectedDate!.toIso8601String(),
       };
 
-      print('发送任务数据: $taskData');
-      print('尝试API端点: api/task/publishTask');
-      print('Token状态: 有效 (未过期)');
-      print('用户ID: 13, 用户名: wcnm');
-
       final response = await _taskApi.publishTask(taskData);
-
-      print('响应状态码: ${response.statusCode}');
-      print('响应内容: ${response.body}');
 
       if (response.statusCode == 200) {
         if (mounted) {
@@ -336,22 +329,35 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               backgroundColor: Color(0xFF00D9A3),
             ),
           );
-          // 返回任务数据用于添加到任务列表
-          final taskResult = {
-            'title': _titleController.text.trim(),
-            'description': _descriptionController.text.trim(),
-            'assignee': _selectedAssignee,
-            'assigneeRole': _teamMembers.firstWhere(
-              (m) => m['name'] == _selectedAssignee,
-            )['role'],
-            'dueDate': _selectedDate!.toIso8601String(),
-            'dueTime': _selectedTime!.format(context),
-            'priority': _selectedPriority,
-            'status': 'pending',
-            'executorIDs': _isAssigned ? 2 : 1, // 添加executorIDs字段
-            'isAssigned': _isAssigned,
-          };
-          Navigator.pop(context, taskResult);
+          final Map<String, dynamic> responseBody = jsonDecode(response.body);
+          if (responseBody['code'] == 200 && responseBody['data'] != null) {
+            final taskID = responseBody['data']['taskID'].toString();
+            final newTask = Task(
+              taskID: taskID,
+              creatorName: "当前用户", // 示例值，实际应从用户认证信息中获取
+              taskTitle: _titleController.text.trim(),
+              taskContent: _descriptionController.text.trim(),
+              taskPriority: _selectedPriority.substring(1), // 示例值
+              taskStatus: "0", // 示例值
+              creationTime: DateTime.now(), // 示例值
+              deadline: DateTime(
+                _selectedDate!.year,
+                _selectedDate!.month,
+                _selectedDate!.day,
+                _selectedTime!.hour,
+                _selectedTime!.minute,
+              ),
+              executorNames: [_selectedAssignee], // 示例值
+            );
+            Navigator.pop(context, newTask);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('任务发布失败: ${responseBody['message'] ?? '未知错误'}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } else {
         if (mounted) {

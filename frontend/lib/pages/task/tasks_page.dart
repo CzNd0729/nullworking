@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'create_task_page.dart';
 import 'task_detail_page.dart';
+import '../../services/api/task_api.dart';
+import '../../models/task.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -10,36 +12,61 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  List<Map<String, dynamic>> _assignedTasks = [];
-  List<Map<String, dynamic>> _myTasks = [];
+  final TaskApi _taskApi = TaskApi();
+  List<Task> _assignedTasks = [];
+  List<Task> _myTasks = [];
+  bool _isLoading = false;
 
-  void _addTask(Map<String, dynamic> taskData) {
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
     setState(() {
-      // 根据executorIDs判断任务归属
-      // executorIDs = 1 表示分配给当前用户，应该放在"我的任务"
-      // executorIDs = 2 表示分配给其他用户，应该放在"派发任务"
-      print(
-        '添加任务: ${taskData['title']}, executorIDs: ${taskData['executorIDs']}',
-      );
-      if (taskData['executorIDs'] == 1) {
-        print('任务添加到"我的任务"');
-        _myTasks.add(taskData);
+      _isLoading = true;
+    });
+    try {
+      final response = await _taskApi.listUserTasks();
+      if (response != null) {
+        setState(() {
+          _myTasks = response.createdTasks;
+          _assignedTasks = response.participatedTasks; // Assuming participated means assigned by others
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('加载任务失败: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _addTask(Task newTask) {
+    setState(() {
+      // 判断任务是创建者还是参与者，这里暂时假设creatorName就是当前用户
+      // 更精确的判断需要用户ID
+      if (newTask.creatorName == "当前用户") { // 假设 "当前用户" 是一个标识符，实际应替换为实际的用户名称或ID
+        _myTasks.add(newTask);
       } else {
-        print('任务添加到"派发任务"');
-        _assignedTasks.add(taskData);
+        _assignedTasks.add(newTask);
       }
     });
   }
 
   // 构建任务卡片组件
-  Widget _buildTaskCard(Map<String, dynamic> task) {
-    final statusTag = task['status'] == 'pending' ? '进行中' : '已完成';
-    final taskTitle = task['title'] ?? '';
-    final assignee = task['assignee'] ?? '';
-    final deadline = task['dueDate'] != null
-        ? DateTime.parse(task['dueDate']).toString().substring(0, 10)
-        : '';
-    final priority = task['priority'] ?? 'P1';
+  Widget _buildTaskCard(Task task) {
+    final statusTag = task.taskStatus == '0' ? '进行中' : '已完成'; // 假设'0'为进行中
+    final taskTitle = task.taskTitle;
+    final assignee = task.executorNames.join(', '); // 假设executorNames是分配者
+    final deadline = task.deadline.toString().substring(0, 10);
+    final priority = 'P${task.taskPriority}'; // 假设taskPriority是数字
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -135,42 +162,50 @@ class _TasksPageState extends State<TasksPage> {
             ),
             const SizedBox(height: 16),
             // 派发任务模块
-            ExpansionTile(
-              title: const Text(
-                '派发任务',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              children: _assignedTasks.isEmpty
-                  ? const [
-                      Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Text(
-                          '暂无派发的任务',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                    ]
-                  : _assignedTasks.map((task) => _buildTaskCard(task)).toList(),
-            ),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ExpansionTile(
+                    title: const Text(
+                      '派发任务',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    children: _assignedTasks.isEmpty
+                        ? const [
+                            Padding(
+                              padding: EdgeInsets.all(20.0),
+                              child: Text(
+                                '暂无派发的任务',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            ),
+                          ]
+                        : _assignedTasks
+                            .map((task) => _buildTaskCard(task))
+                            .toList(),
+                  ),
             const SizedBox(height: 16),
             // 我的任务模块
-            ExpansionTile(
-              title: const Text(
-                '我的任务',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              children: _myTasks.isEmpty
-                  ? const [
-                      Padding(
-                        padding: EdgeInsets.all(20.0),
-                        child: Text(
-                          '暂无我的任务',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                    ]
-                  : _myTasks.map((task) => _buildTaskCard(task)).toList(),
-            ),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ExpansionTile(
+                    title: const Text(
+                      '我的任务',
+                      style: TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    children: _myTasks.isEmpty
+                        ? const [
+                            Padding(
+                              padding: EdgeInsets.all(20.0),
+                              child: Text(
+                                '暂无我的任务',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            ),
+                          ]
+                        : _myTasks.map((task) => _buildTaskCard(task)).toList(),
+                  ),
           ],
         ),
       ),
@@ -180,7 +215,7 @@ class _TasksPageState extends State<TasksPage> {
             context,
             MaterialPageRoute(builder: (context) => const CreateTaskPage()),
           );
-          if (result != null && result is Map<String, dynamic>) {
+          if (result != null && result is Task) {
             _addTask(result);
           }
         },
