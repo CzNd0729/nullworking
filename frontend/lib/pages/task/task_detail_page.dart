@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../models/task.dart';
 
 class TaskDetailPage extends StatelessWidget {
-  final Map<String, dynamic> task;
+  final Task task;
 
   const TaskDetailPage({super.key, required this.task});
 
@@ -25,14 +26,14 @@ class TaskDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = task['title'] ?? '';
-    final description = task['description'] ?? '';
-    final assignee = task['assignee'] ?? '';
-    final assigneeRole = task['assigneeRole'] ?? '';
-    final dueDate = task['dueDate'] ?? '';
-    final dueTime = task['dueTime'] ?? '';
-    final priority = task['priority'] ?? '';
-    final status = task['status'] ?? '';
+    final title = task.taskTitle;
+    final description = task.taskContent;
+    final assignee = task.executorNames.join(', ');
+    final assigneeRole = ""; // Task 模型中没有直接的 assigneeRole 字段
+    final dueDate = task.deadline.toLocal().toString().split(' ')[0];
+    final dueTime = task.deadline.toLocal().toString().split(' ')[1].substring(0, 5);
+    final priority = 'P${task.taskPriority}';
+    final status = task.taskStatus == '0' ? '进行中' : '已完成';
 
     return Scaffold(
       appBar: AppBar(
