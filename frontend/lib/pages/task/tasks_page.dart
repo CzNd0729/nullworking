@@ -1,15 +1,47 @@
 import 'package:flutter/material.dart';
+import 'create_task_page.dart';
 
-class TasksPage extends StatelessWidget {
+class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
 
+  @override
+  State<TasksPage> createState() => _TasksPageState();
+}
+
+class _TasksPageState extends State<TasksPage> {
+  List<Map<String, dynamic>> _assignedTasks = [];
+  List<Map<String, dynamic>> _myTasks = [];
+
+  void _addTask(Map<String, dynamic> taskData) {
+    setState(() {
+      // 根据executorIDs判断任务归属
+      // executorIDs = 1 表示分配给当前用户，应该放在"我的任务"
+      // executorIDs = 2 表示分配给其他用户，应该放在"派发任务"
+      print(
+        '添加任务: ${taskData['title']}, executorIDs: ${taskData['executorIDs']}',
+      );
+      if (taskData['executorIDs'] == 1) {
+        print('任务添加到"我的任务"');
+        _myTasks.add(taskData);
+      } else {
+        print('任务添加到"派发任务"');
+        _assignedTasks.add(taskData);
+      }
+    });
+  }
+
   // 构建任务卡片组件
-  Widget _buildTaskCard(String statusTag, String taskTitle, String assignee, String deadline, String priority) {
+  Widget _buildTaskCard(Map<String, dynamic> task) {
+    final statusTag = task['status'] == 'pending' ? '进行中' : '已完成';
+    final taskTitle = task['title'] ?? '';
+    final assignee = task['assignee'] ?? '';
+    final deadline = task['dueDate'] != null
+        ? DateTime.parse(task['dueDate']).toString().substring(0, 10)
+        : '';
+    final priority = task['priority'] ?? 'P1';
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -31,10 +63,7 @@ class TasksPage extends StatelessWidget {
             // 任务标题
             Text(
               taskTitle,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             // 分配信息
@@ -46,7 +75,11 @@ class TasksPage extends StatelessWidget {
             // 优先级
             Text(
               '优先级: $priority',
-              style: TextStyle(color: priority == 'P0' ? Colors.red : (priority == 'P1' ? Colors.orange : Colors.blue)),
+              style: TextStyle(
+                color: priority == 'P0'
+                    ? Colors.red
+                    : (priority == 'P1' ? Colors.orange : Colors.blue),
+              ),
             ),
             const SizedBox(height: 8),
             // 查看详情按钮
@@ -79,7 +112,7 @@ class TasksPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,36 +132,51 @@ class TasksPage extends StatelessWidget {
             ExpansionTile(
               title: const Text(
                 '派发任务',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              children: [
-                _buildTaskCard('进行中', '设计用户界面', '李四', '2024-07-30', 'P0'),
-                _buildTaskCard('已完成', '数据库Schema设计', '王五', '2024-07-25', 'P1'),
-              ],
+              children: _assignedTasks.isEmpty
+                  ? const [
+                      Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text(
+                          '暂无派发的任务',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ]
+                  : _assignedTasks.map((task) => _buildTaskCard(task)).toList(),
             ),
             const SizedBox(height: 16),
             // 我的任务模块
             ExpansionTile(
               title: const Text(
                 '我的任务',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              children: [
-                _buildTaskCard('进行中', '准备会议材料', 'THEp(我)', '2024-07-25', 'P2'),
-              ],
+              children: _myTasks.isEmpty
+                  ? const [
+                      Padding(
+                        padding: EdgeInsets.all(20.0),
+                        child: Text(
+                          '暂无我的任务',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ]
+                  : _myTasks.map((task) => _buildTaskCard(task)).toList(),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // 后续可添加添加新任务的逻辑
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CreateTaskPage()),
+          );
+          if (result != null && result is Map<String, dynamic>) {
+            _addTask(result);
+          }
         },
         child: const Icon(Icons.add),
       ),

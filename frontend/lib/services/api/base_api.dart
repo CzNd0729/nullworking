@@ -47,11 +47,32 @@ class BaseApi {
   Future<http.Response> post(
     String endpoint, {
     Map<String, dynamic>? body,
+    Map<String, String>? queryParams,
     bool authenticated = true,
   }) async {
-    final url = Uri.parse('$_baseUrl/$endpoint');
+    var url = Uri.parse('$_baseUrl/$endpoint');
+    if (queryParams != null) {
+      url = url.replace(queryParameters: queryParams);
+    }
     final headers = await _getHeaders(authenticated: authenticated);
-    return await http.post(url, headers: headers, body: jsonEncode(body));
+
+    print('发送POST请求到: $url');
+    print('请求头: $headers');
+    if (body != null) {
+      print('请求体: ${jsonEncode(body)}');
+    }
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
+
+    print('收到响应: ${response.statusCode}');
+    print('响应头: ${response.headers}');
+    print('响应内容: ${response.body}');
+
+    return response;
   }
 
   Future<http.Response> put(
