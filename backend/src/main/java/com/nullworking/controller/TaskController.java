@@ -22,10 +22,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 
+import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Task;
 import com.nullworking.model.TaskExecutorRelation;
 import com.nullworking.model.User;
-import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
@@ -41,9 +41,6 @@ public class TaskController {
     private TaskRepository taskRepository;
 
     @Autowired
-    private LogRepository logRepository;
-
-    @Autowired
     private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
     @Autowired
@@ -55,36 +52,31 @@ public class TaskController {
     @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，返回code：200成功，208已关闭，404不存在，500失败")
     @DeleteMapping("/deleteTask")
     @Transactional
-    public Map<String, Object> deleteTask(@RequestParam("taskID") Integer taskId) {
-        Map<String, Object> result = new HashMap<>();
+    public ApiResponse<String> deleteTask(@RequestParam("taskID") Integer taskId) {
         Optional<Task> taskOpt = taskRepository.findById(taskId);
         if (taskOpt.isEmpty()) {
-            result.put("code", 404);
-            return result;
+            return ApiResponse.error(404, "任务不存在");
         }
         try {
             Task task = taskOpt.get();
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
                 // 已经是关闭状态
-                result.put("code", 208);
-                return result;
+                return ApiResponse.error(208, "任务已关闭");
             }
             task.setTaskStatus((byte)3);
             taskRepository.save(task);
 
-            result.put("code", 200);
+            return ApiResponse.success("任务删除成功");
         } catch (Exception e) {
-            result.put("code", 500);
+            return ApiResponse.error(500, "任务删除失败: " + e.getMessage());
         }
-        return result;
     }
 
     @Operation(summary = "查看任务", description = "返回当前用户创建与参与的未删除任务列表，完成任务包含finishTime")
     @GetMapping("/ListUserTasks")
-    public Map<String, Object> listUserTasks(HttpServletRequest request) {
-        Map<String, Object> result = new HashMap<>();
+    public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
-        String jwt = null;
+        String jwt;
         Integer userId = null;
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
@@ -93,9 +85,7 @@ public class TaskController {
         }
 
         if (userId == null) {
-            result.put("code", 401);
-            result.put("message", "未授权或Token无效");
-            return result;
+            return ApiResponse.error(401, "未授权或Token无效");
         }
 
         List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId, (byte)3);
@@ -110,9 +100,7 @@ public class TaskController {
         data.put("created", createdTasks.stream().map(this::toDtoWithExecutors).collect(Collectors.toList()));
         data.put("participated", executingTasks.stream().map(this::toDtoWithExecutors).collect(Collectors.toList()));
 
-        result.put("code", 200);
-        result.put("data", data);
-        return result;
+        return ApiResponse.success(data);
     }
 
     private Map<String, Object> toDto(Task t) {
@@ -147,7 +135,7 @@ public class TaskController {
 
     @Operation(summary = "发布任务", description = "创建新任务并分配多个执行者，优先级0-3，创建者从Token获取，返回code：200成功，400参数错误，404创建者不存在，500失败")
     @PostMapping("/publishTask")
-    public Map<String, Object> publishTask(
+    public ApiResponse<Map<String, Object>> publishTask(
             HttpServletRequest request,
             @RequestParam("title") String title,
             @RequestParam("content") String content,
@@ -155,9 +143,8 @@ public class TaskController {
             @RequestParam("executorIDs") List<Integer> executorIDs,
             @RequestParam("deadline") LocalDateTime deadline) {
 
-        Map<String, Object> result = new HashMap<>();
         String authorizationHeader = request.getHeader("Authorization");
-        String jwt = null;
+        String jwt;
         Integer creatorID = null;
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
@@ -166,34 +153,26 @@ public class TaskController {
         }
 
         if (creatorID == null) {
-            result.put("code", 401);
-            result.put("message", "未授权或Token无效");
-            return result;
+            return ApiResponse.error(401, "未授权或Token无效");
         }
 
         try {
             // 验证优先级范围 (0-3)
             if (priority < 0 || priority > 3) {
-                result.put("code", 400);
-                result.put("message", "优先级必须在0-3之间");
-                return result;
+                return ApiResponse.error(400, "优先级必须在0-3之间");
             }
 
             // 验证创建者是否存在
             Optional<User> creatorOpt = userRepository.findById(creatorID);
             if (creatorOpt.isEmpty()) {
-                result.put("code", 404);
-                result.put("message", "创建者不存在");
-                return result;
+                return ApiResponse.error(404, "创建者不存在");
             }
 
             // 验证执行者是否都存在
             for (Integer executorID : executorIDs) {
                 Optional<User> executorOpt = userRepository.findById(executorID);
                 if (executorOpt.isEmpty()) {
-                    result.put("code", 404);
-                    result.put("message", "执行者ID " + executorID + " 不存在");
-                    return result;
+                    return ApiResponse.error(404, "执行者ID " + executorID + " 不存在");
                 }
             }
 
@@ -218,53 +197,41 @@ public class TaskController {
                 relation.setExecutor(executor);
                 taskExecutorRelationRepository.save(relation);
             }
-
-            result.put("code", 200);
-            result.put("message", "任务发布成功");
-            result.put("taskID", savedTask.getTaskId());
+            Map<String, Object> data = new HashMap<>();
+            data.put("taskID", savedTask.getTaskId());
+            return ApiResponse.success(data);
 
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "任务发布失败: " + e.getMessage());
+            return ApiResponse.error(500, "任务发布失败: " + e.getMessage());
         }
-
-        return result;
     }
 
     @Operation(summary = "更新任务", description = "更新任务信息，优先级0-3，返回code：200成功，400参数错误，404任务不存在，500失败")
     @PutMapping("/updateTask")
-    public Map<String, Object> updateTask(
+    public ApiResponse<Map<String, Object>> updateTask(
             @RequestParam("taskID") Integer taskID,
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("priority") Integer priority,
             @RequestParam("deadline") LocalDateTime deadline) {
 
-        Map<String, Object> result = new HashMap<>();
-
         try {
             // 验证优先级范围 (0-3)
             if (priority < 0 || priority > 3) {
-                result.put("code", 400);
-                result.put("message", "优先级必须在0-3之间");
-                return result;
+                return ApiResponse.error(400, "优先级必须在0-3之间");
             }
 
             // 查找任务
             Optional<Task> taskOpt = taskRepository.findById(taskID);
             if (taskOpt.isEmpty()) {
-                result.put("code", 404);
-                result.put("message", "任务不存在");
-                return result;
+                return ApiResponse.error(404, "任务不存在");
             }
 
             Task task = taskOpt.get();
 
             // 检查任务是否已关闭
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
-                result.put("code", 404);
-                result.put("message", "任务已关闭");
-                return result;
+                return ApiResponse.error(404, "任务已关闭");
             }
 
             // 更新任务信息
@@ -275,16 +242,12 @@ public class TaskController {
 
             // 保存更新后的任务
             taskRepository.save(task);
-
-            result.put("code", 200);
-            result.put("message", "任务更新成功");
-            result.put("taskID", task.getTaskId());
+            Map<String, Object> data = new HashMap<>();
+            data.put("taskID", task.getTaskId());
+            return ApiResponse.success(data);
 
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "任务更新失败: " + e.getMessage());
+            return ApiResponse.error(500, "任务更新失败: " + e.getMessage());
         }
-
-        return result;
     }
 }
