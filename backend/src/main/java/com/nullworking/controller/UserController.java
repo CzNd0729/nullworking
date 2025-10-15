@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Department;
 import com.nullworking.model.User;
 import com.nullworking.repository.DepartmentRepository;
@@ -37,8 +38,7 @@ public class UserController {
 
     @Operation(summary = "获取同级及下级部门用户", description = "从token解析用户ID，递归查询同级及下级部门中的其他用户，返回用户ID与用户真实姓名")
     @GetMapping("/getSubDeptUser")
-    public Map<String, Object> getSubDeptUser(HttpServletRequest request) {
-        Map<String, Object> result = new HashMap<>();
+    public ApiResponse<Map<String, Object>> getSubDeptUser(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         String jwt = null;
 
@@ -48,18 +48,15 @@ public class UserController {
         try {
             Integer currentUserId = jwtUtil.extractUserId(jwt);
             if (currentUserId == null) {
-                result.put("code", 401);
-                result.put("message", "无效的token或用户ID");
-                return result;
+                return ApiResponse.error(401, "无效的token或用户ID");
             }
 
             // 1. 获取当前用户所属部门ID
             User currentUser = userRepository.findById(currentUserId).orElse(null);
             if (currentUser == null || currentUser.getDepartment() == null) {
-                result.put("code", 200);
-                result.put("message", "用户未关联部门或部门不存在");
-                result.put("users", new ArrayList<>());
-                return result;
+                Map<String, Object> data = new HashMap<>();
+                data.put("users", new ArrayList<>());
+                return ApiResponse.success(data);
             }
             Integer currentDepartmentId = currentUser.getDepartment().getDepartmentId();
 
@@ -84,15 +81,11 @@ public class UserController {
             Map<String, Object> data = new HashMap<>();
             data.put("users",users);
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            result.put("data", data);
+            return ApiResponse.success(data);
 
         } catch (Exception e) {
-            result.put("code", 500);
-            result.put("message", "服务器错误: " + e.getMessage());
+            return ApiResponse.error(500, "服务器错误: " + e.getMessage());
         }
-        return result;
     }
 
     /**
