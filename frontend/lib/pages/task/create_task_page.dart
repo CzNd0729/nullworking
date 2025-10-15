@@ -141,7 +141,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               ),
             ),
             const SizedBox(height: 20),
-            ...['P0', 'P1', 'P2']
+            ...['P0', 'P1', 'P2', 'P3']
                 .map(
                   (priority) => ListTile(
                     title: Text(
@@ -149,9 +149,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       style: TextStyle(
                         color: priority == 'P0'
                             ? Colors.red
-                            : priority == 'P1'
-                            ? Colors.orange
-                            : Colors.blue,
+                            : (priority == 'P1'
+                                  ? Colors.orange
+                                  : (priority == 'P2'
+                                        ? Colors.blue
+                                        : Colors.green)),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -174,48 +176,118 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void _selectAssignee() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '选择负责人',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            const SizedBox(height: 20),
-            ..._teamMembers
-                .map(
-                  (member) => ListTile(
-                    title: Text(
-                      member['name']!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    subtitle: Text(
-                      member['role']!,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        _selectedAssignee = member['name']!;
-                        _assigneeController.text =
-                            '${member['name']} (${member['role']})';
-                      });
-                      Navigator.pop(context);
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '选择负责人',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: _teamMembers.length,
+                    itemBuilder: (context, index) {
+                      final member = _teamMembers[index];
+                      return Card(
+                        color: const Color(0xFF2A2A2A),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setState(() {
+                              _selectedAssignee = member['name']!;
+                              _assigneeController.text =
+                                  '${member['name']} (${member['role']})';
+                            });
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: const Color(0xFF00D9A3),
+                                  child: Text(
+                                    member['name']![0],
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        member['name']!,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        member['role']!,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_selectedAssignee == member['name'])
+                                  const Icon(
+                                    Icons.check,
+                                    color: Color(0xFF00D9A3),
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
-                )
-                .toList(),
-          ],
-        ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -366,17 +438,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               // 人员分配部分
               _buildSectionCard(
                 title: '人员分配',
-                icon: Icons.check_box_outline_blank,
                 children: [
                   Row(
                     children: [
-                      Checkbox(
+                      Switch(
                         value: _isAssigned,
                         onChanged: (value) {
                           setState(() {
-                            _isAssigned = value ?? false;
+                            _isAssigned = value;
                             if (!_isAssigned) {
-                              // 如果不勾选人员分配，只能选择自己
+                              // 如果不选择人员分配，只能选择自己
                               _selectedAssignee = '我';
                               _assigneeController.text = '我 (当前用户)';
                             }
