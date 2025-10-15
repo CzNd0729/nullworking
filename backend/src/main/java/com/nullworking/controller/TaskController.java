@@ -145,10 +145,10 @@ public class TaskController {
         return m;
     }
 
-    @Operation(summary = "发布任务", description = "创建新任务并分配多个执行者，优先级0-3，返回code：200成功，400参数错误，404创建者不存在，500失败,样例：deadline:2025-10-22T18:00:00")
+    @Operation(summary = "发布任务", description = "创建新任务并分配多个执行者，优先级0-3，创建者从Token获取，返回code：200成功，400参数错误，404创建者不存在，500失败")
     @PostMapping("/publishTask")
     public Map<String, Object> publishTask(
-            @RequestParam("creatorID") Integer creatorID,
+            HttpServletRequest request,
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("priority") Integer priority,
@@ -156,6 +156,20 @@ public class TaskController {
             @RequestParam("deadline") LocalDateTime deadline) {
 
         Map<String, Object> result = new HashMap<>();
+        String authorizationHeader = request.getHeader("Authorization");
+        String jwt = null;
+        Integer creatorID = null;
+
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7);
+            creatorID = jwtUtil.extractUserId(jwt);
+        }
+
+        if (creatorID == null) {
+            result.put("code", 401);
+            result.put("message", "未授权或Token无效");
+            return result;
+        }
 
         try {
             // 验证优先级范围 (0-3)
@@ -217,7 +231,7 @@ public class TaskController {
         return result;
     }
 
-    @Operation(summary = "更新任务", description = "更新任务信息，优先级0-3，返回code：200成功，400参数错误，404任务不存在，500失败，样例：deadline:2025-10-22T18:00:00")
+    @Operation(summary = "更新任务", description = "更新任务信息，优先级0-3，返回code：200成功，400参数错误，404任务不存在，500失败")
     @PutMapping("/updateTask")
     public Map<String, Object> updateTask(
             @RequestParam("taskID") Integer taskID,
