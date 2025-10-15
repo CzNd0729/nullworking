@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'create_task_page.dart';
+import 'task_detail_page.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -85,7 +86,12 @@ class _TasksPageState extends State<TasksPage> {
             // 查看详情按钮
             ElevatedButton(
               onPressed: () {
-                // 后续可添加查看详情的逻辑
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TaskDetailPage(task: task),
+                  ),
+                );
               },
               child: const Text('查看详情'),
             ),
