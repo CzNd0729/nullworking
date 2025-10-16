@@ -72,7 +72,7 @@ CREATE TABLE `task` (
   `Task_Title` VARCHAR(128) NOT NULL COMMENT '任务标题',
   `Task_Content` TEXT NOT NULL COMMENT '任务内容',
   `Priority` TINYINT NOT NULL COMMENT '优先级（p0-p3）',
-  `Task_Status` TINYINT NOT NULL COMMENT '任务状态（0=未开始，1=进行中，2=完成，3=已关闭）',
+  `Task_Status` TINYINT NOT NULL COMMENT '任务状态（0=进行中，1=已延期, 2=已完成, 3=已关闭）',
   `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `Deadline` DATETIME NOT NULL COMMENT '截止时间',
   `Finish_Time` DATETIME NULL COMMENT '任务完成时间（taskStatus=2 时填充）',
