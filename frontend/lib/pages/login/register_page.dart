@@ -218,7 +218,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '用户名',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -252,7 +252,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '密码',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -300,7 +300,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '确认密码',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -348,7 +348,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '电话号码',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -383,7 +383,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '真实姓名',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -417,7 +417,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     '邮箱（可选）',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),

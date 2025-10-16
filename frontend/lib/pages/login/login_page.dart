@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nullworking/services/api/user_api.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 导入shared_preferences
 import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
@@ -68,6 +69,11 @@ class _LoginPageState extends State<LoginPage> {
           // 登录成功，Token已自动保存，直接跳转到主页
           print('登录成功');
 
+          // 存储用户ID
+          final int userID = responseData['data']['userID'];
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userID', userID.toString());
+
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
           // 根据API返回的message显示错误信息
@@ -82,7 +88,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = '网络连接失败，请检查网络设置';
+        _errorMessage = e.toString();
       });
     } finally {
       setState(() {
@@ -156,7 +162,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text(
                     '用户名',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal, // 将灰色改为主色调绿色
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -189,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text(
                     '密码',
                     style: TextStyle(
-                      color: Colors.grey.shade800,
+                      color: primaryTeal, // 将灰色改为主色调绿色
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -203,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                   onChanged: (_) => _clearError(),
                   decoration: InputDecoration(
                     hintText: '请输入密码',
-                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    hintStyle: TextStyle(color: Colors.grey.shade500), // 将灰色改为主色调绿色
                     filled: true,
                     fillColor: const Color(0xFFE9EDF2),
                     contentPadding: const EdgeInsets.symmetric(
