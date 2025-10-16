@@ -22,7 +22,8 @@ class TaskApi {
   }
 
   Future<TaskListResponse?> listUserTasks() async {
-    final response = await _baseApi.get('api/task/ListUserTasks');
+    final response = await _baseApi.get('api/task/listUserTasks');
+    print(response);
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);

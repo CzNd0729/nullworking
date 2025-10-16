@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../services/api/task_api.dart';
+import '../../services/api/user_api.dart'; // Added for UserApi
 import 'dart:convert'; // Added for jsonDecode
 import '../../models/task.dart'; // Added for Task model
 
@@ -25,24 +25,29 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   bool _isLoading = false;
   bool _isAssigned = false; // 人员分配勾选状态
   String _selectedAssignee = '我'; // 选中的负责人
+  List<Map<String, dynamic>> _selectedAssignees = []; // 新增：选中的负责人列表
+  List<Map<String, dynamic>> _teamMembers = []; // 替换模拟团队成员列表为可变列表
 
   final TaskApi _taskApi = TaskApi();
+  final UserApi _userApi = UserApi(); // Added UserApi initialization
 
   // 模拟团队成员列表
-  final List<Map<String, String>> _teamMembers = [
-    {'name': '我', 'role': '当前用户'},
-    {'name': '张明', 'role': '产品经理'},
-    {'name': '李四', 'role': 'UI设计师'},
-    {'name': '王五', 'role': '后端开发'},
-    {'name': '赵六', 'role': '前端开发'},
-    {'name': '钱七', 'role': '测试工程师'},
-  ];
+  // final List<Map<String, String>> _teamMembers = [
+  //   {'name': '我', 'role': '当前用户'},
+  //   {'name': '张明', 'role': '产品经理'},
+  //   {'name': '李四', 'role': 'UI设计师'},
+  //   {'name': '王五', 'role': '后端开发'},
+  //   {'name': '赵六', 'role': '前端开发'},
+  //   {'name': '钱七', 'role': '测试工程师'},
+  // ];
 
   @override
   void initState() {
     super.initState();
     _priorityController.text = _selectedPriority;
     _assigneeController.text = '我 (当前用户)';
+    _selectedAssignees.add({'realName': '我', 'userId': -1}); // 默认添加“我”作为选中负责人，-1表示当前用户
+    _fetchTeamMembers(); // 调用API获取团队成员
   }
 
   @override
@@ -220,8 +225,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     itemCount: _teamMembers.length,
                     itemBuilder: (context, index) {
                       final member = _teamMembers[index];
+                      final bool isSelected = _selectedAssignees.any((assignee) => assignee['userId'] == member['userId']);
                       return Card(
-                        color: const Color(0xFF2A2A2A),
+                        color: isSelected ? const Color(0xFF00D9A3).withOpacity(0.3) : const Color(0xFF2A2A2A),
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -230,11 +236,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           borderRadius: BorderRadius.circular(12),
                           onTap: () {
                             setState(() {
-                              _selectedAssignee = member['name']!;
-                              _assigneeController.text =
-                                  '${member['name']} (${member['role']})';
+                              if (isSelected) {
+                                _selectedAssignees.removeWhere((assignee) => assignee['userId'] == member['userId']);
+                              } else {
+                                _selectedAssignees.add({'realName': member['name'], 'userId': member['userId']});
+                              }
+                              _updateAssigneeText(); // 更新显示文本
                             });
-                            Navigator.pop(context);
+                            // Navigator.pop(context); // 不再自动关闭，支持多选
                           },
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
@@ -271,7 +280,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     ],
                                   ),
                                 ),
-                                if (_selectedAssignee == member['name'])
+                                if (isSelected)
                                   const Icon(
                                     Icons.check,
                                     color: Color(0xFF00D9A3),
@@ -284,6 +293,31 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         ),
                       );
                     },
+                  ),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _updateAssigneeText(); // 确保在关闭时更新文本
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00D9A3), // 确定按钮的颜色
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '确定',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -315,7 +349,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         'title': _titleController.text.trim(),
         'content': _descriptionController.text.trim(),
         'priority': int.parse(_selectedPriority.substring(1)),
-        'executorIDs': _isAssigned ? 2 : 1, // 单个整数，不是数组
+        'executorIDs': _isAssigned
+            ? _selectedAssignees.map((e) => e['userId']).toList() // 如果分配，则发送选中的所有用户ID
+            : [-1], // 否则发送当前用户ID，-1表示当前用户
         'deadline': _selectedDate!.toIso8601String(),
       };
 
@@ -347,7 +383,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 _selectedTime!.hour,
                 _selectedTime!.minute,
               ),
-              executorNames: [_selectedAssignee], // 示例值
+              executorNames: _selectedAssignees.map((assignee) => assignee['realName'].toString()).toList(),
             );
             Navigator.pop(context, newTask);
           } else {
@@ -381,6 +417,47 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchTeamMembers() async {
+    try {
+      final response = await _userApi.getSubDeptUser();
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        if (responseBody['code'] == 200 && responseBody['data'] != null) {
+          setState(() {
+            _teamMembers = (responseBody['data']['users'] as List)
+                .map((user) => {'name': user['realName'], 'role': '', 'userId': user['userId']})
+                .toList();
+            // 添加“我”到团队成员列表的开头
+            _teamMembers.insert(0, {'name': '我', 'role': '当前用户', 'userId': -1});
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('获取团队成员失败: ${response.statusCode}'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('获取团队成员时出错: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _updateAssigneeText() {
+    if (_selectedAssignees.length == 1 && _selectedAssignees.first['userId'] == -1) {
+      _assigneeController.text = '我 (当前用户)';
+    } else if (_selectedAssignees.isNotEmpty) {
+      final assigneesNames = _selectedAssignees.map((assignee) => assignee['realName']).join(', ');
+      _assigneeController.text = assigneesNames;
+    } else {
+      _assigneeController.text = '我 (当前用户)';
     }
   }
 
@@ -456,6 +533,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               // 如果不选择人员分配，只能选择自己
                               _selectedAssignee = '我';
                               _assigneeController.text = '我 (当前用户)';
+                              _selectedAssignees.clear();
+                              _selectedAssignees.add({'realName': '我', 'userId': -1});
                             }
                           });
                         },
