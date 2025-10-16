@@ -47,7 +47,7 @@ class BaseApi {
   Future<http.Response> post(
     String endpoint, {
     Map<String, dynamic>? body,
-    Map<String, String>? queryParams,
+    Map<String, dynamic>? queryParams,
     bool authenticated = true,
   }) async {
     var url = Uri.parse('$_baseUrl/$endpoint');
