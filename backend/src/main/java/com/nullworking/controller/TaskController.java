@@ -73,7 +73,7 @@ public class TaskController {
     }
 
     @Operation(summary = "查看任务", description = "返回当前用户创建与参与的未删除任务列表，完成任务包含finishTime")
-    @GetMapping("/ListUserTasks")
+    @GetMapping("/listUserTasks")
     public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
         String jwt;
