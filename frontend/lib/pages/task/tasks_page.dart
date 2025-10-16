@@ -18,10 +18,20 @@ class _TasksPageState extends State<TasksPage> {
   List<Task> _myTasks = [];
   bool _isLoading = false;
 
+  // 筛选相关状态
+  final TextEditingController _searchController = TextEditingController();
+  Set<String> _selectedStatusFilters = {}; // 支持多选筛选
+
   @override
   void initState() {
     super.initState();
     _loadTasks();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTasks() async {
@@ -51,9 +61,114 @@ class _TasksPageState extends State<TasksPage> {
 
   void _addTask(Task newTask) {
     setState(() {
-      // 新创建的任务默认属于当前用户创建，归类到“派发任务”
+      // 新创建的任务默认属于当前用户创建，归类到"派发任务"
       _assignedTasks.add(newTask);
     });
+  }
+
+  // 筛选任务的方法
+  List<Task> _filterTasks(List<Task> tasks) {
+    return tasks.where((task) {
+      // 搜索筛选
+      final searchQuery = _searchController.text.toLowerCase();
+      final matchesSearch =
+          searchQuery.isEmpty ||
+          task.taskTitle.toLowerCase().contains(searchQuery) ||
+          task.taskContent.toLowerCase().contains(searchQuery);
+
+      // 状态筛选
+      final matchesStatus =
+          _selectedStatusFilters.isEmpty ||
+          _selectedStatusFilters.contains(task.taskStatus);
+
+      return matchesSearch && matchesStatus;
+    }).toList();
+  }
+
+  // 切换状态筛选
+  void _toggleStatusFilter(String status) {
+    setState(() {
+      if (_selectedStatusFilters.contains(status)) {
+        _selectedStatusFilters.remove(status);
+      } else {
+        _selectedStatusFilters.add(status);
+      }
+    });
+  }
+
+  // 清除所有筛选
+  void _clearAllFilters() {
+    setState(() {
+      _searchController.clear();
+      _selectedStatusFilters.clear();
+    });
+  }
+
+  // 构建筛选栏组件
+  Widget _buildFilterBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 筛选标题和清除按钮
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '状态筛选',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (_selectedStatusFilters.isNotEmpty ||
+                  _searchController.text.isNotEmpty)
+                TextButton(
+                  onPressed: _clearAllFilters,
+                  child: const Text(
+                    '清除筛选',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // 状态筛选按钮
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 8.0,
+            children: [
+              _buildStatusFilterChip('0', '进行中', Colors.green),
+              _buildStatusFilterChip('1', '已延期', Colors.orange),
+              _buildStatusFilterChip('2', '已完成', Colors.purple),
+              _buildStatusFilterChip('3', '已关闭', Colors.red),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建状态筛选按钮
+  Widget _buildStatusFilterChip(String status, String label, Color color) {
+    final isSelected = _selectedStatusFilters.contains(status);
+    return FilterChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : color,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (selected) => _toggleStatusFilter(status),
+      backgroundColor: color.withOpacity(0.2),
+      selectedColor: color,
+      showCheckmark: false, // 去掉√符号
+      side: BorderSide(color: color, width: 1.0),
+    );
   }
 
   // 构建任务卡片组件
@@ -193,6 +308,8 @@ class _TasksPageState extends State<TasksPage> {
           children: [
             // 搜索栏
             TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() {}), // 触发重新筛选
               decoration: InputDecoration(
                 hintText: '按标题或任务内容搜索',
                 prefixIcon: const Icon(Icons.search),
@@ -201,6 +318,9 @@ class _TasksPageState extends State<TasksPage> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            // 筛选栏
+            _buildFilterBar(),
             const SizedBox(height: 16),
             // 派发任务模块
             _isLoading
@@ -214,19 +334,24 @@ class _TasksPageState extends State<TasksPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    children: _assignedTasks.isEmpty
-                        ? const [
-                            Padding(
-                              padding: EdgeInsets.all(20.0),
-                              child: Text(
-                                '暂无派发的任务',
-                                style: TextStyle(color: Colors.white54),
+                    children: () {
+                      final filteredTasks = _filterTasks(_assignedTasks);
+                      return filteredTasks.isEmpty
+                          ? [
+                              Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text(
+                                  _assignedTasks.isEmpty
+                                      ? '暂无派发的任务'
+                                      : '没有符合筛选条件的派发任务',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
                               ),
-                            ),
-                          ]
-                        : _assignedTasks
-                              .map((task) => _buildTaskCard(task))
-                              .toList(),
+                            ]
+                          : filteredTasks
+                                .map((task) => _buildTaskCard(task))
+                                .toList();
+                    }(),
                   ),
             const SizedBox(height: 16),
             // 我的任务模块
@@ -241,17 +366,22 @@ class _TasksPageState extends State<TasksPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    children: _myTasks.isEmpty
-                        ? const [
-                            Padding(
-                              padding: EdgeInsets.all(20.0),
-                              child: Text(
-                                '暂无我的任务',
-                                style: TextStyle(color: Colors.white54),
+                    children: () {
+                      final filteredTasks = _filterTasks(_myTasks);
+                      return filteredTasks.isEmpty
+                          ? [
+                              Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text(
+                                  _myTasks.isEmpty ? '暂无我的任务' : '没有符合筛选条件的我的任务',
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
                               ),
-                            ),
-                          ]
-                        : _myTasks.map((task) => _buildTaskCard(task)).toList(),
+                            ]
+                          : filteredTasks
+                                .map((task) => _buildTaskCard(task))
+                                .toList();
+                    }(),
                   ),
           ],
         ),
