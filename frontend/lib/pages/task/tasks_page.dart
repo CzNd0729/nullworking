@@ -61,22 +61,21 @@ class _TasksPageState extends State<TasksPage> {
 
   void _addTask(Task newTask) {
     setState(() {
-      // 新创建的任务默认属于当前用户创建，归类到"派发任务"
       _assignedTasks.add(newTask);
+      _myTasks.add(newTask);
+      _searchController.clear();
+      _selectedStatusFilters.clear();
     });
   }
 
-  // 筛选任务的方法
   List<Task> _filterTasks(List<Task> tasks) {
     return tasks.where((task) {
-      // 搜索筛选
       final searchQuery = _searchController.text.toLowerCase();
       final matchesSearch =
           searchQuery.isEmpty ||
           task.taskTitle.toLowerCase().contains(searchQuery) ||
           task.taskContent.toLowerCase().contains(searchQuery);
 
-      // 状态筛选
       final matchesStatus =
           _selectedStatusFilters.isEmpty ||
           _selectedStatusFilters.contains(task.taskStatus);
@@ -85,7 +84,6 @@ class _TasksPageState extends State<TasksPage> {
     }).toList();
   }
 
-  // 切换状态筛选
   void _toggleStatusFilter(String status) {
     setState(() {
       if (_selectedStatusFilters.contains(status)) {
@@ -96,7 +94,6 @@ class _TasksPageState extends State<TasksPage> {
     });
   }
 
-  // 清除所有筛选
   void _clearAllFilters() {
     setState(() {
       _searchController.clear();
@@ -104,14 +101,12 @@ class _TasksPageState extends State<TasksPage> {
     });
   }
 
-  // 构建筛选栏组件
   Widget _buildFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 筛选标题和清除按钮
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -135,7 +130,6 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ),
           const SizedBox(height: 8),
-          // 状态筛选按钮
           Wrap(
             spacing: 8.0,
             runSpacing: 8.0,

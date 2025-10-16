@@ -32,6 +32,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final TaskApi _taskApi = TaskApi();
   final UserApi _userApi = UserApi();
   String? _currentUserId;
+  String? _currentUserName;
 
   @override
   void initState() {
@@ -41,14 +42,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _fetchTeamMembers();
   }
 
-  // 修复：初始化时确保“我”的ID是字符串类型
+  // 修复：初始化时确保"我"的ID是字符串类型
   Future<void> _loadCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _currentUserId = prefs.getString('userID') ?? '-1'; // 默认为字符串"-1"
-      // 初始化选中“我”，并确保userId是字符串
+      _currentUserName = prefs.getString('realName') ?? '当前用户'; // 获取用户真实姓名
+      // 初始化选中"我"，并确保userId是字符串
       _selectedAssignees = [
-        {'realName': '我', 'userId': _currentUserId}
+        {'realName': _currentUserName, 'userId': _currentUserId},
       ];
       _updateAssigneeText(); // 同步显示文本
     });
@@ -161,10 +163,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         color: priority == 'P0'
                             ? Colors.red
                             : (priority == 'P1'
-                                ? Colors.orange
-                                : (priority == 'P2'
-                                    ? Colors.blue
-                                    : Colors.green)),
+                                  ? Colors.orange
+                                  : (priority == 'P2'
+                                        ? Colors.blue
+                                        : Colors.green)),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -188,7 +190,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void _selectAssignee() {
     // 1. 弹窗内维护临时选中状态
     List<Map<String, dynamic>> tempSelected = List.from(_selectedAssignees);
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -239,7 +241,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         itemBuilder: (context, index) {
                           final member = _teamMembers[index];
                           bool isSelected = tempSelected.any(
-                            (assignee) => assignee['userId'] == member['userId']
+                            (assignee) =>
+                                assignee['userId'] == member['userId'],
                           );
 
                           return Card(
@@ -258,12 +261,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 sheetSetState(() {
                                   if (isSelected) {
                                     tempSelected.removeWhere(
-                                      (assignee) => assignee['userId'] == member['userId']
+                                      (assignee) =>
+                                          assignee['userId'] ==
+                                          member['userId'],
                                     );
                                   } else {
                                     tempSelected.add({
                                       'realName': member['name'],
-                                      'userId': member['userId']
+                                      'userId': member['userId'],
                                     });
                                   }
                                 });
@@ -276,13 +281,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       backgroundColor: const Color(0xFF00D9A3),
                                       child: Text(
                                         member['name']![0],
-                                        style: const TextStyle(color: Colors.black),
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             member['name']!,
@@ -335,7 +343,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text('取消', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                '取消',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -356,7 +370,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 ),
                                 elevation: 0,
                               ),
-                              child: const Text('确定', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              child: const Text(
+                                '确定',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -395,7 +415,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         'content': _descriptionController.text.trim(),
         'priority': int.parse(_selectedPriority.substring(1)),
         // 确保executorIDs是字符串列表（匹配后端通常的ID类型）
-        'executorIDs': _selectedAssignees.map((e) => e['userId'].toString()).toList(),
+        'executorIDs': _selectedAssignees
+            .map((e) => e['userId'].toString())
+            .toList(),
         'deadline': DateTime(
           _selectedDate!.year,
           _selectedDate!.month,
@@ -414,7 +436,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             final taskID = responseBody['data']['taskID'].toString();
             final newTask = Task(
               taskID: taskID,
-              creatorName: "当前用户",
+              creatorName: _currentUserName ?? "当前用户",
               taskTitle: _titleController.text.trim(),
               taskContent: _descriptionController.text.trim(),
               taskPriority: _selectedPriority.substring(1),
@@ -427,7 +449,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 _selectedTime!.hour,
                 _selectedTime!.minute,
               ),
-              executorNames: _selectedAssignees.map((assignee) => assignee['realName'].toString()).toList(),
+              executorNames: _selectedAssignees
+                  .map((assignee) => assignee['realName'].toString())
+                  .toList(),
             );
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -479,24 +503,26 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           setState(() {
             // 转换用户数据，确保userId是字符串
             _teamMembers = (responseBody['data']['users'] as List)
-                .map((user) => {
-                      'name': user['realName'] ?? '未知用户',
-                      'role': user['role'] ?? '',
-                      'userId': user['userId'].toString() // 统一为字符串
-                    })
+                .map(
+                  (user) => {
+                    'name': user['realName'] ?? '未知用户',
+                    'role': user['role'] ?? '',
+                    'userId': user['userId'].toString(), // 统一为字符串
+                  },
+                )
                 .toList();
             // 添加“我”到列表开头，确保userId是字符串
             if (_currentUserId != null) {
               _teamMembers.insert(0, {
                 'name': '我',
                 'role': '当前用户',
-                'userId': _currentUserId
+                'userId': _currentUserId,
               });
             } else {
               _teamMembers.insert(0, {
                 'name': '我',
                 'role': '当前用户',
-                'userId': '-1' // 默认为字符串
+                'userId': '-1', // 默认为字符串
               });
             }
           });
@@ -504,7 +530,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('获取团队成员失败: ${response.statusCode}'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('获取团队成员失败: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -520,10 +549,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void _updateAssigneeText() {
     if (_selectedAssignees.isEmpty) {
       _assigneeController.text = '请选择负责人';
-    } else if (_selectedAssignees.length == 1 && _selectedAssignees.first['realName'] == '我') {
+    } else if (_selectedAssignees.length == 1 &&
+        _selectedAssignees.first['realName'] == '我') {
       _assigneeController.text = '我 (当前用户)';
     } else {
-      final assigneesNames = _selectedAssignees.map((assignee) => assignee['realName']).join(', ');
+      final assigneesNames = _selectedAssignees
+          .map((assignee) => assignee['realName'])
+          .join(', ');
       _assigneeController.text = assigneesNames;
     }
   }
@@ -591,7 +623,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             if (!_isAssigned) {
                               // 重置为仅选中“我”，确保userId是字符串
                               _selectedAssignees = [
-                                {'realName': '我', 'userId': _currentUserId ?? '-1'}
+                                {
+                                  'realName': '我',
+                                  'userId': _currentUserId ?? '-1',
+                                },
                               ];
                               _updateAssigneeText();
                             }
@@ -658,12 +693,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : const Text(
                           '派发任务',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
@@ -739,7 +779,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
           ),
           validator: validator,
         ),
@@ -810,14 +853,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               onTap: onTap,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        controller.text.isEmpty ? (hintText ?? '') : controller.text,
+                        controller.text.isEmpty
+                            ? (hintText ?? '')
+                            : controller.text,
                         style: TextStyle(
-                          color: controller.text.isEmpty ? Colors.white54 : Colors.white,
+                          color: controller.text.isEmpty
+                              ? Colors.white54
+                              : Colors.white,
                           fontSize: 16,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -827,7 +877,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     if (icon != null)
                       Icon(icon, color: Colors.white54, size: 20)
                     else
-                      const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white54,
+                        size: 16,
+                      ),
                   ],
                 ),
               ),
