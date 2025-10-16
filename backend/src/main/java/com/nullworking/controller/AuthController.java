@@ -49,6 +49,7 @@ public class AuthController {
 
             data.put("roleID", user.getRole() != null ? user.getRole().getRoleId() : null);
             data.put("token", jwt);
+            data.put("userID",user.getUserId());
             return ApiResponse.success(data);
 
         } catch (AuthenticationException e) {
