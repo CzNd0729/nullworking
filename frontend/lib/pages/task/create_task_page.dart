@@ -31,16 +31,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final TaskApi _taskApi = TaskApi();
   final UserApi _userApi = UserApi(); // Added UserApi initialization
 
-  // 模拟团队成员列表
-  // final List<Map<String, String>> _teamMembers = [
-  //   {'name': '我', 'role': '当前用户'},
-  //   {'name': '张明', 'role': '产品经理'},
-  //   {'name': '李四', 'role': 'UI设计师'},
-  //   {'name': '王五', 'role': '后端开发'},
-  //   {'name': '赵六', 'role': '前端开发'},
-  //   {'name': '钱七', 'role': '测试工程师'},
-  // ];
-
   @override
   void initState() {
     super.initState();
