@@ -63,12 +63,12 @@ class _TasksPageState extends State<TasksPage> {
 
     switch (task.taskStatus) {
       case '0':
-        statusTag = '未开始';
-        statusColor = Colors.blueGrey;
-        break;
-      case '1':
         statusTag = '进行中';
         statusColor = Colors.green;
+        break;
+      case '1':
+        statusTag = '已延期';
+        statusColor = Colors.orange;
         break;
       case '2':
         statusTag = '已完成';
@@ -91,7 +91,9 @@ class _TasksPageState extends State<TasksPage> {
       widthFactor: 0.95, // 占屏幕宽度的95%
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -113,7 +115,10 @@ class _TasksPageState extends State<TasksPage> {
               // 任务标题
               Text(
                 taskTitle,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               // 分配信息
@@ -205,7 +210,9 @@ class _TasksPageState extends State<TasksPage> {
                     title: const Text(
                       '派发任务',
                       style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     children: _assignedTasks.isEmpty
                         ? const [
@@ -218,8 +225,8 @@ class _TasksPageState extends State<TasksPage> {
                             ),
                           ]
                         : _assignedTasks
-                            .map((task) => _buildTaskCard(task))
-                            .toList(),
+                              .map((task) => _buildTaskCard(task))
+                              .toList(),
                   ),
             const SizedBox(height: 16),
             // 我的任务模块
@@ -230,7 +237,9 @@ class _TasksPageState extends State<TasksPage> {
                     title: const Text(
                       '我的任务',
                       style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     children: _myTasks.isEmpty
                         ? const [

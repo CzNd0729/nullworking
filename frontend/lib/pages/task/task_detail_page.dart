@@ -31,9 +31,29 @@ class TaskDetailPage extends StatelessWidget {
     final assignee = task.executorNames.join(', ');
     final assigneeRole = ""; // Task 模型中没有直接的 assigneeRole 字段
     final dueDate = task.deadline.toLocal().toString().split(' ')[0];
-    final dueTime = task.deadline.toLocal().toString().split(' ')[1].substring(0, 5);
+    final dueTime = task.deadline
+        .toLocal()
+        .toString()
+        .split(' ')[1]
+        .substring(0, 5);
     final priority = 'P${task.taskPriority}';
-    final status = task.taskStatus == '0' ? '进行中' : '已完成';
+    String status;
+    switch (task.taskStatus) {
+      case '0':
+        status = '进行中';
+        break;
+      case '1':
+        status = '已延期';
+        break;
+      case '2':
+        status = '已完成';
+        break;
+      case '3':
+        status = '已关闭';
+        break;
+      default:
+        status = '未知状态';
+    }
 
     return Scaffold(
       appBar: AppBar(
