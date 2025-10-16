@@ -49,16 +49,32 @@ public class TaskController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，返回code：200成功，208已关闭，404不存在，500失败")
+    @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，仅创建者可操作，返回code：200成功，208已关闭，401未授权，403无权限，404不存在，500失败")
     @DeleteMapping("/deleteTask")
     @Transactional
-    public ApiResponse<String> deleteTask(@RequestParam("taskID") Integer taskId) {
+    public ApiResponse<String> deleteTask(@RequestParam("taskID") Integer taskId, HttpServletRequest request) {
+        // 从Token解析当前用户
+        String authorizationHeader = request.getHeader("Authorization");
+        String jwt;
+        Integer userId = null;
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7);
+            userId = jwtUtil.extractUserId(jwt);
+        }
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权或Token无效");
+        }
+
         Optional<Task> taskOpt = taskRepository.findById(taskId);
         if (taskOpt.isEmpty()) {
             return ApiResponse.error(404, "任务不存在");
         }
         try {
             Task task = taskOpt.get();
+            // 仅任务创建者可删除（关闭）
+            if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
+                return ApiResponse.error(403, "无权限删除此任务");
+            }
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
                 // 已经是关闭状态
                 return ApiResponse.error(208, "任务已关闭");
@@ -206,14 +222,27 @@ public class TaskController {
         }
     }
 
-    @Operation(summary = "更新任务", description = "更新任务信息，优先级0-3，返回code：200成功，400参数错误，404任务不存在，500失败")
+    @Operation(summary = "更新任务", description = "仅创建者可更新任务信息，优先级0-3，返回code：200成功，400参数错误，401未授权，403无权限，404任务不存在，500失败")
     @PutMapping("/updateTask")
     public ApiResponse<Map<String, Object>> updateTask(
+            HttpServletRequest request,
             @RequestParam("taskID") Integer taskID,
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("priority") Integer priority,
             @RequestParam("deadline") LocalDateTime deadline) {
+
+        // 从Token解析当前用户
+        String authorizationHeader = request.getHeader("Authorization");
+        String jwt;
+        Integer userId = null;
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7);
+            userId = jwtUtil.extractUserId(jwt);
+        }
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权或Token无效");
+        }
 
         try {
             // 验证优先级范围 (0-3)
@@ -228,6 +257,11 @@ public class TaskController {
             }
 
             Task task = taskOpt.get();
+
+            // 仅创建者可更新
+            if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
+                return ApiResponse.error(403, "无权限更新此任务");
+            }
 
             // 检查任务是否已关闭
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
