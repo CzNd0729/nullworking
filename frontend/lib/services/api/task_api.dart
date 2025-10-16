@@ -7,13 +7,15 @@ class TaskApi {
   final BaseApi _baseApi = BaseApi();
 
   Future<http.Response> publishTask(Map<String, dynamic> taskData) async {
-    final queryParams = <String, String>{
+    final queryParams = <String, dynamic>{
       'title': taskData['title'].toString(),
       'content': taskData['content'].toString(),
       'priority': taskData['priority'].toString(),
-      'executorIDs': taskData['executorIDs'].toString(),
       'deadline': taskData['deadline'].toString(),
     };
+
+    // 处理 executorIDs 列表
+    queryParams['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
 
     return await _baseApi.post(
       'api/task/publishTask',
