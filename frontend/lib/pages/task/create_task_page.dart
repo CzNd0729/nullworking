@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/api/task_api.dart';
-import '../../services/api/user_api.dart'; // Added for UserApi
-import 'dart:convert'; // Added for jsonDecode
-import '../../models/task.dart'; // Added for Task model
+import '../../services/api/user_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import '../../models/task.dart';
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
@@ -23,21 +24,34 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
-  bool _isAssigned = false; // 人员分配勾选状态
-  String _selectedAssignee = '我'; // 选中的负责人
-  List<Map<String, dynamic>> _selectedAssignees = []; // 新增：选中的负责人列表
-  List<Map<String, dynamic>> _teamMembers = []; // 替换模拟团队成员列表为可变列表
+  bool _isAssigned = false;
+  // 修复：将用户ID统一为字符串类型，避免类型不匹配
+  List<Map<String, dynamic>> _selectedAssignees = [];
+  List<Map<String, dynamic>> _teamMembers = [];
 
   final TaskApi _taskApi = TaskApi();
-  final UserApi _userApi = UserApi(); // Added UserApi initialization
+  final UserApi _userApi = UserApi();
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _priorityController.text = _selectedPriority;
-    _assigneeController.text = '我 (当前用户)';
-    _selectedAssignees.add({'realName': '我', 'userId': -1}); // 默认添加“我”作为选中负责人，-1表示当前用户
-    _fetchTeamMembers(); // 调用API获取团队成员
+    _loadCurrentUserId();
+    _fetchTeamMembers();
+  }
+
+  // 修复：初始化时确保“我”的ID是字符串类型
+  Future<void> _loadCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getString('userID') ?? '-1'; // 默认为字符串"-1"
+      // 初始化选中“我”，并确保userId是字符串
+      _selectedAssignees = [
+        {'realName': '我', 'userId': _currentUserId}
+      ];
+      _updateAssigneeText(); // 同步显示文本
+    });
   }
 
   @override
@@ -50,6 +64,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     super.dispose();
   }
 
+  // 以下_selectDate、_selectTime、_updateDueDateText、_selectPriority方法保持不变
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -76,7 +91,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         _selectedDate = picked;
         _updateDueDateText();
       });
-      // 选择日期后自动选择时间
       _selectTime();
     }
   }
@@ -147,10 +161,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         color: priority == 'P0'
                             ? Colors.red
                             : (priority == 'P1'
-                                  ? Colors.orange
-                                  : (priority == 'P2'
-                                        ? Colors.blue
-                                        : Colors.green)),
+                                ? Colors.orange
+                                : (priority == 'P2'
+                                    ? Colors.blue
+                                    : Colors.green)),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -170,7 +184,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
+  // 重点修复：选择负责人弹窗
   void _selectAssignee() {
+    // 1. 弹窗内维护临时选中状态
+    List<Map<String, dynamic>> tempSelected = List.from(_selectedAssignees);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -180,144 +198,181 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         minChildSize: 0.25,
         maxChildSize: 0.9,
         builder: (context, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+          // 添加StatefulBuilder来管理弹窗内部状态
+          return StatefulBuilder(
+            builder: (sheetContext, sheetSetState) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  '选择负责人',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: _teamMembers.length,
-                    itemBuilder: (context, index) {
-                      final member = _teamMembers[index];
-                      final bool isSelected = _selectedAssignees.any((assignee) => assignee['userId'] == member['userId']);
-                      return Card(
-                        color: isSelected ? const Color(0xFF00D9A3).withOpacity(0.3) : const Color(0xFF2A2A2A),
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            setState(() {
-                              if (isSelected) {
-                                _selectedAssignees.removeWhere((assignee) => assignee['userId'] == member['userId']);
-                              } else {
-                                _selectedAssignees.add({'realName': member['name'], 'userId': member['userId']});
-                              }
-                              _updateAssigneeText(); // 更新显示文本
-                            });
-                            // Navigator.pop(context); // 不再自动关闭，支持多选
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: const Color(0xFF00D9A3),
-                                  child: Text(
-                                    member['name']![0],
-                                    style: const TextStyle(color: Colors.black),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        member['name']!,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        member['role']!,
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (isSelected)
-                                  const Icon(
-                                    Icons.check,
-                                    color: Color(0xFF00D9A3),
-                                  )
-                                else
-                                  const SizedBox.shrink(),
-                              ],
-                            ),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(
+                      child: SizedBox(
+                        width: 40,
+                        height: 4,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.all(Radius.circular(2)),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _updateAssigneeText(); // 确保在关闭时更新文本
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00D9A3), // 确定按钮的颜色
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 0,
                     ),
-                    child: const Text(
-                      '确定',
+                    const SizedBox(height: 12),
+                    const Text(
+                      '选择负责人',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: _teamMembers.length,
+                        itemBuilder: (context, index) {
+                          final member = _teamMembers[index];
+                          bool isSelected = tempSelected.any(
+                            (assignee) => assignee['userId'] == member['userId']
+                          );
+
+                          return Card(
+                            key: ValueKey(member['userId']),
+                            color: isSelected
+                                ? const Color(0xFF00D9A3).withOpacity(0.3)
+                                : const Color(0xFF2A2A2A),
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                // 使用sheetSetState更新弹窗内部状态
+                                sheetSetState(() {
+                                  if (isSelected) {
+                                    tempSelected.removeWhere(
+                                      (assignee) => assignee['userId'] == member['userId']
+                                    );
+                                  } else {
+                                    tempSelected.add({
+                                      'realName': member['name'],
+                                      'userId': member['userId']
+                                    });
+                                  }
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: const Color(0xFF00D9A3),
+                                      child: Text(
+                                        member['name']![0],
+                                        style: const TextStyle(color: Colors.black),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            member['name']!,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            member['role'] ?? '无角色',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      const Icon(
+                                        Icons.check,
+                                        color: Color(0xFF00D9A3),
+                                      )
+                                    else
+                                      const SizedBox.shrink(),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.grey.shade700,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text('取消', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedAssignees = List.from(tempSelected);
+                                  _updateAssigneeText();
+                                });
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00D9A3),
+                                foregroundColor: Colors.black,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text('确定', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
     );
   }
 
+  // 以下_publishTask、_fetchTeamMembers、_updateAssigneeText方法保持不变，仅修复“我”的ID类型
   Future<void> _publishTask() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -339,33 +394,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         'title': _titleController.text.trim(),
         'content': _descriptionController.text.trim(),
         'priority': int.parse(_selectedPriority.substring(1)),
-        'executorIDs': _isAssigned
-            ? _selectedAssignees.map((e) => e['userId']).toList() // 如果分配，则发送选中的所有用户ID
-            : [-1], // 否则发送当前用户ID，-1表示当前用户
-        'deadline': _selectedDate!.toIso8601String(),
+        // 确保executorIDs是字符串列表（匹配后端通常的ID类型）
+        'executorIDs': _selectedAssignees.map((e) => e['userId'].toString()).toList(),
+        'deadline': DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        ).toIso8601String(),
       };
 
       final response = await _taskApi.publishTask(taskData);
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('任务发布成功！'),
-              backgroundColor: Color(0xFF00D9A3),
-            ),
-          );
           final Map<String, dynamic> responseBody = jsonDecode(response.body);
           if (responseBody['code'] == 200 && responseBody['data'] != null) {
             final taskID = responseBody['data']['taskID'].toString();
             final newTask = Task(
               taskID: taskID,
-              creatorName: "当前用户", // 示例值，实际应从用户认证信息中获取
+              creatorName: "当前用户",
               taskTitle: _titleController.text.trim(),
               taskContent: _descriptionController.text.trim(),
-              taskPriority: _selectedPriority.substring(1), // 示例值
-              taskStatus: "0", // 示例值
-              creationTime: DateTime.now(), // 示例值
+              taskPriority: _selectedPriority.substring(1),
+              taskStatus: "0",
+              creationTime: DateTime.now(),
               deadline: DateTime(
                 _selectedDate!.year,
                 _selectedDate!.month,
@@ -374,6 +428,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 _selectedTime!.minute,
               ),
               executorNames: _selectedAssignees.map((assignee) => assignee['realName'].toString()).toList(),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('任务发布成功！'),
+                backgroundColor: Color(0xFF00D9A3),
+              ),
             );
             Navigator.pop(context, newTask);
           } else {
@@ -417,11 +477,28 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {
           setState(() {
+            // 转换用户数据，确保userId是字符串
             _teamMembers = (responseBody['data']['users'] as List)
-                .map((user) => {'name': user['realName'], 'role': '', 'userId': user['userId']})
+                .map((user) => {
+                      'name': user['realName'] ?? '未知用户',
+                      'role': user['role'] ?? '',
+                      'userId': user['userId'].toString() // 统一为字符串
+                    })
                 .toList();
-            // 添加“我”到团队成员列表的开头
-            _teamMembers.insert(0, {'name': '我', 'role': '当前用户', 'userId': -1});
+            // 添加“我”到列表开头，确保userId是字符串
+            if (_currentUserId != null) {
+              _teamMembers.insert(0, {
+                'name': '我',
+                'role': '当前用户',
+                'userId': _currentUserId
+              });
+            } else {
+              _teamMembers.insert(0, {
+                'name': '我',
+                'role': '当前用户',
+                'userId': '-1' // 默认为字符串
+              });
+            }
           });
         }
       } else {
@@ -441,16 +518,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _updateAssigneeText() {
-    if (_selectedAssignees.length == 1 && _selectedAssignees.first['userId'] == -1) {
+    if (_selectedAssignees.isEmpty) {
+      _assigneeController.text = '请选择负责人';
+    } else if (_selectedAssignees.length == 1 && _selectedAssignees.first['realName'] == '我') {
       _assigneeController.text = '我 (当前用户)';
-    } else if (_selectedAssignees.isNotEmpty) {
+    } else {
       final assigneesNames = _selectedAssignees.map((assignee) => assignee['realName']).join(', ');
       _assigneeController.text = assigneesNames;
-    } else {
-      _assigneeController.text = '我 (当前用户)';
     }
   }
 
+  // 以下build及私有组件方法保持不变
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -467,16 +545,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            16.0,
-            16.0,
-            16.0,
-            32.0,
-          ), // 增加底部padding
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 任务详情部分
               _buildSectionCard(
                 title: '任务详情',
                 children: [
@@ -505,10 +577,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
-
-              // 人员分配部分
               _buildSectionCard(
                 title: '人员分配',
                 children: [
@@ -520,11 +589,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           setState(() {
                             _isAssigned = value;
                             if (!_isAssigned) {
-                              // 如果不选择人员分配，只能选择自己
-                              _selectedAssignee = '我';
-                              _assigneeController.text = '我 (当前用户)';
-                              _selectedAssignees.clear();
-                              _selectedAssignees.add({'realName': '我', 'userId': -1});
+                              // 重置为仅选中“我”，确保userId是字符串
+                              _selectedAssignees = [
+                                {'realName': '我', 'userId': _currentUserId ?? '-1'}
+                              ];
+                              _updateAssigneeText();
                             }
                           });
                         },
@@ -547,10 +616,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
-
-              // 计划与优先级部分
               _buildSectionCard(
                 title: '计划与优先级',
                 children: [
@@ -572,10 +638,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 32),
-
-              // 派发任务按钮
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -595,17 +658,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
                       : const Text(
                           '派发任务',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                 ),
               ),
@@ -681,10 +739,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           validator: validator,
         ),
@@ -755,35 +810,24 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               onTap: onTap,
               borderRadius: BorderRadius.circular(8),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        controller.text.isEmpty
-                            ? (hintText ?? '')
-                            : controller.text,
+                        controller.text.isEmpty ? (hintText ?? '') : controller.text,
                         style: TextStyle(
-                          color: controller.text.isEmpty
-                              ? Colors.white54
-                              : Colors.white,
+                          color: controller.text.isEmpty ? Colors.white54 : Colors.white,
                           fontSize: 16,
                         ),
-                        overflow: TextOverflow.ellipsis, // 添加文本溢出处理
-                        maxLines: 1, // 限制为单行
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                     if (icon != null)
                       Icon(icon, color: Colors.white54, size: 20)
                     else
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.white54,
-                        size: 16,
-                      ),
+                      const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
                   ],
                 ),
               ),
