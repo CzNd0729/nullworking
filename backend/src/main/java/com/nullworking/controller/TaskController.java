@@ -88,7 +88,7 @@ public class TaskController {
         }
     }
 
-    @Operation(summary = "查看任务", description = "返回当前用户创建与参与的未删除任务列表，完成任务包含finishTime")
+    @Operation(summary = "查看任务", description = "返回当前用户创建与参与的任务列表（默认包含已删除任务），完成任务包含finishTime")
     @GetMapping("/listUserTasks")
     public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
         String authorizationHeader = request.getHeader("Authorization");
@@ -106,12 +106,12 @@ public class TaskController {
 
         final Integer finalUserId = userId;
 
-        List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId, (byte)3);
-        List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
+        List<Task> createdTasks = taskRepository.findByCreator_UserId(userId);
+
+        List<Integer> executingTaskIds = taskExecutorRelationRepository.findAllTaskIdsByExecutor(userId);
         Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
         List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
                 : taskRepository.findAllById(executingIdSet).stream()
-                .filter(t -> t.getTaskStatus() != null && t.getTaskStatus() != (byte)3)
                 .filter(t -> t.getCreator() == null || t.getCreator().getUserId() == null || !t.getCreator().getUserId().equals(finalUserId)) // 排除自己创建的任务
                 .collect(Collectors.toList());
 
@@ -141,7 +141,7 @@ public class TaskController {
     private Map<String, Object> toDtoWithExecutors(Task t) {
         Map<String, Object> m = toDto(t);
         List<String> executorNames = taskExecutorRelationRepository
-                .findActiveExecutorIdsByTaskId(t.getTaskId())
+                .findAllExecutorIdsByTaskId(t.getTaskId())
                 .stream()
                 .map(id -> {
                     return userRepository.findById(id).map(User::getRealName).orElse(null);
