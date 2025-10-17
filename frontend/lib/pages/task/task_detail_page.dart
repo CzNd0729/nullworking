@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../models/task.dart';
+import '../../services/api/task_api.dart'; // 导入 TaskApi
+import 'create_task_page.dart'; // 导入 CreateTaskPage
 
 class TaskDetailPage extends StatelessWidget {
   final Task task;
 
-  const TaskDetailPage({super.key, required this.task});
+  TaskDetailPage({super.key, required this.task});
+
+  final TaskApi _taskApi = TaskApi(); // 实例化 TaskApi
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
@@ -147,6 +151,109 @@ class TaskDetailPage extends StatelessWidget {
                   ),
                   SizedBox(height: 12),
                   Text('暂无日志', style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final updatedTask = await Navigator.push(context, MaterialPageRoute(builder: (context) => CreateTaskPage(taskToEdit: task)));
+                        if (updatedTask != null) {
+                          Navigator.of(context).pop(updatedTask); // 返回更新后的任务，让上一个页面接收并刷新
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        '修改',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              backgroundColor: const Color(0xFF1E1E1E), // 与主色调相同
+                              title: const Text(
+                                '确认删除',
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              content: const Text(
+                                '您确定要删除此任务吗？',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(); // 关闭弹窗
+                                  },
+                                  child: const Text(
+                                    '取消',
+                                    style: TextStyle(color: Colors.blueAccent),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop(); // 关闭弹窗
+                                    _taskApi.deleteTask(task.taskID).then((response) {
+                                      if (response.statusCode == 200) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('任务删除成功！'),
+                                            backgroundColor: Color(0xFF2CB7B3), // 与主色调相同
+                                          ),
+                                        );
+                                        Navigator.of(context).pop(true); // 返回上一页并指示刷新
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('任务删除失败，请重试！'),
+                                            backgroundColor: Color(0xFF2CB7B3), // 与主色调相同
+                                          ),
+                                        );
+                                      }
+                                    });
+                                  },
+                                  child: const Text(
+                                    '删除',
+                                    style: TextStyle(color: Colors.redAccent),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        '删除',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
