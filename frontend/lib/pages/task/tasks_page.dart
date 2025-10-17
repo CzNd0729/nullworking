@@ -20,7 +20,7 @@ class _TasksPageState extends State<TasksPage> {
 
   // 筛选相关状态（保留原功能）
   final TextEditingController _searchController = TextEditingController();
-  Set<String> _selectedStatusFilters = {};
+  Set<String> _selectedStatusFilters = {'0', '1'}; // 默认选中进行中和已延期
   // 新增：搜索框焦点节点（核心修复）
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -182,7 +182,7 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildTaskCard(Task task) {
+  Widget _buildTaskCard(Task task, {required bool isAssignedTask}) {
     final statusTag;
     Color statusColor;
 
@@ -263,7 +263,10 @@ class _TasksPageState extends State<TasksPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => TaskDetailPage(task: task),
+                      builder: (context) => TaskDetailPage(
+                        task: task,
+                        isAssignedTask: isAssignedTask, // 传递任务来源信息
+                      ),
                     ),
                   ).then((result) {
                     _forceSearchUnfocus(); // 新增：从详情页返回后失焦
@@ -355,7 +358,7 @@ class _TasksPageState extends State<TasksPage> {
                               ),
                             ]
                           : filteredTasks
-                                .map((task) => _buildTaskCard(task))
+                                .map((task) => _buildTaskCard(task, isAssignedTask: true))
                                 .toList();
                     }(),
                   ),
@@ -388,7 +391,7 @@ class _TasksPageState extends State<TasksPage> {
                               ),
                             ]
                           : filteredTasks
-                                .map((task) => _buildTaskCard(task))
+                                .map((task) => _buildTaskCard(task, isAssignedTask: false))
                                 .toList();
                     }(),
                   ),
