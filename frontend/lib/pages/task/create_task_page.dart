@@ -4,9 +4,12 @@ import '../../services/api/user_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../models/task.dart';
+import 'package:http/http.dart' as http;
 
 class CreateTaskPage extends StatefulWidget {
-  const CreateTaskPage({super.key});
+  final Task? taskToEdit; // 新增：可选的任务对象，用于编辑
+
+  const CreateTaskPage({super.key, this.taskToEdit});
 
   @override
   State<CreateTaskPage> createState() => _CreateTaskPageState();
@@ -43,6 +46,28 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.text = _selectedPriority;
     _loadCurrentUserId();
     _fetchTeamMembers();
+
+    // 新增：如果传入了任务对象，则初始化表单字段
+    if (widget.taskToEdit != null) {
+      _titleController.text = widget.taskToEdit!.taskTitle;
+      _descriptionController.text = widget.taskToEdit!.taskContent;
+      _selectedPriority = 'P${widget.taskToEdit!.taskPriority}';
+      _priorityController.text = _selectedPriority;
+
+      _selectedDate = widget.taskToEdit!.deadline;
+      _selectedTime = TimeOfDay.fromDateTime(widget.taskToEdit!.deadline);
+      _updateDueDateText();
+
+      _selectedAssignees = widget.taskToEdit!.executorNames
+          .map((name) => {'realName': name, 'userId': '-1'})
+          .toList(); // 暂时用-1占位，实际需要从API获取
+      _updateAssigneeText();
+
+      _isAssigned = widget.taskToEdit!.executorNames.isNotEmpty &&
+          !(widget.taskToEdit!.executorNames.length == 1 &&
+              widget.taskToEdit!.executorNames.first == _currentUserName); // 简单判断是否已分配给其他人
+    }
+
     // 新增：监听焦点变化，确保切换时失焦
     _titleFocusNode.addListener(_onFocusChanged);
     _descriptionFocusNode.addListener(_onFocusChanged);
@@ -465,21 +490,37 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ).toIso8601String(),
       };
 
-      final response = await _taskApi.publishTask(taskData);
+      http.Response response;
+      String successMessage;
+      String failureMessagePrefix;
+      Task? resultTask; // 用于存储发布或更新后的任务对象
+
+      if (widget.taskToEdit != null) {
+        // 编辑任务
+        taskData['taskID'] = widget.taskToEdit!.taskID; // 添加 taskID
+        response = await _taskApi.updateTask(taskData);
+        successMessage = '任务更新成功！';
+        failureMessagePrefix = '任务更新失败';
+      } else {
+        // 发布任务
+        response = await _taskApi.publishTask(taskData);
+        successMessage = '任务发布成功！';
+        failureMessagePrefix = '任务发布失败';
+      }
 
       if (response.statusCode == 200) {
         if (mounted) {
           final Map<String, dynamic> responseBody = jsonDecode(response.body);
           if (responseBody['code'] == 200 && responseBody['data'] != null) {
-            final taskID = responseBody['data']['taskID'].toString();
-            final newTask = Task(
-              taskID: taskID,
+            final taskID = responseBody['data']['taskID']?.toString() ?? widget.taskToEdit?.taskID; // 如果是更新，可能没有新的taskID
+            final createdOrUpdatedTask = Task(
+              taskID: taskID!,
               creatorName: _currentUserName ?? "当前用户",
               taskTitle: _titleController.text.trim(),
               taskContent: _descriptionController.text.trim(),
               taskPriority: _selectedPriority.substring(1),
-              taskStatus: "0",
-              creationTime: DateTime.now(),
+              taskStatus: "0", // 假设更新后状态不变或有默认值
+              creationTime: widget.taskToEdit?.creationTime ?? DateTime.now(), // 保持原有创建时间或使用当前时间
               deadline: DateTime(
                 _selectedDate!.year,
                 _selectedDate!.month,
@@ -492,17 +533,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   .toList(),
             );
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('任务发布成功！'),
-                backgroundColor: Color(0xFF00D9A3),
+              SnackBar(
+                content: Text(successMessage),
+                backgroundColor: const Color(0xFF00D9A3),
               ),
             );
             _resetFormState(); // 新增：发布成功后重置状态
-            Navigator.pop(context, newTask);
+            Navigator.pop(context, createdOrUpdatedTask);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('任务发布失败: ${responseBody['message'] ?? '未知错误'}'),
+                content: Text('$failureMessagePrefix: ${responseBody['message'] ?? '未知错误'}'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -512,7 +553,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('任务发布失败: ${response.statusCode}'),
+              content: Text('$failureMessagePrefix: ${response.statusCode}'),
               backgroundColor: Colors.red,
             ),
           );
@@ -602,7 +643,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
-        title: const Text('新建任务', style: TextStyle(color: Colors.white)),
+        title: Text(
+          widget.taskToEdit == null ? '新建任务' : '编辑任务', // 动态标题
+          style: const TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color(0xFF000000),
         elevation: 0,
         leading: IconButton(
@@ -656,42 +700,51 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               _buildSectionCard(
                 title: '人员分配',
                 children: [
-                  Row(
-                    children: [
-                      Switch(
-                        value: _isAssigned,
-                        onChanged: (value) {
-                          _forceUnfocus(); // 新增：切换时失焦
-                          setState(() {
-                            _isAssigned = value;
-                            if (!_isAssigned) {
-                              _selectedAssignees = [
-                                {
-                                  'realName': '我',
-                                  'userId': _currentUserId ?? '-1',
+                  if (widget.taskToEdit == null) ...[
+                    Row(
+                      children: [
+                        Switch(
+                          value: _isAssigned,
+                          onChanged: widget.taskToEdit != null
+                              ? null
+                              : (value) {
+                                  _forceUnfocus(); // 新增：切换时失焦
+                                  setState(() {
+                                    _isAssigned = value;
+                                    if (!_isAssigned) {
+                                      _selectedAssignees = [
+                                        {
+                                          'realName': '我',
+                                          'userId': _currentUserId ?? '-1',
+                                        },
+                                      ];
+                                      _updateAssigneeText();
+                                    }
+                                  });
                                 },
-                              ];
-                              _updateAssigneeText();
-                            }
-                          });
-                        },
-                        activeColor: const Color(0xFF00D9A3),
-                      ),
-                      const Text(
-                        '分配给其他成员',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSelectableField(
-                    label: '负责人',
-                    controller: _assigneeController,
-                    hintText: '我 (当前用户)',
-                    icon: Icons.arrow_forward_ios,
-                    onTap: _isAssigned ? _selectAssignee : null,
-                    readOnly: !_isAssigned,
-                  ),
+                          activeColor: const Color(0xFF00D9A3),
+                        ),
+                        Text(
+                          '分配给其他成员',
+                          style: TextStyle(color: widget.taskToEdit != null ? Colors.white54 : Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSelectableField(
+                      label: '负责人',
+                      controller: _assigneeController,
+                      hintText: '我 (当前用户)',
+                      icon: Icons.arrow_forward_ios,
+                      onTap: (widget.taskToEdit != null || !_isAssigned) ? null : _selectAssignee, // 修改：编辑模式下禁用onTap
+                      readOnly: widget.taskToEdit != null || !_isAssigned, // 修改：编辑模式下设为只读
+                    ),
+                  ] else ...[
+                    Text(
+                      '负责人: ${widget.taskToEdit!.executorNames.join(', ')}',
+                      style: const TextStyle(color: Colors.white, fontSize: 16), // 字体大小与其他控件一致
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),

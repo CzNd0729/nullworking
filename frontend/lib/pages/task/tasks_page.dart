@@ -265,8 +265,11 @@ class _TasksPageState extends State<TasksPage> {
                     MaterialPageRoute(
                       builder: (context) => TaskDetailPage(task: task),
                     ),
-                  ).then((_) {
+                  ).then((result) {
                     _forceSearchUnfocus(); // 新增：从详情页返回后失焦
+                    if (result != null) {
+                      _loadTasks(); // 如果详情页返回了结果，则刷新任务列表
+                    }
                   });
                 },
                 child: const Text('查看详情'),
