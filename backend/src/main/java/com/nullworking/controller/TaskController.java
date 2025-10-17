@@ -104,12 +104,15 @@ public class TaskController {
             return ApiResponse.error(401, "未授权或Token无效");
         }
 
+        final Integer finalUserId = userId;
+
         List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId, (byte)3);
         List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
         Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
         List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
                 : taskRepository.findAllById(executingIdSet).stream()
                 .filter(t -> t.getTaskStatus() != null && t.getTaskStatus() != (byte)3)
+                .filter(t -> t.getCreator() == null || t.getCreator().getUserId() == null || !t.getCreator().getUserId().equals(finalUserId)) // 排除自己创建的任务
                 .collect(Collectors.toList());
 
         Map<String, Object> data = new HashMap<>();
@@ -144,6 +147,7 @@ public class TaskController {
                     return userRepository.findById(id).map(User::getRealName).orElse(null);
                 })
                 .filter(n -> n != null)
+                .filter(name -> !name.equals(t.getCreator() != null ? t.getCreator().getRealName() : null)) // 排除创建者
                 .collect(Collectors.toList());
         m.put("executorNames", executorNames);
         return m;
