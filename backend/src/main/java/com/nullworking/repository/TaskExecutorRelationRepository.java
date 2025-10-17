@@ -22,4 +22,10 @@ public interface TaskExecutorRelationRepository extends JpaRepository<TaskExecut
 
 	@Query("SELECT r.executor.userId FROM TaskExecutorRelation r WHERE r.task.taskId = :taskId AND r.task.taskStatus <> 3")
 	List<Integer> findActiveExecutorIdsByTaskId(@Param("taskId") Integer taskId);
+
+	@Query("SELECT r.task.taskId FROM TaskExecutorRelation r WHERE r.executor.userId = :userId")
+	List<Integer> findAllTaskIdsByExecutor(@Param("userId") Integer userId);
+
+	@Query("SELECT r.executor.userId FROM TaskExecutorRelation r WHERE r.task.taskId = :taskId")
+	List<Integer> findAllExecutorIdsByTaskId(@Param("taskId") Integer taskId);
 }
