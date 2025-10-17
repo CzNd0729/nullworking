@@ -20,12 +20,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _dueDateController = TextEditingController();
   final _priorityController = TextEditingController();
 
+  // 新增：输入框焦点节点（核心修复）
+  final FocusNode _titleFocusNode = FocusNode();
+  final FocusNode _descriptionFocusNode = FocusNode();
+
   String _selectedPriority = 'P1';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
   bool _isAssigned = false;
-  // 修复：将用户ID统一为字符串类型，避免类型不匹配
   List<Map<String, dynamic>> _selectedAssignees = [];
   List<Map<String, dynamic>> _teamMembers = [];
 
@@ -40,19 +43,55 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.text = _selectedPriority;
     _loadCurrentUserId();
     _fetchTeamMembers();
+    // 新增：监听焦点变化，确保切换时失焦
+    _titleFocusNode.addListener(_onFocusChanged);
+    _descriptionFocusNode.addListener(_onFocusChanged);
   }
 
-  // 修复：初始化时确保"我"的ID是字符串类型
+  // 新增：焦点变化统一处理
+  void _onFocusChanged() {
+    if (!mounted) return;
+    if (!_titleFocusNode.hasFocus && !_descriptionFocusNode.hasFocus) {
+      FocusScope.of(context).unfocus();
+    }
+  }
+
+  // 新增：强制所有输入框失焦
+  void _forceUnfocus() {
+    _titleFocusNode.unfocus();
+    _descriptionFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
+  }
+
+  // 新增：重置表单状态（含焦点）
+  void _resetFormState() {
+    setState(() {
+      _titleController.clear();
+      _descriptionController.clear();
+      _assigneeController.clear();
+      _dueDateController.clear();
+      _priorityController.text = 'P1';
+      _selectedPriority = 'P1';
+      _selectedDate = null;
+      _selectedTime = null;
+      _selectedAssignees = [
+        {'realName': _currentUserName ?? '当前用户', 'userId': _currentUserId ?? '-1'},
+      ];
+      _isAssigned = false;
+      _updateAssigneeText();
+    });
+    _forceUnfocus();
+  }
+
   Future<void> _loadCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentUserId = prefs.getString('userID') ?? '-1'; // 默认为字符串"-1"
-      _currentUserName = prefs.getString('realName') ?? '当前用户'; // 获取用户真实姓名
-      // 初始化选中"我"，并确保userId是字符串
+      _currentUserId = prefs.getString('userID') ?? '-1';
+      _currentUserName = prefs.getString('realName') ?? '当前用户';
       _selectedAssignees = [
         {'realName': _currentUserName, 'userId': _currentUserId},
       ];
-      _updateAssigneeText(); // 同步显示文本
+      _updateAssigneeText();
     });
   }
 
@@ -63,11 +102,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _assigneeController.dispose();
     _dueDateController.dispose();
     _priorityController.dispose();
+    // 新增：销毁焦点节点
+    _titleFocusNode.dispose();
+    _descriptionFocusNode.dispose();
     super.dispose();
   }
 
-  // 以下_selectDate、_selectTime、_updateDueDateText、_selectPriority方法保持不变
   Future<void> _selectDate() async {
+    _forceUnfocus(); // 新增：点击前先失焦
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
@@ -137,6 +179,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _selectPriority() {
+    _forceUnfocus(); // 新增：点击前先失焦
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -186,9 +229,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
-  // 重点修复：选择负责人弹窗
   void _selectAssignee() {
-    // 1. 弹窗内维护临时选中状态
+    _forceUnfocus(); // 新增：点击前先失焦
     List<Map<String, dynamic>> tempSelected = List.from(_selectedAssignees);
 
     showModalBottomSheet(
@@ -200,7 +242,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         minChildSize: 0.25,
         maxChildSize: 0.9,
         builder: (context, scrollController) {
-          // 添加StatefulBuilder来管理弹窗内部状态
           return StatefulBuilder(
             builder: (sheetContext, sheetSetState) {
               return Container(
@@ -257,7 +298,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
                               onTap: () {
-                                // 使用sheetSetState更新弹窗内部状态
                                 sheetSetState(() {
                                   if (isSelected) {
                                     tempSelected.removeWhere(
@@ -392,7 +432,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
-  // 以下_publishTask、_fetchTeamMembers、_updateAssigneeText方法保持不变，仅修复“我”的ID类型
   Future<void> _publishTask() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -414,7 +453,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         'title': _titleController.text.trim(),
         'content': _descriptionController.text.trim(),
         'priority': int.parse(_selectedPriority.substring(1)),
-        // 确保executorIDs是字符串列表（匹配后端通常的ID类型）
         'executorIDs': _selectedAssignees
             .map((e) => e['userId'].toString())
             .toList(),
@@ -459,6 +497,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 backgroundColor: Color(0xFF00D9A3),
               ),
             );
+            _resetFormState(); // 新增：发布成功后重置状态
             Navigator.pop(context, newTask);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -501,17 +540,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {
           setState(() {
-            // 转换用户数据，确保userId是字符串
             _teamMembers = (responseBody['data']['users'] as List)
                 .map(
                   (user) => {
                     'name': user['realName'] ?? '未知用户',
                     'role': user['role'] ?? '',
-                    'userId': user['userId'].toString(), // 统一为字符串
+                    'userId': user['userId'].toString(),
                   },
                 )
                 .toList();
-            // 添加“我”到列表开头，确保userId是字符串
             if (_currentUserId != null) {
               _teamMembers.insert(0, {
                 'name': '我',
@@ -522,7 +559,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               _teamMembers.insert(0, {
                 'name': '我',
                 'role': '当前用户',
-                'userId': '-1', // 默认为字符串
+                'userId': '-1',
               });
             }
           });
@@ -560,7 +597,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
-  // 以下build及私有组件方法保持不变
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -571,7 +607,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            _resetFormState(); // 新增：返回前重置状态
+            Navigator.pop(context);
+          },
         ),
       ),
       body: Form(
@@ -584,9 +623,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               _buildSectionCard(
                 title: '任务详情',
                 children: [
+                  // 修改：传入焦点节点
                   _buildInputField(
                     label: '任务标题',
                     controller: _titleController,
+                    focusNode: _titleFocusNode,
                     hintText: '请输入任务标题',
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -596,9 +637,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  // 修改：传入焦点节点
                   _buildTextArea(
                     label: '详细描述',
                     controller: _descriptionController,
+                    focusNode: _descriptionFocusNode,
                     hintText: '请输入任务详细描述',
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -618,10 +661,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Switch(
                         value: _isAssigned,
                         onChanged: (value) {
+                          _forceUnfocus(); // 新增：切换时失焦
                           setState(() {
                             _isAssigned = value;
                             if (!_isAssigned) {
-                              // 重置为仅选中“我”，确保userId是字符串
                               _selectedAssignees = [
                                 {
                                   'realName': '我',
@@ -751,9 +794,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
+  // 修改：添加focusNode参数和失焦逻辑
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
+    required FocusNode focusNode, // 新增参数
     String? hintText,
     String? Function(String?)? validator,
     bool readOnly = false,
@@ -767,6 +812,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          focusNode: focusNode, // 绑定焦点节点
           controller: controller,
           readOnly: readOnly,
           style: const TextStyle(color: Colors.white),
@@ -785,14 +831,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           ),
           validator: validator,
+          onTapOutside: (event) {
+            _forceUnfocus(); // 点击外部强制失焦
+          },
         ),
       ],
     );
   }
 
+  // 修改：添加focusNode参数和失焦逻辑
   Widget _buildTextArea({
     required String label,
     required TextEditingController controller,
+    required FocusNode focusNode, // 新增参数
     String? hintText,
     String? Function(String?)? validator,
   }) {
@@ -805,6 +856,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          focusNode: focusNode, // 绑定焦点节点
           controller: controller,
           maxLines: 4,
           style: const TextStyle(color: Colors.white),
@@ -821,6 +873,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             alignLabelWithHint: true,
           ),
           validator: validator,
+          onTapOutside: (event) {
+            _forceUnfocus(); // 点击外部强制失焦
+          },
         ),
       ],
     );
