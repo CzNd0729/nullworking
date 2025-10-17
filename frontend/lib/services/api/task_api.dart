@@ -25,7 +25,6 @@ class TaskApi {
 
   Future<TaskListResponse?> listUserTasks() async {
     final response = await _baseApi.get('api/task/listUserTasks');
-    print(response);
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
@@ -37,11 +36,25 @@ class TaskApi {
   }
 
   Future<http.Response> updateTask(Map<String, dynamic> taskData) async {
-    return await _baseApi.put('api/task/updateTask', body: taskData);
+    final queryParams = <String, dynamic>{
+      'taskID': taskData['taskID'].toString(),
+      'title': taskData['title'].toString(),
+      'content': taskData['content'].toString(),
+      'priority': taskData['priority'].toString(),
+      'deadline': taskData['deadline'].toString(),
+    };
+
+    // 处理 executorIDs 列表
+    queryParams['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
+
+    return await _baseApi.put(
+      'api/task/updateTask',
+      queryParams: queryParams,
+    );
   }
 
-  Future<http.Response> deleteTask(String taskId) async {
-    final queryParams = {'taskId': taskId};
+  Future<http.Response> deleteTask(String taskID) async {
+    final queryParams = {'taskID': taskID};
     return await _baseApi.delete(
       'api/task/deleteTask',
       queryParams: queryParams,
