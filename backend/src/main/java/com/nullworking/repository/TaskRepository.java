@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Integer> {
 	List<Task> findByCreator_UserIdAndTaskStatusNot(Integer userId, Byte taskStatus);
+
+	List<Task> findByCreator_UserId(Integer userId);
 }
