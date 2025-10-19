@@ -110,6 +110,7 @@ class _TasksPageState extends State<TasksPage> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
                 '状态筛选',
@@ -121,8 +122,8 @@ class _TasksPageState extends State<TasksPage> {
               ),
               if (_selectedStatusFilters.isNotEmpty ||
                   _searchController.text.isNotEmpty)
-                TextButton(
-                  onPressed: _clearAllFilters,
+                GestureDetector(
+                  onTap: _clearAllFilters,
                   child: const Text(
                     '清除筛选',
                     style: TextStyle(color: Colors.orange),

@@ -12,7 +12,7 @@ class AuthBusiness {
         final responseData = json.decode(response.body);
         if (responseData['code'] == 200) {
           final int userID = responseData['data']['userID'];
-          final String userName = responseData['data']['realName'];
+          final String userName = responseData['data']['userName'];
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('userID', userID.toString());
           await prefs.setString('userName', userName);
