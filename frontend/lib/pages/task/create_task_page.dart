@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../services/api/task_api.dart';
-import '../../services/api/user_api.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../models/task.dart';
-import 'package:http/http.dart' as http;
+import '../../services/business/task_business.dart';
 
 class CreateTaskPage extends StatefulWidget {
-  final Task? taskToEdit; // 新增：可选的任务对象，用于编辑
+  final Task? taskToEdit;
 
   const CreateTaskPage({super.key, this.taskToEdit});
 
@@ -23,7 +19,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final _dueDateController = TextEditingController();
   final _priorityController = TextEditingController();
 
-  // 新增：输入框焦点节点（核心修复）
   final FocusNode _titleFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
 
@@ -35,8 +30,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   List<Map<String, dynamic>> _selectedAssignees = [];
   List<Map<String, dynamic>> _teamMembers = [];
 
-  final TaskApi _taskApi = TaskApi();
-  final UserApi _userApi = UserApi();
+  final TaskBusiness _taskBusiness = TaskBusiness();
   String? _currentUserId;
   String? _currentUserName;
 
@@ -44,10 +38,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void initState() {
     super.initState();
     _priorityController.text = _selectedPriority;
-    _loadCurrentUserId();
+    _loadCurrentUserData();
     _fetchTeamMembers();
 
-    // 新增：如果传入了任务对象，则初始化表单字段
     if (widget.taskToEdit != null) {
       _titleController.text = widget.taskToEdit!.taskTitle;
       _descriptionController.text = widget.taskToEdit!.taskContent;
@@ -60,20 +53,18 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
       _selectedAssignees = widget.taskToEdit!.executorNames
           .map((name) => {'realName': name, 'userId': '-1'})
-          .toList(); // 暂时用-1占位，实际需要从API获取
+          .toList();
       _updateAssigneeText();
 
       _isAssigned = widget.taskToEdit!.executorNames.isNotEmpty &&
           !(widget.taskToEdit!.executorNames.length == 1 &&
-              widget.taskToEdit!.executorNames.first == _currentUserName); // 简单判断是否已分配给其他人
+              widget.taskToEdit!.executorNames.first == _currentUserName);
     }
 
-    // 新增：监听焦点变化，确保切换时失焦
     _titleFocusNode.addListener(_onFocusChanged);
     _descriptionFocusNode.addListener(_onFocusChanged);
   }
 
-  // 新增：焦点变化统一处理
   void _onFocusChanged() {
     if (!mounted) return;
     if (!_titleFocusNode.hasFocus && !_descriptionFocusNode.hasFocus) {
@@ -81,14 +72,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
-  // 新增：强制所有输入框失焦
   void _forceUnfocus() {
     _titleFocusNode.unfocus();
     _descriptionFocusNode.unfocus();
     FocusScope.of(context).unfocus();
   }
 
-  // 新增：重置表单状态（含焦点）
   void _resetFormState() {
     setState(() {
       _titleController.clear();
@@ -106,12 +95,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _forceUnfocus();
   }
 
-  Future<void> _loadCurrentUserId() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _loadCurrentUserData() async {
+    _currentUserId = await _taskBusiness.getCurrentUserId();
+    _currentUserName = await _taskBusiness.getCurrentUserName();
     setState(() {
-      _currentUserId=prefs.getString("userID");
       _selectedAssignees = [
-        {'realName': "我", 'userId': _currentUserId},
+        {'realName': _currentUserName ?? "我", 'userId': _currentUserId},
       ];
       _updateAssigneeText();
     });
@@ -124,14 +113,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _assigneeController.dispose();
     _dueDateController.dispose();
     _priorityController.dispose();
-    // 新增：销毁焦点节点
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _selectDate() async {
-    _forceUnfocus(); // 新增：点击前先失焦
+    _forceUnfocus();
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now(),
@@ -201,7 +189,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _selectPriority() {
-    _forceUnfocus(); // 新增：点击前先失焦
+    _forceUnfocus();
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
@@ -252,7 +240,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _selectAssignee() {
-    _forceUnfocus(); // 新增：点击前先失焦
+    _forceUnfocus();
     List<Map<String, dynamic>> tempSelected = List.from(_selectedAssignees);
 
     showModalBottomSheet(
@@ -471,86 +459,39 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
-      final taskData = {
-        'title': _titleController.text.trim(),
-        'content': _descriptionController.text.trim(),
-        'priority': int.parse(_selectedPriority.substring(1)),
-        'executorIDs': _selectedAssignees
+      final deadlineDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      final resultTask = await _taskBusiness.publishTask(
+        title: _titleController.text.trim(),
+        content: _descriptionController.text.trim(),
+        priority: int.parse(_selectedPriority.substring(1)),
+        executorIDs: _selectedAssignees
             .map((e) => e['userId'].toString())
             .toList(),
-        'deadline': DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month,
-          _selectedDate!.day,
-          _selectedTime!.hour,
-          _selectedTime!.minute,
-        ).toIso8601String(),
-      };
+        deadline: deadlineDateTime,
+        taskID: widget.taskToEdit?.taskID,
+      );
 
-      http.Response response;
-      String successMessage;
-      String failureMessagePrefix;
-      Task? resultTask; // 用于存储发布或更新后的任务对象
-
-      if (widget.taskToEdit != null) {
-        // 编辑任务
-        taskData['taskID'] = widget.taskToEdit!.taskID; // 添加 taskID
-        response = await _taskApi.updateTask(taskData);
-        successMessage = '任务更新成功！';
-        failureMessagePrefix = '任务更新失败';
-      } else {
-        // 发布任务
-        response = await _taskApi.publishTask(taskData);
-        successMessage = '任务发布成功！';
-        failureMessagePrefix = '任务发布失败';
-      }
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          final Map<String, dynamic> responseBody = jsonDecode(response.body);
-          if (responseBody['code'] == 200 && responseBody['data'] != null) {
-            final taskID = responseBody['data']['taskID']?.toString() ?? widget.taskToEdit?.taskID; // 如果是更新，可能没有新的taskID
-            final createdOrUpdatedTask = Task(
-              taskID: taskID!,
-              creatorName: "我",
-              taskTitle: _titleController.text.trim(),
-              taskContent: _descriptionController.text.trim(),
-              taskPriority: _selectedPriority.substring(1),
-              taskStatus: "0", // 假设更新后状态不变或有默认值
-              creationTime: widget.taskToEdit?.creationTime ?? DateTime.now(), // 保持原有创建时间或使用当前时间
-              deadline: DateTime(
-                _selectedDate!.year,
-                _selectedDate!.month,
-                _selectedDate!.day,
-                _selectedTime!.hour,
-                _selectedTime!.minute,
-              ),
-              executorNames: _selectedAssignees
-                  .map((assignee) => assignee['realName'].toString())
-                  .toList(),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(successMessage),
-                backgroundColor: const Color(0xFF00D9A3),
-              ),
-            );
-            _resetFormState(); // 新增：发布成功后重置状态
-            Navigator.pop(context, createdOrUpdatedTask);
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('$failureMessagePrefix: ${responseBody['message'] ?? '未知错误'}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      } else {
-        if (mounted) {
+      if (mounted) {
+        if (resultTask != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('$failureMessagePrefix: ${response.statusCode}'),
+              content: Text(widget.taskToEdit == null ? '任务发布成功！' : '任务更新成功！'),
+              backgroundColor: const Color(0xFF00D9A3),
+            ),
+          );
+          _resetFormState();
+          Navigator.pop(context, resultTask);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(widget.taskToEdit == null ? '任务发布失败！' : '任务更新失败！'),
               backgroundColor: Colors.red,
             ),
           );
@@ -559,7 +500,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发布任务时出错: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('处理任务时出错: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -573,32 +514,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   Future<void> _fetchTeamMembers() async {
     try {
-      final response = await _userApi.getSubDeptUser();
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        if (responseBody['code'] == 200 && responseBody['data'] != null) {
-          setState(() {
-            _teamMembers = (responseBody['data']['users'] as List)
-                .map(
-                  (user) => {
-                    'name': user['realName'] ?? '未知用户',
-                    'role': user['role'] ?? '',
-                    'userId': user['userId'].toString(),
-                  },
-                )
-                .toList();
-          });
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('获取团队成员失败: ${response.statusCode}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      final members = await _taskBusiness.fetchTeamMembers();
+      setState(() {
+        _teamMembers = members;
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -625,7 +544,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
         title: Text(
-          widget.taskToEdit == null ? '新建任务' : '编辑任务', // 动态标题
+          widget.taskToEdit == null ? '新建任务' : '编辑任务',
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color(0xFF000000),
@@ -633,7 +552,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            _resetFormState(); // 新增：返回前重置状态
+            _resetFormState();
             Navigator.pop(context);
           },
         ),
@@ -648,7 +567,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               _buildSectionCard(
                 title: '任务详情',
                 children: [
-                  // 修改：传入焦点节点
                   _buildInputField(
                     label: '任务标题',
                     controller: _titleController,
@@ -662,7 +580,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  // 修改：传入焦点节点
                   _buildTextArea(
                     label: '详细描述',
                     controller: _descriptionController,
@@ -689,13 +606,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           onChanged: widget.taskToEdit != null
                               ? null
                               : (value) {
-                                  _forceUnfocus(); // 新增：切换时失焦
+                                  _forceUnfocus();
                                   setState(() {
                                     _isAssigned = value;
                                     if (!_isAssigned) {
                                       _selectedAssignees = [
                                         {
-                                          'realName': '我',
+                                          'realName': _currentUserName,
                                           'userId': _currentUserId,
                                         },
                                       ];
@@ -721,13 +638,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       controller: _assigneeController,
                       hintText: '我 (当前用户)',
                       icon: Icons.arrow_forward_ios,
-                      onTap: (widget.taskToEdit != null || !_isAssigned) ? null : _selectAssignee, // 修改：编辑模式下禁用onTap
-                      readOnly: widget.taskToEdit != null || !_isAssigned, // 修改：编辑模式下设为只读
+                      onTap: (widget.taskToEdit != null || !_isAssigned) ? null : _selectAssignee,
+                      readOnly: widget.taskToEdit != null || !_isAssigned,
                     ),
                   ] else ...[
                     Text(
                       '负责人: ${widget.taskToEdit!.executorNames.join(', ')}',
-                      style: const TextStyle(color: Colors.white, fontSize: 16), // 字体大小与其他控件一致
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ],
                 ],
@@ -832,11 +749,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     );
   }
 
-  // 修改：添加focusNode参数和失焦逻辑
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
-    required FocusNode focusNode, // 新增参数
+    required FocusNode focusNode,
     String? hintText,
     String? Function(String?)? validator,
     bool readOnly = false,
@@ -850,7 +766,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         const SizedBox(height: 8),
         TextFormField(
-          focusNode: focusNode, // 绑定焦点节点
+          focusNode: focusNode,
           controller: controller,
           readOnly: readOnly,
           style: const TextStyle(color: Colors.white),
@@ -870,18 +786,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           ),
           validator: validator,
           onTapOutside: (event) {
-            _forceUnfocus(); // 点击外部强制失焦
+            _forceUnfocus();
           },
         ),
       ],
     );
   }
 
-  // 修改：添加focusNode参数和失焦逻辑
   Widget _buildTextArea({
     required String label,
     required TextEditingController controller,
-    required FocusNode focusNode, // 新增参数
+    required FocusNode focusNode,
     String? hintText,
     String? Function(String?)? validator,
   }) {
@@ -894,7 +809,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         ),
         const SizedBox(height: 8),
         TextFormField(
-          focusNode: focusNode, // 绑定焦点节点
+          focusNode: focusNode,
           controller: controller,
           maxLines: 4,
           style: const TextStyle(color: Colors.white),
@@ -912,7 +827,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           ),
           validator: validator,
           onTapOutside: (event) {
-            _forceUnfocus(); // 点击外部强制失焦
+            _forceUnfocus();
           },
         ),
       ],

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../models/task.dart';
-import '../../services/api/task_api.dart'; // 导入 TaskApi
-import 'create_task_page.dart'; // 导入 CreateTaskPage
+import 'create_task_page.dart';
+import '../../services/business/task_business.dart';
 
 class TaskDetailPage extends StatelessWidget {
   final Task task;
-  final bool isAssignedTask; // 新增任务来源信息
+  final bool isAssignedTask;
 
   TaskDetailPage({super.key, required this.task, this.isAssignedTask = false});
 
-  final TaskApi _taskApi = TaskApi(); // 实例化 TaskApi
+  final TaskBusiness _taskBusiness = TaskBusiness();
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
@@ -34,7 +34,6 @@ class TaskDetailPage extends StatelessWidget {
     final title = task.taskTitle;
     final description = task.taskContent;
     final assignee = task.executorNames.join(', ');
-    final assigneeRole = ""; // Task 模型中没有直接的 assigneeRole 字段
     final dueDate = task.deadline.toLocal().toString().split(' ')[0];
     final dueTime = task.deadline
         .toLocal()
@@ -118,7 +117,7 @@ class TaskDetailPage extends StatelessWidget {
                   _buildInfoRow(
                     Icons.person_outline,
                     '负责人',
-                    '$assignee ($assigneeRole)',
+                    '$assignee',
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
@@ -157,7 +156,7 @@ class TaskDetailPage extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: isAssignedTask // 根据任务来源信息条件性显示按钮
+              child: isAssignedTask
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -172,7 +171,7 @@ class TaskDetailPage extends StatelessWidget {
                               );
                               if (updatedTask != null) {
                                 Navigator.of(context)
-                                    .pop(updatedTask); // 返回更新后的任务，让上一个页面接收并刷新
+                                    .pop(updatedTask);
                               }
                             },
                             style: ElevatedButton.styleFrom(
@@ -197,7 +196,7 @@ class TaskDetailPage extends StatelessWidget {
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
-                                    backgroundColor: const Color(0xFF1E1E1E), // 与主色调相同
+                                    backgroundColor: const Color(0xFF1E1E1E),
                                     title: const Text(
                                       '确认删除',
                                       style: TextStyle(color: Colors.white),
@@ -209,7 +208,7 @@ class TaskDetailPage extends StatelessWidget {
                                     actions: <Widget>[
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.of(context).pop(); // 关闭弹窗
+                                          Navigator.of(context).pop();
                                         },
                                         child: const Text(
                                           '取消',
@@ -219,29 +218,28 @@ class TaskDetailPage extends StatelessWidget {
                                       ),
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.of(context)
-                                              .pop(); // 关闭弹窗
-                                          _taskApi
+                                          Navigator.of(context).pop();
+                                          _taskBusiness
                                               .deleteTask(task.taskID)
                                               .then((response) {
-                                            if (response.statusCode == 200) {
+                                            if (response == true) {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 const SnackBar(
                                                   content: Text('任务删除成功！'),
                                                   backgroundColor: Color(
-                                                      0xFF2CB7B3), // 与主色调相同
+                                                      0xFF2CB7B3),
                                                 ),
                                               );
                                               Navigator.of(context).pop(
-                                                  true); // 返回上一页并指示刷新
+                                                  true);
                                             } else {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 const SnackBar(
                                                   content: Text('任务删除失败，请重试！'),
                                                   backgroundColor: Color(
-                                                      0xFF2CB7B3), // 与主色调相同
+                                                      0xFF2CB7B3),
                                                 ),
                                               );
                                             }
@@ -274,7 +272,7 @@ class TaskDetailPage extends StatelessWidget {
                         ),
                       ],
                     )
-                  : const SizedBox.shrink(), // 如果不是派发任务，则隐藏按钮
+                  : const SizedBox.shrink(),
             ),
           ],
         ),

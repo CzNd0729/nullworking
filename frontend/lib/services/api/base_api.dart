@@ -32,15 +32,7 @@ class BaseApi {
       uri = uri.replace(queryParameters: queryParams);
     }
     final headers = await _getHeaders(authenticated: authenticated);
-
-    print('发送GET请求到: $uri');
-    print('请求头: $headers');
-
     final response = await http.get(uri, headers: headers);
-
-    print('收到响应: ${response.statusCode}');
-    print('响应头: ${response.headers}');
-
     return response;
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 
-import 'package:nullworking/services/api/user_api.dart';
+import '../../services/business/auth_business.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -23,6 +22,8 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  final AuthBusiness _AuthBusiness = AuthBusiness();
+
   @override
   void dispose() {
     _usernameController.dispose();
@@ -43,7 +44,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _onRegisterPressed() async {
-    // 输入验证
     if (_usernameController.text.trim().isEmpty) {
       setState(() {
         _errorMessage = '请输入用户名';
@@ -92,55 +92,41 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      // 调用云端服务器的注册API
-      final response = await UserApi().register(
+      final errorMessage = await _AuthBusiness.register(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
-        _phoneController.text.trim(),
         _realNameController.text.trim(),
-        email: _emailController.text.trim().isNotEmpty
-            ? _emailController.text.trim()
-            : null,
+        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+        email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
       );
 
-      if (response.statusCode == 200) {
-        // 解析响应JSON
-        final responseData = json.decode(response.body);
-
-        // 检查API返回的code字段
-        if (responseData['code'] == 200) {
-          // 注册成功，显示成功消息并返回登录页面
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('注册成功！请登录'),
-                backgroundColor: Color(0xFF00D9A3),
-              ),
-            );
-            Navigator.of(context).pop();
-          }
-        } else if (responseData['code'] == 409) {
-          setState(() {
-            _errorMessage = '用户名已存在';
-          });
+      if (mounted) {
+        if (errorMessage == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('注册成功！请登录'),
+              backgroundColor: Color(0xFF00D9A3),
+            ),
+          );
+          Navigator.of(context).pop();
         } else {
           setState(() {
-            _errorMessage = responseData['message'] ?? '注册失败，请稍后重试';
+            _errorMessage = errorMessage;
           });
         }
-      } else {
-        setState(() {
-          _errorMessage = '网络请求失败，请稍后重试';
-        });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = '网络连接失败，请检查网络设置';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -167,7 +153,6 @@ class _RegisterPageState extends State<RegisterPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo + 应用名
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -194,7 +179,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 32),
 
-                // 错误消息显示
                 if (_errorMessage != null)
                   Container(
                     width: double.infinity,
@@ -212,7 +196,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
 
-                // 用户名
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -246,7 +229,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
 
                 const SizedBox(height: 20),
-                // 密码
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -294,7 +276,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
 
                 const SizedBox(height: 20),
-                // 确认密码
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -342,7 +323,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
 
                 const SizedBox(height: 20),
-                // 电话号码
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -377,7 +357,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
 
                 const SizedBox(height: 20),
-                // 真实姓名
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -411,7 +390,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
 
                 const SizedBox(height: 20),
-                // 邮箱（可选）
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -477,8 +455,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                  ),
                 ),
+              ),
 
                 const SizedBox(height: 20),
                 GestureDetector(

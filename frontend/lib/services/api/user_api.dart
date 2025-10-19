@@ -32,7 +32,7 @@ class UserApi {
   Future<http.Response> register(
     String username,
     String password,
-    String phone,
+    String? phone,
     String realName, {
     String? email,
   }) async {
