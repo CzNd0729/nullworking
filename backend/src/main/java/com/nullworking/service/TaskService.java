@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.nullworking.model.dto.TaskPublishRequest;
+import com.nullworking.model.dto.TaskUpdateRequest;
 
 @Service
 public class TaskService {
@@ -74,6 +76,23 @@ public class TaskService {
         return ApiResponse.success(data);
     }
 
+    public ApiResponse<Map<String, Object>> getTaskById(Integer taskId, Integer userId) {
+        Optional<Task> taskOpt = taskRepository.findById(taskId);
+        if (taskOpt.isEmpty()) {
+            return ApiResponse.error(404, "任务不存在");
+        }
+        Task task = taskOpt.get();
+
+        // 检查用户是否有权限查看任务（创建者或执行者）
+        if (!task.getCreator().getUserId().equals(userId) &&
+            !taskExecutorRelationRepository.existsByTask_TaskIdAndExecutor_UserId(taskId, userId)) {
+            return ApiResponse.error(403, "无权限查看此任务");
+        }
+
+        Map<String, Object> data = toDtoWithExecutors(task);
+        return ApiResponse.success(data);
+    }
+
     private Map<String, Object> toDto(Task t) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("taskID", String.valueOf(t.getTaskId()));
@@ -108,15 +127,11 @@ public class TaskService {
     @Transactional
     public ApiResponse<Map<String, Object>> publishTask(
             Integer creatorID,
-            String title,
-            String content,
-            Integer priority,
-            List<Integer> executorIDs,
-            LocalDateTime deadline) {
+            TaskPublishRequest request) {
 
         try {
             // 验证优先级范围 (0-3)
-            if (priority < 0 || priority > 3) {
+            if (request.getPriority() < 0 || request.getPriority() > 3) {
                 return ApiResponse.error(400, "优先级必须在0-3之间");
             }
 
@@ -127,7 +142,7 @@ public class TaskService {
             }
 
             // 验证执行者是否都存在
-            for (Integer executorID : executorIDs) {
+            for (Integer executorID : request.getExecutorIDs()) {
                 Optional<User> executorOpt = userRepository.findById(executorID);
                 if (executorOpt.isEmpty()) {
                     return ApiResponse.error(404, "执行者ID " + executorID + " 不存在");
@@ -137,18 +152,18 @@ public class TaskService {
             // 创建任务
             Task task = new Task();
             task.setCreator(creatorOpt.get());
-            task.setTaskTitle(title);
-            task.setTaskContent(content);
-            task.setPriority(priority.byteValue());
+            task.setTaskTitle(request.getTitle());
+            task.setTaskContent(request.getContent());
+            task.setPriority(request.getPriority().byteValue());
             task.setTaskStatus((byte) 0); // 0-待开始
             task.setCreationTime(LocalDateTime.now());
-            task.setDeadline(deadline);
+            task.setDeadline(request.getDeadline());
 
             // 保存任务
             Task savedTask = taskRepository.save(task);
 
             // 创建执行者关联关系
-            for (Integer executorID : executorIDs) {
+            for (Integer executorID : request.getExecutorIDs()) {
                 User executor = userRepository.findById(executorID).get();
                 TaskExecutorRelation relation = new TaskExecutorRelation();
                 relation.setTask(savedTask);
@@ -166,21 +181,18 @@ public class TaskService {
 
     @Transactional
     public ApiResponse<Map<String, Object>> updateTask(
-            Integer taskID,
-            String title,
-            String content,
-            Integer priority,
-            LocalDateTime deadline,
-            Integer userId) {
+            Integer taskId,
+            Integer userId,
+            TaskUpdateRequest request) {
 
         try {
             // 验证优先级范围 (0-3)
-            if (priority < 0 || priority > 3) {
+            if (request.getPriority() < 0 || request.getPriority() > 3) {
                 return ApiResponse.error(400, "优先级必须在0-3之间");
             }
 
             // 查找任务
-            Optional<Task> taskOpt = taskRepository.findById(taskID);
+            Optional<Task> taskOpt = taskRepository.findById(taskId);
             if (taskOpt.isEmpty()) {
                 return ApiResponse.error(404, "任务不存在");
             }
@@ -198,10 +210,10 @@ public class TaskService {
             }
 
             // 更新任务信息
-            task.setTaskTitle(title);
-            task.setTaskContent(content);
-            task.setPriority(priority.byteValue());
-            task.setDeadline(deadline);
+            task.setTaskTitle(request.getTitle());
+            task.setTaskContent(request.getContent());
+            task.setPriority(request.getPriority().byteValue());
+            task.setDeadline(request.getDeadline());
 
             // 保存更新后的任务
             taskRepository.save(task);

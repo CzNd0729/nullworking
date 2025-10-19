@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import com.nullworking.model.dto.RegisterRequest;
 
 @Service
 public class AuthService {
@@ -50,28 +51,24 @@ public class AuthService {
         }
     }
 
-    public ApiResponse<String> register(String userName,
-                                       String password,
-                                       String realName,
-                                       String phone,
-                                       String email) {
+    public ApiResponse<String> register(RegisterRequest request) {
         // 检查用户名是否已存在
-        if (userRepository.findByUserName(userName) != null) {
+        if (userRepository.findByUserName(request.getUserName()) != null) {
             return ApiResponse.error(409, "用户名已存在"); // 用户名冲突
         }
         // 校验真实姓名必填
-        if (realName == null || realName.trim().isEmpty()) {
+        if (request.getRealName() == null || request.getRealName().trim().isEmpty()) {
             return ApiResponse.error(400, "真实姓名为必填项");
         }
         // 密码加密
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        String encodedPassword = encoder.encode(password);
+        String encodedPassword = encoder.encode(request.getPassword());
         User user = new User();
-        user.setUserName(userName);
+        user.setUserName(request.getUserName());
         user.setPassword(encodedPassword);
-        user.setRealName(realName.trim());
-        user.setPhoneNumber(phone);
-        user.setEmail(email);
+        user.setRealName(request.getRealName().trim());
+        user.setPhoneNumber(request.getPhone());
+        user.setEmail(request.getEmail());
         user.setCreationTime(LocalDateTime.now());
         // 角色和部门可根据实际业务设置，这里默认 null
         userRepository.save(user);
