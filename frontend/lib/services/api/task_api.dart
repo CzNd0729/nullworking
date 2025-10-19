@@ -7,7 +7,7 @@ class TaskApi {
   final BaseApi _baseApi = BaseApi();
 
   Future<http.Response> publishTask(Map<String, dynamic> taskData) async {
-    final queryParams = <String, dynamic>{
+    final body = <String, dynamic>{
       'title': taskData['title'].toString(),
       'content': taskData['content'].toString(),
       'priority': taskData['priority'].toString(),
@@ -15,16 +15,16 @@ class TaskApi {
     };
 
     // 处理 executorIDs 列表
-    queryParams['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
+    body['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
 
     return await _baseApi.post(
-      'api/task/publishTask',
-      queryParams: queryParams,
+      'api/tasks',
+      body: body,
     );
   }
 
   Future<TaskListResponse?> listUserTasks() async {
-    final response = await _baseApi.get('api/task/listUserTasks');
+    final response = await _baseApi.get('api/tasks');
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
@@ -36,8 +36,8 @@ class TaskApi {
   }
 
   Future<http.Response> updateTask(Map<String, dynamic> taskData) async {
-    final queryParams = <String, dynamic>{
-      'taskID': taskData['taskID'].toString(),
+    final taskID = taskData['taskID'].toString();
+    final body = <String, dynamic>{
       'title': taskData['title'].toString(),
       'content': taskData['content'].toString(),
       'priority': taskData['priority'].toString(),
@@ -45,19 +45,17 @@ class TaskApi {
     };
 
     // 处理 executorIDs 列表
-    queryParams['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
+    body['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
 
     return await _baseApi.put(
-      'api/task/updateTask',
-      queryParams: queryParams,
+      'api/tasks/$taskID',
+      body: body,
     );
   }
 
   Future<http.Response> deleteTask(String taskID) async {
-    final queryParams = {'taskID': taskID};
     return await _baseApi.delete(
-      'api/task/deleteTask',
-      queryParams: queryParams,
+      'api/tasks/$taskID',
     );
   }
 }

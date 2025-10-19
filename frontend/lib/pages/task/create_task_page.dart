@@ -99,9 +99,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedPriority = 'P1';
       _selectedDate = null;
       _selectedTime = null;
-      _selectedAssignees = [
-        {'realName': _currentUserName ?? '当前用户', 'userId': _currentUserId ?? '-1'},
-      ];
+      _selectedAssignees = [];
       _isAssigned = false;
       _updateAssigneeText();
     });
@@ -111,10 +109,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   Future<void> _loadCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentUserId = prefs.getString('userID') ?? '-1';
-      _currentUserName = prefs.getString('realName') ?? '当前用户';
+      _currentUserId=prefs.getString("userID");
       _selectedAssignees = [
-        {'realName': _currentUserName, 'userId': _currentUserId},
+        {'realName': "我", 'userId': _currentUserId},
       ];
       _updateAssigneeText();
     });
@@ -515,7 +512,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             final taskID = responseBody['data']['taskID']?.toString() ?? widget.taskToEdit?.taskID; // 如果是更新，可能没有新的taskID
             final createdOrUpdatedTask = Task(
               taskID: taskID!,
-              creatorName: _currentUserName ?? "当前用户",
+              creatorName: "我",
               taskTitle: _titleController.text.trim(),
               taskContent: _descriptionController.text.trim(),
               taskPriority: _selectedPriority.substring(1),
@@ -590,19 +587,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   },
                 )
                 .toList();
-            if (_currentUserId != null) {
-              _teamMembers.insert(0, {
-                'name': '我',
-                'role': '当前用户',
-                'userId': _currentUserId,
-              });
-            } else {
-              _teamMembers.insert(0, {
-                'name': '我',
-                'role': '当前用户',
-                'userId': '-1',
-              });
-            }
           });
         }
       } else {
@@ -627,9 +611,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void _updateAssigneeText() {
     if (_selectedAssignees.isEmpty) {
       _assigneeController.text = '请选择负责人';
-    } else if (_selectedAssignees.length == 1 &&
-        _selectedAssignees.first['realName'] == '我') {
-      _assigneeController.text = '我 (当前用户)';
     } else {
       final assigneesNames = _selectedAssignees
           .map((assignee) => assignee['realName'])
@@ -715,9 +696,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       _selectedAssignees = [
                                         {
                                           'realName': '我',
-                                          'userId': _currentUserId ?? '-1',
+                                          'userId': _currentUserId,
                                         },
                                       ];
+                                      _updateAssigneeText();
+                                    }
+                                    else{
+                                      _selectedAssignees = [];
                                       _updateAssigneeText();
                                     }
                                   });

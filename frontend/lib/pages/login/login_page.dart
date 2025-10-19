@@ -66,9 +66,6 @@ class _LoginPageState extends State<LoginPage> {
 
         // 检查API返回的code字段
         if (responseData['code'] == 200) {
-          // 登录成功，Token已自动保存，直接跳转到主页
-          print('登录成功');
-
           // 存储用户ID
           final int userID = responseData['data']['userID'];
           final prefs = await SharedPreferences.getInstance();
