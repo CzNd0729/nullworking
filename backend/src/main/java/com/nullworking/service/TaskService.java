@@ -125,7 +125,6 @@ public class TaskService {
                     return userRepository.findById(id).map(User::getRealName).orElse(null);
                 })
                 .filter(n -> n != null)
-                .filter(name -> !name.equals(t.getCreator() != null ? t.getCreator().getRealName() : null)) // 排除创建者
                 .collect(Collectors.toList());
         m.put("executorNames", executorNames);
         return m;
