@@ -24,20 +24,19 @@ public class LogFileController {
     @Autowired
     private LogFileService logFileService;
 
-    @Operation(summary = "上传日志文件", description = "上传文件并关联到指定日志ID")
+    @Operation(summary = "上传日志文件", description = "上传文件")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "文件上传成功",
             content = @Content(mediaType = "application/json",
             schema = @Schema(implementation = LogFile.class)))
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "文件上传失败",
             content = @Content(mediaType = "application/json",
             schema = @Schema(implementation = ApiResponse.class)))
-    @PostMapping(value = "/upload", consumes = {"multipart/form-data"})
+    @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<ApiResponse> uploadFile(
-            @Parameter(description = "要上传的文件") @RequestParam("file") MultipartFile file,
-            @Parameter(description = "关联的日志ID") @RequestParam("logId") Integer logId) {
+            @Parameter(description = "要上传的文件") @RequestParam("file") MultipartFile file) {
         try {
-            LogFile logFile = logFileService.storeFile(file, logId);
-            return ResponseEntity.ok(ApiResponse.success(logFile));
+            LogFile logFile = logFileService.storeFile(file);
+            return ResponseEntity.ok(ApiResponse.success(logFile.getFileId()));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(ApiResponse.error(500,"文件上传失败: " + e.getMessage()));
         }

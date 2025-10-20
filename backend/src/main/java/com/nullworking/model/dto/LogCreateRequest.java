@@ -3,6 +3,7 @@ package com.nullworking.model.dto;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List; // Import List
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -25,4 +26,6 @@ public class LogCreateRequest {
     private String endTime;   // Format: HH:mm
     @Schema(description = "日志日期 (YYYY-MM-DD 格式)", example = "2025-10-20")
     private String logDate; // Format: YYYY-MM-DD
+    @Schema(description = "关联的文件ID列表", example = "[1, 2]")
+    private List<Integer> fileIds;
 }

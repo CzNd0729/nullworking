@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,8 +33,12 @@ public class LogService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private LogFileService logFileService;
+
     @Transactional
     public ApiResponse<Void> createLog(LogCreateRequest request, Integer userId) {
+        List<Integer> fileIds=request.getFileIds();
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
             return ApiResponse.error(404, "用户未找到");
@@ -64,6 +69,10 @@ public class LogService {
         log.setUpdateTime(LocalDateTime.now());
 
         logRepository.save(log);
+
+        if (fileIds != null && !fileIds.isEmpty()) {
+            logFileService.updateLogIdForFiles(fileIds, log.getLogId());
+        }
 
         // If task progress is 100% and log status is 1 (completed)
         if (request.getTaskProgress() == 100 && request.getLogStatus() == 1) {

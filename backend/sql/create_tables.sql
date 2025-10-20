@@ -150,7 +150,7 @@ CREATE TABLE `log` (
 -- 11. 日志文件附件表（依赖日志表，存储日志相关的图片等文件信息）
 CREATE TABLE `log_file` (
   `File_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `Log_ID` INT(11) NOT NULL COMMENT '外键，关联日志表（所属日志）',
+  `Log_ID` INT(11) NULL COMMENT '外键，关联日志表（所属日志）',
   `Original_Name` VARCHAR(255) NOT NULL COMMENT '文件原始名称（如"风景.jpg"）',
   `Storage_Path` VARCHAR(512) NOT NULL COMMENT '本地存储相对路径（如"user_123/20251018/uuid.jpg"）',
   `File_Type` VARCHAR(50) NOT NULL COMMENT '文件类型（如"image/jpeg"）',

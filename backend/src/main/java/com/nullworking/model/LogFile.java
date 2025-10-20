@@ -12,7 +12,7 @@ public class LogFile {
     @Column(name = "File_ID")
     private Integer fileId;
 
-    @Column(name = "Log_ID", nullable = false)
+    @Column(name = "Log_ID", nullable = true)
     private Integer logId;
 
     @Column(name = "Original_Name", nullable = false)

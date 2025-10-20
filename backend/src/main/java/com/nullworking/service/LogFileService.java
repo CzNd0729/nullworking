@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,7 +24,7 @@ public class LogFileService {
     @Autowired
     private LogFileRepository logFileRepository;
 
-    public LogFile storeFile(MultipartFile file, Integer logId) throws IOException {
+    public LogFile storeFile(MultipartFile file) throws IOException {
         // Normalize file name
         String originalFilename = file.getOriginalFilename();
         String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
@@ -36,7 +37,7 @@ public class LogFileService {
         Files.copy(file.getInputStream(), targetLocation);
 
         LogFile logFile = new LogFile();
-        logFile.setLogId(logId);
+        // logFile.setLogId(logId); // 移除 logId 的设置，使其默认为 null
         logFile.setOriginalName(originalFilename);
         logFile.setStoragePath("/log_files/" + fileName); // Store relative path
         logFile.setFileType(file.getContentType());
@@ -44,5 +45,15 @@ public class LogFileService {
         logFile.setUploadTime(LocalDateTime.now());
 
         return logFileRepository.save(logFile);
+    }
+
+    public void updateLogIdForFiles(List<Integer> fileIds, Integer logId) {
+        if (fileIds != null && !fileIds.isEmpty()) {
+            List<LogFile> logFiles = logFileRepository.findAllById(fileIds);
+            for (LogFile logFile : logFiles) {
+                logFile.setLogId(logId);
+            }
+            logFileRepository.saveAll(logFiles);
+        }
     }
 }

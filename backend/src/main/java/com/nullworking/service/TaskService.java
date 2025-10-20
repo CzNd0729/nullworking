@@ -67,9 +67,9 @@ public class TaskService {
     public ApiResponse<Map<String, Object>> listUserTasks(Integer userId) {
         final Integer finalUserId = userId;
 
-        List<Task> createdTasks = taskRepository.findByCreator_UserId(userId);
+        List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId,(byte)3);
 
-        List<Integer> executingTaskIds = taskExecutorRelationRepository.findAllTaskIdsByExecutor(userId);
+        List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
         Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
         List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
                 : taskRepository.findAllById(executingIdSet).stream()
