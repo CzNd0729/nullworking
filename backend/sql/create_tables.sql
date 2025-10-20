@@ -75,7 +75,7 @@ CREATE TABLE `task` (
   `Task_Status` TINYINT NOT NULL COMMENT '任务状态（0=进行中，1=已延期, 2=已完成, 3=已关闭）',
   `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `Deadline` DATETIME NOT NULL COMMENT '截止时间',
-  `Finish_Time` DATETIME NULL COMMENT '任务完成时间（taskStatus=2 时填充）',
+  `Completion_Time` DATETIME NULL COMMENT '任务完成时间（taskStatus=2 时填充）',
   PRIMARY KEY (`Task_ID`),
   KEY `fk_task_creator` (`Creator_ID`),
   KEY `idx_task_status` (`Task_Status`),
@@ -127,21 +127,25 @@ CREATE TABLE `task_executor_relation` (
 
 -- 10. 日志表（依赖用户表和任务表，保留是否删除镜像字段）
 CREATE TABLE `log` (
-  `Log_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `Log_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键，日志唯一标识',
   `User_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（日志拥有者）',
   `Task_ID` INT(11) NOT NULL COMMENT '外键，关联任务表（日志关联任务）',
-  `Log_Content` TEXT NOT NULL COMMENT '日志内容',
-  `Task_Progress` VARCHAR(64) NOT NULL COMMENT '日志进度',
-  `Log_Date` DATE NOT NULL COMMENT '日志产生日期',
-  `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '日志创建时间',
-  `Update_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '日志更新时间',
+  `Log_Title` VARCHAR(128) NOT NULL COMMENT '日志标题，简述日志核心内容',
+  `Log_Content` TEXT NOT NULL COMMENT '日志详细内容',
+  `Task_Progress` VARCHAR(64) NOT NULL COMMENT '任务进度描述（如：30）',
+  `Log_Date` DATE NOT NULL COMMENT '日志对应的业务日期',
+  `Log_Status` TINYINT NOT NULL COMMENT '日志状态(0-未完成,1-已完成)',
+  `Start_Time` TIME NOT NULL COMMENT '开始时间（仅时间，不含日期，格式HH:MM:SS）',
+  `End_Time` TIME NOT NULL COMMENT '结束时间（仅时间，不含日期，格式HH:MM:SS）',
+  `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '日志创建时间（自动记录）',
+  `Update_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '日志更新时间（自动更新）',
   PRIMARY KEY (`Log_ID`),
   KEY `fk_log_user` (`User_ID`),
   KEY `fk_log_task` (`Task_ID`),
   KEY `idx_log_date` (`Log_Date`),
   CONSTRAINT `fk_log_user` FOREIGN KEY (`User_ID`) REFERENCES `user` (`User_ID`),
   CONSTRAINT `fk_log_task` FOREIGN KEY (`Task_ID`) REFERENCES `task` (`Task_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日志表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日志表，记录用户关联任务的进度、时间等信息';
 
 -- 11. 日志文件附件表（依赖日志表，存储日志相关的图片等文件信息）
 CREATE TABLE `log_file` (
@@ -155,5 +159,5 @@ CREATE TABLE `log_file` (
   PRIMARY KEY (`File_ID`),
   KEY `fk_file_log` (`Log_ID`),
   KEY `idx_upload_time` (`Upload_Time`),
-  CONSTRAINT `fk_file_log` FOREIGN KEY (`Log_ID`) REFERENCES `log` (`Log_ID`) ON DELETE CASCADE COMMENT '日志删除时，关联文件记录也删除'
+  CONSTRAINT `fk_file_log` FOREIGN KEY (`Log_ID`) REFERENCES `log` (`Log_ID`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日志文件附件表（存储日志相关的图片等文件信息）';

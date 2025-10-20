@@ -49,14 +49,7 @@ public class TaskController {
     @Transactional
     public ApiResponse<String> deleteTask(
             @Parameter(description = "任务ID") @PathVariable("taskId") Integer taskId, HttpServletRequest request) {
-        // 从Token解析当前用户
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
@@ -66,15 +59,7 @@ public class TaskController {
     @Operation(summary = "查询任务列表", description = "返回当前用户创建与参与的任务列表（默认包含已删除任务），完成任务包含finishTime")
     @GetMapping("")
     public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
-
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
@@ -87,15 +72,7 @@ public class TaskController {
     public ApiResponse<Map<String, Object>> getTaskById(
             @Parameter(description = "任务ID") @PathVariable("taskId") Integer taskId,
             HttpServletRequest request) {
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
-
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
@@ -110,15 +87,7 @@ public class TaskController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = TaskPublishRequest.class))) @RequestBody TaskPublishRequest taskPublishRequest) {
 
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer creatorID = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            creatorID = jwtUtil.extractUserId(jwt);
-        }
-
+        Integer creatorID = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (creatorID == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
@@ -134,14 +103,7 @@ public class TaskController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = TaskUpdateRequest.class))) @RequestBody TaskUpdateRequest taskUpdateRequest) {
 
-        // 从Token解析当前用户
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }

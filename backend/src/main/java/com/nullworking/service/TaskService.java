@@ -1,22 +1,29 @@
 package com.nullworking.service;
 
-import com.nullworking.common.ApiResponse;
-import com.nullworking.model.Task;
-import com.nullworking.model.TaskExecutorRelation;
-import com.nullworking.model.User;
-import com.nullworking.repository.TaskExecutorRelationRepository;
-import com.nullworking.repository.TaskRepository;
-import com.nullworking.repository.UserRepository;
-// import com.nullworking.util.JwtUtil;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.nullworking.common.ApiResponse;
+import com.nullworking.model.Task;
+import com.nullworking.model.TaskExecutorRelation;
+import com.nullworking.model.User;
 import com.nullworking.model.dto.TaskPublishRequest;
 import com.nullworking.model.dto.TaskUpdateRequest;
+import com.nullworking.repository.TaskExecutorRelationRepository;
+import com.nullworking.repository.TaskRepository;
+import com.nullworking.repository.UserRepository;
 
 @Service
 public class TaskService {
@@ -104,7 +111,7 @@ public class TaskService {
         m.put("creationTime", t.getCreationTime() != null ? t.getCreationTime().toString() : null);
         m.put("deadline", t.getDeadline() != null ? t.getDeadline().toString() : null);
         if (Byte.valueOf((byte)2).equals(t.getTaskStatus())) {
-            m.put("finishTime", t.getFinishTime() != null ? t.getFinishTime().toString() : null);
+            m.put("completionTime", t.getCompletionTime() != null ? t.getCompletionTime().toString() : null);
         }
         return m;
     }
