@@ -179,7 +179,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
 
     final body = {
       'taskId': _selectedTask != null
-          ? int.tryParse(_selectedTask!.taskID) ?? _selectedTask!.taskID
+          ? int.tryParse(_selectedTask!.taskId) ?? _selectedTask!.taskId
           : null,
       'logTitle': title,
       'logContent': content,
