@@ -12,8 +12,6 @@ class _LogPageState extends State<LogPage> {
   final TextEditingController _searchController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
 
   List<LogEntry> _allLogs = [];
   List<LogEntry> _filteredLogs = [];
@@ -58,15 +56,6 @@ class _LogPageState extends State<LogPage> {
             _endDate!.day,
           );
           matchesDate =
-              logDateOnly.isAtSameMomentAs(startOnly) ||
-              (logDateOnly.isAfter(startOnly) &&
-                  logDateOnly.isBefore(endOnly)) ||
-              logDateOnly.isAtSameMomentAs(endOnly) ||
-              (logDateOnly.isAfter(startOnly) &&
-                  (logDateOnly.isAtSameMomentAs(endOnly) ||
-                      logDateOnly.isBefore(endOnly)));
-          // simplify: check inclusive range
-          matchesDate =
               !logDateOnly.isBefore(startOnly) && !logDateOnly.isAfter(endOnly);
         } else if (_startDate != null) {
           final startOnly = DateTime(
@@ -83,26 +72,9 @@ class _LogPageState extends State<LogPage> {
           );
           matchesDate = !logDateOnly.isAfter(endOnly);
         }
-
-        // Time-of-day matching: only applies when startDate and endDate are the same day
-        bool matchesTime = true;
-        if (_startTime != null &&
-            _endTime != null &&
-            _startDate != null &&
-            _endDate != null &&
-            _isSameDate(_startDate!, _endDate!)) {
-          final int logMinutes = log.date.hour * 60 + log.date.minute;
-          final int startMinutes = _timeToMinutes(_startTime!);
-          final int endMinutes = _timeToMinutes(_endTime!);
-          matchesTime = logMinutes >= startMinutes && logMinutes <= endMinutes;
-        }
-        return matchesQuery && matchesDate && matchesTime;
+        return matchesQuery && matchesDate;
       }).toList();
     });
-  }
-
-  bool _isSameDate(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   // single date picker removed; using start/end pickers instead
@@ -163,54 +135,10 @@ class _LogPageState extends State<LogPage> {
     }
   }
 
-  Future<void> _pickStartTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _startTime ?? const TimeOfDay(hour: 7, minute: 0),
-    );
-    if (picked != null) {
-      if (_endTime != null &&
-          _timeToMinutes(picked) > _timeToMinutes(_endTime!)) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('起始时间不能晚于结束时间')));
-        return;
-      }
-      setState(() {
-        _startTime = picked;
-      });
-      _applyFilters();
-    }
-  }
-
-  Future<void> _pickEndTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _endTime ?? const TimeOfDay(hour: 19, minute: 59),
-    );
-    if (picked != null) {
-      if (_startTime != null &&
-          _timeToMinutes(picked) < _timeToMinutes(_startTime!)) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('结束时间不能早于起始时间')));
-        return;
-      }
-      setState(() {
-        _endTime = picked;
-      });
-      _applyFilters();
-    }
-  }
-
-  int _timeToMinutes(TimeOfDay t) => t.hour * 60 + t.minute;
-
   void _clearFilters() {
     setState(() {
       _startDate = null;
       _endDate = null;
-      _startTime = null;
-      _endTime = null;
       _searchController.clear();
     });
     _applyFilters();
@@ -238,37 +166,22 @@ class _LogPageState extends State<LogPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2CB7B3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                elevation: 0,
-              ),
-              onPressed: () async {
-                final newLog = await Navigator.push<LogEntry?>(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateLogPage()),
-                );
-                if (newLog != null) {
-                  setState(() {
-                    _allLogs.insert(0, newLog);
-                  });
-                  _applyFilters();
-                }
-              },
-              child: const Text('新建', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF2CB7B3),
+        onPressed: () async {
+          final newLog = await Navigator.push<LogEntry?>(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateLogPage()),
+          );
+          if (newLog != null) {
+            setState(() {
+              _allLogs.insert(0, newLog);
+            });
+            _applyFilters();
+          }
+        },
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -292,137 +205,75 @@ class _LogPageState extends State<LogPage> {
             ),
             const SizedBox(height: 16),
 
-            // Filter card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          '日志创建时间',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _clearFilters,
-                        child: const Text(
-                          '清除筛选',
-                          style: TextStyle(color: Colors.orange),
-                        ),
-                      ),
-                    ],
+            // Filter section
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '日志安排时间',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  // Date range selectors: start / end
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000000),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: _pickStartDate,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Text(
-                              _startDate == null
-                                  ? '开始日期'
-                                  : '${_startDate!.year} / ${_startDate!.month.toString().padLeft(2, '0')} / ${_startDate!.day.toString().padLeft(2, '0')}',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000000),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: _pickEndDate,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Text(
-                              _endDate == null
-                                  ? '结束日期'
-                                  : '${_endDate!.year} / ${_endDate!.month.toString().padLeft(2, '0')} / ${_endDate!.day.toString().padLeft(2, '0')}',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                ),
+                TextButton(
+                  onPressed: _clearFilters,
+                  child: const Text(
+                    '清除筛选',
+                    style: TextStyle(color: Colors.orange),
                   ),
-                  const SizedBox(height: 8),
-                  // Time of day selectors for the same-day range
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000000),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: _pickStartTime,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Text(
-                              _startTime == null
-                                  ? '开始时间'
-                                  : '${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Date range selectors: start / end
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E1E1E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF000000),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          onPressed: _pickEndTime,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            child: Text(
-                              _endTime == null
-                                  ? '结束时间'
-                                  : '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
+                      elevation: 0,
+                    ),
+                    onPressed: _pickStartDate,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Text(
+                        _startDate == null
+                            ? '开始日期'
+                            : '${_startDate!.year} / ${_startDate!.month.toString().padLeft(2, '0')} / ${_startDate!.day.toString().padLeft(2, '0')}',
+                        style: const TextStyle(color: Colors.white70),
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E1E1E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: _pickEndDate,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Text(
+                        _endDate == null
+                            ? '结束日期'
+                            : '${_endDate!.year} / ${_endDate!.month.toString().padLeft(2, '0')} / ${_endDate!.day.toString().padLeft(2, '0')}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
