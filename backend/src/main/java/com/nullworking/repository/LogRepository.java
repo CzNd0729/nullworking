@@ -1,5 +1,6 @@
 package com.nullworking.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,4 +16,8 @@ public interface LogRepository extends JpaRepository<Log, Integer> {
     void deleteByTaskTaskIdAndLogStatus(Integer taskId, Integer logStatus);
     
     Optional<Log> findByLogIdAndUserUserId(Integer logId, Integer userId);
+
+    List<Log> findByUserUserIdAndLogDateBetween(Integer userId, LocalDate startDate, LocalDate endDate);
+
+    List<Log> findByTaskTaskIdOrderByTaskProgressAsc(Integer taskId);
 }

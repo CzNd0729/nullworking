@@ -4,7 +4,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,7 @@ import com.nullworking.model.dto.LogCreateRequest;
 import com.nullworking.model.dto.LogUpdateRequest;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskRepository;
+import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -36,6 +40,28 @@ public class LogService {
 
     @Autowired
     private LogFileService logFileService;
+
+    @Autowired
+    private TaskExecutorRelationRepository taskExecutorRelationRepository;
+
+    public ApiResponse<Map<String, Object>> listLogs(Integer userId, LocalDate startDate, LocalDate endDate) {
+        List<Log> logs = logRepository.findByUserUserIdAndLogDateBetween(userId, startDate, endDate);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Log l : logs) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("logId", l.getLogId());
+            item.put("taskId", l.getTask() != null ? l.getTask().getTaskId() : null);
+            item.put("logContent", l.getLogContent());
+            items.add(item);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("total", items.size());
+        data.put("logs", items);
+
+        return ApiResponse.success(data);
+    }
 
     @Transactional
     public ApiResponse<Void> createLog(LogCreateRequest request, Integer userId) {
@@ -88,6 +114,7 @@ public class LogService {
         return ApiResponse.success();
     }
 
+<<<<<<< HEAD
     @Transactional
     public ApiResponse<Void> updateLog(Integer logId, LogUpdateRequest request, Integer userId) {
         // 查找日志并验证所有权
@@ -164,5 +191,66 @@ public class LogService {
         logRepository.delete(log);
         
         return ApiResponse.success();
+=======
+    public ApiResponse<Map<String, Object>> taskDetails(Integer taskId, Integer userId) {
+        // 检查任务是否存在
+        Optional<Task> taskOptional = taskRepository.findById(taskId);
+        if (taskOptional.isEmpty()) {
+            return ApiResponse.error(404, "任务未找到");
+        }
+        Task task = taskOptional.get();
+
+        // 检查用户是否有权限查看该任务（创建者或执行者）
+        boolean isCreator = task.getCreator().getUserId().equals(userId);
+        boolean isExecutor = taskExecutorRelationRepository.existsByTask_TaskIdAndExecutor_UserId(taskId, userId);
+        
+        if (!isCreator && !isExecutor) {
+            return ApiResponse.error(403, "无权限查看该任务的日志");
+        }
+
+        List<Log> logs = logRepository.findByTaskTaskIdOrderByTaskProgressAsc(taskId);
+
+        // 过滤出当前用户的日志
+        List<Log> userLogs = new ArrayList<>();
+        for (Log log : logs) {
+            if (log.getUser().getUserId().equals(userId)) {
+                userLogs.add(log);
+            }
+        }
+
+        // 找到已完成日志的最新进度
+        int maxCompletedProgress = 0;
+        for (Log log : userLogs) {
+            if (log.getLogStatus() == 1) { // 已完成
+                maxCompletedProgress = Math.max(maxCompletedProgress, log.getTaskProgress());
+            }
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Log l : userLogs) {
+            // 如果是待完成日志且进度落后于已完成日志的最新进度，则跳过
+            if (l.getLogStatus() == 0 && l.getTaskProgress() <= maxCompletedProgress) {
+                continue;
+            }
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("logId", l.getLogId());
+            item.put("logTitle", l.getLogTitle());
+            item.put("logContent", l.getLogContent());
+            item.put("taskProgress", l.getTaskProgress() + "%");
+            item.put("logStatus", l.getLogStatus().toString());
+            
+            // 格式化时间：yyyy-MM-dd-HH:mm
+            String endTime = l.getLogDate().toString() + "-" + l.getEndTime().toString().substring(0, 5);
+            item.put("endTime", endTime);
+            
+            items.add(item);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("logs", items);
+
+        return ApiResponse.success(data);
+>>>>>>> 1539f4dc4bdd7b32f0e217ae0d7ad007eb89a6cd
     }
 }

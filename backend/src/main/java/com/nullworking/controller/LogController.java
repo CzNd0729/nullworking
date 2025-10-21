@@ -1,13 +1,20 @@
 package com.nullworking.controller;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nullworking.common.ApiResponse;
@@ -127,5 +134,35 @@ public class LogController {
         } else {
             return ResponseEntity.status(500).body(response);
         }
+    }
+
+    @Operation(summary = "日志列表", description = "通过 startTime-endTime 过滤日志，格式如：2024-10-1~2025-10-1；若开始与结束相同表示单日")
+    @GetMapping
+    public ApiResponse<Map<String, Object>> ListLogs(@RequestParam("startTime-endTime") String timeRange, HttpServletRequest httpRequest) {
+        String[] parts = timeRange.split("~");
+        if (parts.length != 2) {
+            return ApiResponse.error(400, "时间范围格式错误，应为 start~end，如：2024-10-1~2025-10-1");
+        }
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M-d");
+        LocalDate start = LocalDate.parse(parts[0].trim(), dateFormatter);
+        LocalDate end = LocalDate.parse(parts[1].trim(), dateFormatter);
+        if (start.isAfter(end)) {
+            return ApiResponse.error(400, "开始日期不能晚于结束日期");
+        }
+        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权: 无效的token或用户ID");
+        }
+        return logService.listLogs(userId, start, end);
+    }
+
+    @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")
+    @GetMapping("/{taskId}")
+    public ApiResponse<Map<String, Object>> taskDetails(@PathVariable("taskId") Integer taskId, HttpServletRequest httpRequest) {
+        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权: 无效的token或用户ID");
+        }
+        return logService.taskDetails(taskId, userId);
     }
 }
