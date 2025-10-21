@@ -1,6 +1,7 @@
 package com.nullworking.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -12,4 +13,6 @@ public interface LogRepository extends JpaRepository<Log, Integer> {
     List<Log> findByTaskTaskIdAndLogStatus(Integer taskId, Integer logStatus);
 
     void deleteByTaskTaskIdAndLogStatus(Integer taskId, Integer logStatus);
+    
+    Optional<Log> findByLogIdAndUserUserId(Integer logId, Integer userId);
 }

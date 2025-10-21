@@ -15,6 +15,7 @@ import com.nullworking.model.Log;
 import com.nullworking.model.Task;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.LogCreateRequest;
+import com.nullworking.model.dto.LogUpdateRequest;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
@@ -84,6 +85,84 @@ public class LogService {
             logRepository.deleteByTaskTaskIdAndLogStatus(request.getTaskId(), 0); // 0 for pending
         }
 
+        return ApiResponse.success();
+    }
+
+    @Transactional
+    public ApiResponse<Void> updateLog(Integer logId, LogUpdateRequest request, Integer userId) {
+        // 查找日志并验证所有权
+        Optional<Log> logOptional = logRepository.findByLogIdAndUserUserId(logId, userId);
+        if (logOptional.isEmpty()) {
+            return ApiResponse.error(404, "日志未找到或无权限访问");
+        }
+        
+        Log log = logOptional.get();
+        
+        // 更新日志字段
+        if (request.getLogTitle() != null) {
+            log.setLogTitle(request.getLogTitle());
+        }
+        if (request.getLogContent() != null) {
+            log.setLogContent(request.getLogContent());
+        }
+        if (request.getLogStatus() != null) {
+            log.setLogStatus(request.getLogStatus());
+        }
+        if (request.getTaskProgress() != null) {
+            log.setTaskProgress(request.getTaskProgress());
+        }
+        if (request.getStartTime() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+            log.setStartTime(LocalTime.parse(request.getStartTime(), formatter));
+        }
+        if (request.getEndTime() != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
+            log.setEndTime(LocalTime.parse(request.getEndTime(), formatter));
+        }
+        if (request.getLogDate() != null) {
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            log.setLogDate(LocalDate.parse(request.getLogDate(), dateFormatter));
+        }
+        
+        // 更新修改时间
+        log.setUpdateTime(LocalDateTime.now());
+        
+        // 保存日志
+        logRepository.save(log);
+        
+        // 处理文件关联
+        if (request.getFileIds() != null) {
+            logFileService.updateLogIdForFiles(request.getFileIds(), log.getLogId());
+        }
+        
+        // 如果任务进度为100%且日志状态为已完成，更新任务状态
+        if (request.getTaskProgress() != null && request.getLogStatus() != null &&
+            request.getTaskProgress() == 100 && request.getLogStatus() == 1) {
+            Task task = log.getTask();
+            task.setCompletionTime(LocalDateTime.now());
+            task.setTaskStatus((byte)2);
+            taskRepository.save(task);
+            
+            // 清除该任务的所有待处理日志
+            logRepository.deleteByTaskTaskIdAndLogStatus(task.getTaskId(), 0);
+        }
+        
+        return ApiResponse.success();
+    }
+
+    @Transactional
+    public ApiResponse<Void> deleteLog(Integer logId, Integer userId) {
+        // 查找日志并验证所有权
+        Optional<Log> logOptional = logRepository.findByLogIdAndUserUserId(logId, userId);
+        if (logOptional.isEmpty()) {
+            return ApiResponse.error(404, "日志未找到或无权限访问");
+        }
+        
+        Log log = logOptional.get();
+        
+        // 删除日志
+        logRepository.delete(log);
+        
         return ApiResponse.success();
     }
 }
