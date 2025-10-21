@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
-
-import 'log_page.dart';
+import '../../models/task.dart';
+import '../../models/log.dart';
 import '../../services/business/log_business.dart';
 import '../../services/business/task_business.dart';
-import '../../models/task.dart';
 import '../task/create_task_page.dart';
-
-// Note: this file will call backend to create logs via LogBusiness
+import '../../services/mock/mock_data.dart';
 
 class CreateLogPage extends StatefulWidget {
-  const CreateLogPage({super.key});
+  final Task? preSelectedTask;
+
+  const CreateLogPage({
+    super.key,
+    this.preSelectedTask,
+  });
 
   @override
   State<CreateLogPage> createState() => _CreateLogPageState();
@@ -18,8 +21,6 @@ class CreateLogPage extends StatefulWidget {
 class _CreateLogPageState extends State<CreateLogPage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
-  String _priority = 'P1';
-  // status represented as booleans for prototype
   bool _isCompleted = false;
   DateTime _plannedDate = DateTime.now();
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
@@ -29,85 +30,107 @@ class _CreateLogPageState extends State<CreateLogPage> {
   final LogBusiness _logBusiness = LogBusiness();
   final TaskBusiness _taskBusiness = TaskBusiness();
   Task? _selectedTask;
+  final bool _debugMode = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.preSelectedTask != null) {
+      _selectedTask = widget.preSelectedTask;
+    }
+  }
 
   Future<void> _openTaskSelection() async {
-    // load tasks
+    if (_debugMode) {
+      final testTasks = MockData.generateTestTasks();
+      final Task? chosen = await showModalBottomSheet<Task?>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _buildTaskSelectionSheet(testTasks),
+      );
+      if (chosen != null) {
+        setState(() => _selectedTask = chosen);
+      }
+      return;
+    }
+
     final taskMap = await _taskBusiness.loadUserTasks();
     final List<Task> tasks = [];
     if (taskMap != null) {
       tasks.addAll(taskMap['createdTasks'] ?? []);
       tasks.addAll(taskMap['participatedTasks'] ?? []);
     }
-
     final Task? chosen = await showModalBottomSheet<Task?>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.3,
-        maxChildSize: 0.9,
-        builder: (context, controller) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                const SizedBox(
-                  width: 40,
-                  height: 4,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.all(Radius.circular(2)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '选择任务',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    controller: controller,
-                    itemCount: tasks.length,
-                    itemBuilder: (context, index) {
-                      final t = tasks[index];
-                      return ListTile(
-                        title: Text(
-                          t.taskTitle,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        subtitle: Text(
-                          '创建者: ${t.creatorName}',
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        onTap: () => Navigator.of(context).pop(t),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      builder: (context) => _buildTaskSelectionSheet(tasks),
     );
-
     if (chosen != null) {
-      setState(() {
-        _selectedTask = chosen;
-      });
+      setState(() => _selectedTask = chosen);
     }
+  }
+
+  Widget _buildTaskSelectionSheet(List<Task> tasks) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.9,
+      builder: (context, controller) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              const SizedBox(
+                width: 40,
+                height: 4,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.all(Radius.circular(2)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '选择任务',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final t = tasks[index];
+                    return ListTile(
+                      title: Text(
+                        t.taskTitle,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        '创建者: ${t.creatorName}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      onTap: () => Navigator.of(context).pop(t),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -125,9 +148,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
       lastDate: DateTime(_plannedDate.year + 5),
     );
     if (picked != null) {
-      setState(() {
-        _plannedDate = picked;
-      });
+      setState(() => _plannedDate = picked);
     }
   }
 
@@ -137,9 +158,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
       initialTime: _startTime,
     );
     if (picked != null) {
-      setState(() {
-        _startTime = picked;
-      });
+      setState(() => _startTime = picked);
     }
   }
 
@@ -149,38 +168,33 @@ class _CreateLogPageState extends State<CreateLogPage> {
       initialTime: _endTime,
     );
     if (picked != null) {
-      setState(() {
-        _endTime = picked;
-      });
+      setState(() => _endTime = picked);
     }
   }
 
   Future<void> _onSubmit() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
-    if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入标题和内容')));
+    if (title.isEmpty || content.isEmpty || _selectedTask == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入标题、内容并选择关联任务')),
+      );
       return;
     }
 
-    // Validate that on the same day, end time is not earlier than start time
     final startMinutes = _startTime.hour * 60 + _startTime.minute;
     final endMinutes = _endTime.hour * 60 + _endTime.minute;
     if (endMinutes < startMinutes) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('结束时间不能早于开始时间')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('结束时间不能早于开始时间')),
+      );
       return;
     }
 
     setState(() => _isSubmitting = true);
 
     final body = {
-      'taskId': _selectedTask != null
-          ? int.tryParse(_selectedTask!.taskId) ?? _selectedTask!.taskId
-          : null,
+      'taskId': int.tryParse(_selectedTask!.taskId) ?? _selectedTask!.taskId,
       'logTitle': title,
       'logContent': content,
       'logStatus': _isCompleted ? 1 : 0,
@@ -194,28 +208,46 @@ class _CreateLogPageState extends State<CreateLogPage> {
       'fileIds': [],
     };
 
-    final res = await _logBusiness.createLog(body);
+    try {
+      if (_debugMode) {
+        // 修正Duration参数（使用命名参数milliseconds）
+        await Future.delayed(const Duration(milliseconds: 1000));
+        final newLog = Log(
+          logId: DateTime.now().millisecondsSinceEpoch.toString(),
+          taskId: int.tryParse(_selectedTask!.taskId),
+          logTitle: title,
+          logContent: content,
+          logStatus: _isCompleted ? 1 : 0,
+          taskProgress: _progress.toInt(),
+          startTime: body['startTime'] as String,
+          endTime: body['endTime'] as String,
+          logDate: _plannedDate,
+          fileIds: [],
+        );
+        if (mounted) {
+          Navigator.of(context).pop(newLog);
+        }
+        return;
+      }
 
-    setState(() => _isSubmitting = false);
-
-    if (res['success'] == true) {
-      // use returned data if available, otherwise create a simple local representation
-      final data = res['data'] ?? {};
-      final createdLog = LogEntry(
-        id:
-            data['logId']?.toString() ??
-            DateTime.now().millisecondsSinceEpoch.toString(),
-        title: title,
-        content: content,
-        date: _plannedDate,
-        status: _isCompleted ? '已完成' : '未完成',
-        priority: _priority,
-      );
-      Navigator.of(context).pop(createdLog);
-    } else {
+      final res = await _logBusiness.createLog(body);
+      if (res['success'] == true) {
+        final data = res['data'] ?? {};
+        final createdLog = Log.fromJson(data);
+        Navigator.of(context).pop(createdLog);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message']?.toString() ?? '创建失败')),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(res['message']?.toString() ?? '创建失败')),
+        SnackBar(content: Text('创建日志失败: ${e.toString()}')),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -260,7 +292,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
               ),
             ),
             const SizedBox(height: 12),
-            // Related task card (prototype: select existing or create new)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -315,8 +346,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
               ),
             ),
             const SizedBox(height: 12),
-            // Status checkboxes and planned date/time
-            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -333,7 +362,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Use ToggleButtons for single-selection of status
                   ToggleButtons(
                     isSelected: [_isCompleted, !_isCompleted],
                     onPressed: (index) {
@@ -352,7 +380,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
                     children: const [Text('已完成'), Text('未完成')],
                   ),
                   const SizedBox(height: 8),
-                  const Text('规划完成日期', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    _isCompleted ? '实际完成日期' : '规划完成日期',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -368,7 +399,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text('计划开始时间', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    _isCompleted ? '实际开始时间' : '计划开始时间',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -384,7 +418,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text('计划结束时间', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    _isCompleted ? '实际结束时间' : '计划结束时间',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -429,22 +466,30 @@ class _CreateLogPageState extends State<CreateLogPage> {
                   ),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Text('${_progress.toInt()}%'),
+                    child: Text(
+                      '${_progress.toInt()}%',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _onSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2CB7B3),
+                ),
                 child: _isSubmitting
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('提交'),
               ),
