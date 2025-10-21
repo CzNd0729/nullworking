@@ -220,7 +220,7 @@ class TaskDetailPage extends StatelessWidget {
                                         onPressed: () {
                                           Navigator.of(context).pop();
                                           _taskBusiness
-                                              .deleteTask(task.taskID)
+                                              .deleteTask(task.taskId)
                                               .then((response) {
                                             if (response == true) {
                                               ScaffoldMessenger.of(context)

@@ -102,7 +102,7 @@ public class TaskService {
 
     private Map<String, Object> toDto(Task t) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("taskID", String.valueOf(t.getTaskId()));
+        m.put("taskId", String.valueOf(t.getTaskId()));
         m.put("creatorName", t.getCreator() != null ? t.getCreator().getRealName() : null);
         m.put("taskTitle", t.getTaskTitle());
         m.put("taskContent", t.getTaskContent());
@@ -132,7 +132,7 @@ public class TaskService {
 
     @Transactional
     public ApiResponse<Map<String, Object>> publishTask(
-            Integer creatorID,
+            Integer creatorId,
             TaskPublishRequest request) {
 
         try {
@@ -142,16 +142,16 @@ public class TaskService {
             }
 
             // 验证创建者是否存在
-            Optional<User> creatorOpt = userRepository.findById(creatorID);
+            Optional<User> creatorOpt = userRepository.findById(creatorId);
             if (creatorOpt.isEmpty()) {
                 return ApiResponse.error(404, "创建者不存在");
             }
 
             // 验证执行者是否都存在
-            for (Integer executorID : request.getExecutorIDs()) {
-                Optional<User> executorOpt = userRepository.findById(executorID);
+            for (Integer executorId : request.getExecutorIds()) {
+                Optional<User> executorOpt = userRepository.findById(executorId);
                 if (executorOpt.isEmpty()) {
-                    return ApiResponse.error(404, "执行者ID " + executorID + " 不存在");
+                    return ApiResponse.error(404, "执行者ID " + executorId + " 不存在");
                 }
             }
 
@@ -169,15 +169,15 @@ public class TaskService {
             Task savedTask = taskRepository.save(task);
 
             // 创建执行者关联关系
-            for (Integer executorID : request.getExecutorIDs()) {
-                User executor = userRepository.findById(executorID).get();
+            for (Integer executorId : request.getExecutorIds()) {
+                User executor = userRepository.findById(executorId).get();
                 TaskExecutorRelation relation = new TaskExecutorRelation();
                 relation.setTask(savedTask);
                 relation.setExecutor(executor);
                 taskExecutorRelationRepository.save(relation);
             }
             Map<String, Object> data = new HashMap<>();
-            data.put("taskID", savedTask.getTaskId());
+            data.put("taskId", savedTask.getTaskId());
             return ApiResponse.success(data);
 
         } catch (Exception e) {
@@ -224,7 +224,7 @@ public class TaskService {
             // 保存更新后的任务
             taskRepository.save(task);
             Map<String, Object> data = new HashMap<>();
-            data.put("taskID", task.getTaskId());
+            data.put("taskId", task.getTaskId());
             return ApiResponse.success(data);
 
         } catch (Exception e) {

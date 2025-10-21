@@ -43,7 +43,7 @@ public class AuthService {
             String jwt = jwtUtil.generateToken(user.getUserId(), user.getUserName());
 
             data.put("token", jwt);
-            data.put("userID",user.getUserId());
+            data.put("userId",user.getUserId());
             data.put("userName",user.getRealName());
             return ApiResponse.success(data);
 

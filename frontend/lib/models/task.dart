@@ -1,6 +1,6 @@
 // 数据模型定义
 class Task {
-  final String taskID;
+  final String taskId;
   final String creatorName;
   final String taskTitle;
   final String taskContent;
@@ -11,7 +11,7 @@ class Task {
   final List<String> executorNames;
 
   Task({
-    required this.taskID,
+    required this.taskId,
     required this.creatorName,
     required this.taskTitle,
     required this.taskContent,
@@ -24,7 +24,7 @@ class Task {
 
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
-      taskID: json['taskID'].toString(),
+      taskId: json['taskId'].toString(),
       creatorName: json['creatorName'].toString(),
       taskTitle: json['taskTitle'].toString(),
       taskContent: json['taskContent'].toString(),

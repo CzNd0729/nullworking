@@ -19,7 +19,7 @@ public class TaskPublishRequest {
     private Integer priority;
 
     @Schema(description = "执行者用户ID列表", example = "[1, 2, 3]")
-    private List<Integer> executorIDs;
+    private List<Integer> executorIds;
 
     @Schema(description = "任务截止日期", example = "2023-12-31T23:59:59")
     private LocalDateTime deadline;

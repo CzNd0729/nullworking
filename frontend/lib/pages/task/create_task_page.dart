@@ -471,11 +471,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         title: _titleController.text.trim(),
         content: _descriptionController.text.trim(),
         priority: int.parse(_selectedPriority.substring(1)),
-        executorIDs: _selectedAssignees
+        executorIds: _selectedAssignees
             .map((e) => e['userId'].toString())
             .toList(),
         deadline: deadlineDateTime,
-        taskID: widget.taskToEdit?.taskID,
+        taskId: widget.taskToEdit?.taskId,
       );
 
       if (mounted) {

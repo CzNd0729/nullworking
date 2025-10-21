@@ -87,11 +87,11 @@ public class TaskController {
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = TaskPublishRequest.class))) @RequestBody TaskPublishRequest taskPublishRequest) {
 
-        Integer creatorID = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
-        if (creatorID == null) {
+        Integer creatorId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (creatorId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
-        return taskService.publishTask(creatorID, taskPublishRequest);
+        return taskService.publishTask(creatorId, taskPublishRequest);
     }
 
     @Operation(summary = "更新任务", description = "仅创建者可更新任务信息，优先级0-3，返回code：200成功，400参数错误，401未授权，403无权限，404任务不存在，500失败")

@@ -14,8 +14,8 @@ class TaskApi {
       'deadline': taskData['deadline'].toString(),
     };
 
-    // 处理 executorIDs 列表
-    body['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
+    // 处理 executorIds 列表
+    body['executorIds'] = (taskData['executorIds'] as List<dynamic>).map((id) => id.toString()).toList();
 
     return await _baseApi.post(
       'api/tasks',
@@ -36,7 +36,7 @@ class TaskApi {
   }
 
   Future<http.Response> updateTask(Map<String, dynamic> taskData) async {
-    final taskID = taskData['taskID'].toString();
+    final taskId = taskData['taskId'].toString();
     final body = <String, dynamic>{
       'title': taskData['title'].toString(),
       'content': taskData['content'].toString(),
@@ -44,18 +44,18 @@ class TaskApi {
       'deadline': taskData['deadline'].toString(),
     };
 
-    // 处理 executorIDs 列表
-    body['executorIDs'] = (taskData['executorIDs'] as List<dynamic>).map((id) => id.toString()).toList();
+    // 处理 executorIds 列表
+    body['executorIds'] = (taskData['executorIds'] as List<dynamic>).map((id) => id.toString()).toList();
 
     return await _baseApi.put(
-      'api/tasks/$taskID',
+      'api/tasks/$taskId',
       body: body,
     );
   }
 
-  Future<http.Response> deleteTask(String taskID) async {
+  Future<http.Response> deleteTask(String taskId) async {
     return await _baseApi.delete(
-      'api/tasks/$taskID',
+      'api/tasks/$taskId',
     );
   }
 }

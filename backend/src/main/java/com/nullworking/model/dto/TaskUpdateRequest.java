@@ -8,9 +8,6 @@ import lombok.Data;
 @Data
 public class TaskUpdateRequest {
 
-    // @Schema(description = "任务ID", example = "1")
-    // private Integer taskID;
-
     @Schema(description = "任务标题", example = "更新后的项目文档")
     private String title;
 

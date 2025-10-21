@@ -47,10 +47,6 @@ class BaseApi {
       url = url.replace(queryParameters: queryParams);
     }
     final headers = await _getHeaders(authenticated: authenticated);
-
-    print('发送POST请求到: $url');
-    print('请求头: $headers');
-
     final response = await http.post(
       url,
       headers: headers,

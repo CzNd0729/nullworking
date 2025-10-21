@@ -11,10 +11,10 @@ class AuthBusiness {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['code'] == 200) {
-          final int userID = responseData['data']['userID'];
+          final int userId = responseData['data']['userId'];
           final String userName = responseData['data']['userName'];
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userID', userID.toString());
+          await prefs.setString('userId', userId.toString());
           await prefs.setString('userName', userName);
           return null;
         } else {
@@ -48,7 +48,7 @@ class AuthBusiness {
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userID');
+    await prefs.remove('userId');
     await prefs.remove('userName');
     await prefs.remove('token');
   }

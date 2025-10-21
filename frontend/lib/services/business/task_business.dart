@@ -43,22 +43,22 @@ class TaskBusiness {
     required String title,
     required String content,
     required int priority,
-    required List<String> executorIDs,
+    required List<String> executorIds,
     required DateTime deadline,
-    String? taskID,
+    String? taskId,
   }) async {
     try {
       final taskData = {
         'title': title,
         'content': content,
         'priority': priority,
-        'executorIDs': executorIDs,
+        'executorIds': executorIds,
         'deadline': deadline.toIso8601String(),
       };
 
       http.Response response;
-      if (taskID != null) {
-        taskData['taskID'] = taskID;
+      if (taskId != null) {
+        taskData['taskId'] = taskId;
         response = await _taskApi.updateTask(taskData);
       } else {
         response = await _taskApi.publishTask(taskData);
@@ -67,15 +67,15 @@ class TaskBusiness {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {
-          final String? finalTaskID = taskID ?? responseBody['data']['taskID']?.toString();
-          if (finalTaskID == null) {
-            print('任务ID缺失');
+          final String? finalTaskId = taskId ?? responseBody['data']['taskId']?.toString();
+          if (finalTaskId == null) {
+            print('任务Id缺失');
             return null;
           }
           final prefs = await SharedPreferences.getInstance();
           final currentUserName = prefs.getString("userName") ?? "我";
           return Task(
-            taskID: finalTaskID,
+            taskId: finalTaskId,
             creatorName: currentUserName,
             taskTitle: title,
             taskContent: content,
@@ -83,7 +83,7 @@ class TaskBusiness {
             taskStatus: "0",
             creationTime: DateTime.now(),
             deadline: deadline,
-            executorNames: _mapUserIdsToNames(executorIDs),
+            executorNames: _mapUserIdsToNames(executorIds),
           );
         } else {
           print('任务发布/更新失败: ${responseBody['message'] ?? '未知错误'}');
@@ -131,7 +131,7 @@ class TaskBusiness {
 
   Future<String?> getCurrentUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("userID");
+    return prefs.getString("userId");
   }
 
   Future<String?> getCurrentUserName() async {
@@ -139,9 +139,9 @@ class TaskBusiness {
     return prefs.getString("userName");
   }
 
-  Future<bool> deleteTask(String taskID) async {
+  Future<bool> deleteTask(String taskId) async {
     try {
-      final response = await _taskApi.deleteTask(taskID);
+      final response = await _taskApi.deleteTask(taskId);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
         return responseBody['code'] == 200;
