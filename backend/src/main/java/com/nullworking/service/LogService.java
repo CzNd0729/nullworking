@@ -4,7 +4,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +38,25 @@ public class LogService {
 
     @Autowired
     private LogFileService logFileService;
+
+    public ApiResponse<Map<String, Object>> listLogs(Integer userId, LocalDate startDate, LocalDate endDate) {
+        List<Log> logs = logRepository.findByUserUserIdAndLogDateBetween(userId, startDate, endDate);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Log l : logs) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("logId", l.getLogId());
+            item.put("taskId", l.getTask() != null ? l.getTask().getTaskId() : null);
+            item.put("logContent", l.getLogContent());
+            items.add(item);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("total", items.size());
+        data.put("logs", items);
+
+        return ApiResponse.success(data);
+    }
 
     @Transactional
     public ApiResponse<Void> createLog(LogCreateRequest request, Integer userId) {
