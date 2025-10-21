@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -83,5 +84,15 @@ public class LogController {
             return ApiResponse.error(401, "未授权: 无效的token或用户ID");
         }
         return logService.listLogs(userId, start, end);
+    }
+
+    @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")
+    @GetMapping("/{taskId}")
+    public ApiResponse<Map<String, Object>> taskDetails(@PathVariable("taskId") Integer taskId, HttpServletRequest httpRequest) {
+        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权: 无效的token或用户ID");
+        }
+        return logService.taskDetails(taskId, userId);
     }
 }
