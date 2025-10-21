@@ -20,8 +20,8 @@ import com.nullworking.model.User;
 import com.nullworking.model.dto.LogCreateRequest;
 import com.nullworking.model.dto.LogUpdateRequest;
 import com.nullworking.repository.LogRepository;
-import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
+import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -114,7 +114,6 @@ public class LogService {
         return ApiResponse.success();
     }
 
-<<<<<<< HEAD
     @Transactional
     public ApiResponse<Void> updateLog(Integer logId, LogUpdateRequest request, Integer userId) {
         // 查找日志并验证所有权
@@ -191,8 +190,8 @@ public class LogService {
         logRepository.delete(log);
         
         return ApiResponse.success();
-=======
-    public ApiResponse<Map<String, Object>> taskDetails(Integer taskId, Integer userId) {
+    }
+        public ApiResponse<Map<String, Object>> taskDetails(Integer taskId, Integer userId) {
         // 检查任务是否存在
         Optional<Task> taskOptional = taskRepository.findById(taskId);
         if (taskOptional.isEmpty()) {
@@ -251,6 +250,5 @@ public class LogService {
         data.put("logs", items);
 
         return ApiResponse.success(data);
->>>>>>> 1539f4dc4bdd7b32f0e217ae0d7ad007eb89a6cd
     }
 }
