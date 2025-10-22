@@ -528,13 +528,14 @@ class DashedLinePainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
+    const fixLength = 90.0;
 
     if (isDashed) {
-      const dashLength = 4.0;
+      const dashLength = 2.0;
       const gapLength = 4.0;
       double currentPosition = 0.0;
 
-      while (currentPosition < size.height) {
+      while (currentPosition < size.height + fixLength) {
         canvas.drawLine(
           Offset(0, currentPosition),
           Offset(0, currentPosition + dashLength),
@@ -543,7 +544,7 @@ class DashedLinePainter extends CustomPainter {
         currentPosition += dashLength + gapLength;
       }
     } else {
-      canvas.drawLine(Offset(0, 0), Offset(0, size.height), paint);
+      canvas.drawLine(Offset(0, 0), Offset(0, size.height+fixLength), paint);
     }
   }
 
