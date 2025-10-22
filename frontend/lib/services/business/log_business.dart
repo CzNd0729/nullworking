@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart'; // 导入debugPrint所需包
+import 'package:nullworking/services/api/task_api.dart';
 import '../api/log_api.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -6,18 +7,18 @@ import '../../models/log.dart';
 
 class LogBusiness {
   final LogApi _logApi = LogApi();
+  final TaskApi _taskApi=TaskApi();
 
   /// 根据任务ID获取日志列表
   Future<List<Log>> getLogsByTaskId(String taskId) async {
     try {
-      // 调用LogApi新增的getLogsByTaskId方法
-      final http.Response res = await _logApi.getLogsByTaskId(taskId);
+      final http.Response res = await _taskApi.getTaskById(taskId);
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
         if (resp['code'] == 200) {
           List<Log> logs = [];
-          if (resp['data'] is List) {
-            for (var item in resp['data']) {
+          if (resp['data']['logs'] is List) {
+            for (var item in resp['data']['logs']) {
               logs.add(Log.fromJson(item));
             }
           }

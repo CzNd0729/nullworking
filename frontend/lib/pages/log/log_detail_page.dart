@@ -40,16 +40,12 @@ class _LogDetailPageState extends State<LogDetailPage> {
     Color statusColor;
     switch (widget.log.logStatus) {
       case 0:
-        statusText = '进行中';
+        statusText = '未完成';
         statusColor = Colors.blueAccent;
         break;
       case 1:
         statusText = '已完成';
         statusColor = Colors.green;
-        break;
-      case 2:
-        statusText = '已取消';
-        statusColor = Colors.grey;
         break;
       default:
         statusText = '未知';

@@ -135,16 +135,14 @@ public class LogController {
         }
     }
 
-    @Operation(summary = "日志列表", description = "通过 startTime-endTime 过滤日志，格式如：2024-10-1~2025-10-1；若开始与结束相同表示单日")
+    @Operation(summary = "日志列表", description = "通过 startTime 与 endTime 过滤日志，格式如：2024-10-1；若开始与结束相同表示单日")
     @GetMapping
-    public ApiResponse<Map<String, Object>> ListLogs(@RequestParam("startTime-endTime") String timeRange, HttpServletRequest httpRequest) {
-        String[] parts = timeRange.split("~");
-        if (parts.length != 2) {
-            return ApiResponse.error(400, "时间范围格式错误，应为 start~end，如：2024-10-1~2025-10-1");
-        }
+    public ApiResponse<Map<String, Object>> ListLogs(@RequestParam("startTime") String startStr,
+                                                     @RequestParam("endTime") String endStr,
+                                                     HttpServletRequest httpRequest) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-M-d");
-        LocalDate start = LocalDate.parse(parts[0].trim(), dateFormatter);
-        LocalDate end = LocalDate.parse(parts[1].trim(), dateFormatter);
+        LocalDate start = LocalDate.parse(startStr.trim(), dateFormatter);
+        LocalDate end = LocalDate.parse(endStr.trim(), dateFormatter);
         if (start.isAfter(end)) {
             return ApiResponse.error(400, "开始日期不能晚于结束日期");
         }
@@ -155,13 +153,13 @@ public class LogController {
         return logService.listLogs(userId, start, end);
     }
 
-    @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")
-    @GetMapping("/{taskId}")
-    public ApiResponse<Map<String, Object>> taskDetails(@PathVariable("taskId") Integer taskId, HttpServletRequest httpRequest) {
+    @Operation(summary = "日志详情", description = "获取指定日志的详细信息，只能查询自己的日志")
+    @GetMapping("/{logId}")
+    public ApiResponse<Map<String, Object>> logDetails(@PathVariable("logId") Integer logId, HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权: 无效的token或用户ID");
         }
-        return logService.taskDetails(taskId, userId);
+        return logService.logDetails(logId, userId);
     }
 }

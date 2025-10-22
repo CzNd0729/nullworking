@@ -20,4 +20,6 @@ public interface LogRepository extends JpaRepository<Log, Integer> {
     List<Log> findByUserUserIdAndLogDateBetween(Integer userId, LocalDate startDate, LocalDate endDate);
 
     List<Log> findByTaskTaskIdOrderByTaskProgressAsc(Integer taskId);
+
+    Optional<Log> findTopByTaskTaskIdAndLogStatusOrderByTaskProgressDesc(Integer taskId, Integer logStatus);
 }

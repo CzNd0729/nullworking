@@ -17,12 +17,6 @@ class LogApi {
     return await _baseApi.post('api/logs', body: body);
   }
 
-  // 新增：根据任务ID获取日志列表（解决LogApi缺少方法的错误）
-  Future<http.Response> getLogsByTaskId(String taskId) async {
-    // 调用BaseApi的get方法，传递带taskId参数的URL
-    return await _baseApi.get('api/logs/$taskId');
-  }
-
   // 新增：获取日志列表
   Future<http.Response> listLogs({String? startTime, String? endTime}) async {
     Map<String, String> queryParams = {};
