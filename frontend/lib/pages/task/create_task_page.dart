@@ -56,7 +56,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           .toList();
       _updateAssigneeText();
 
-      _isAssigned = widget.taskToEdit!.executorNames.isNotEmpty &&
+      _isAssigned =
+          widget.taskToEdit!.executorNames.isNotEmpty &&
           !(widget.taskToEdit!.executorNames.length == 1 &&
               widget.taskToEdit!.executorNames.first == _currentUserName);
     }
@@ -145,35 +146,164 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         _selectedDate = picked;
         _updateDueDateText();
       });
-      _selectTime();
+      _showTimePickerDialog();
     }
   }
 
-  Future<void> _selectTime() async {
-    final TimeOfDay? picked = await showTimePicker(
+  void _showTimePickerDialog() {
+    showDialog(
       context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF00D9A3),
-              onPrimary: Colors.black,
-              surface: Color(0xFF1E1E1E),
-              onSurface: Colors.white,
+      builder: (BuildContext context) {
+        int selectedHour = _selectedTime?.hour ?? TimeOfDay.now().hour;
+        int selectedMinute = _selectedTime?.minute ?? TimeOfDay.now().minute;
+        String? errorMessage;
+
+        return Dialog(
+          backgroundColor: const Color(0xFF232325),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '选择时间',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // 小时选择器
+                    SizedBox(
+                      width: 60,
+                      height: 150,
+                      child: ListWheelScrollView.useDelegate(
+                        itemExtent: 40,
+                        perspective: 0.005,
+                        diameterRatio: 1.2,
+                        physics: const FixedExtentScrollPhysics(),
+                        controller: FixedExtentScrollController(
+                          initialItem: selectedHour,
+                        ),
+                        onSelectedItemChanged: (index) {
+                          selectedHour = index;
+                        },
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: 24,
+                          builder: (context, index) {
+                            return Center(
+                              child: Text(
+                                index.toString().padLeft(2, '0'),
+                                style: TextStyle(
+                                  color: index == selectedHour
+                                      ? Colors.white
+                                      : Colors.white60,
+                                  fontSize: 24,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      ' : ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    // 分钟选择器
+                    SizedBox(
+                      width: 60,
+                      height: 150,
+                      child: ListWheelScrollView.useDelegate(
+                        itemExtent: 40,
+                        perspective: 0.005,
+                        diameterRatio: 1.2,
+                        physics: const FixedExtentScrollPhysics(),
+                        controller: FixedExtentScrollController(
+                          initialItem: selectedMinute,
+                        ),
+                        onSelectedItemChanged: (index) {
+                          selectedMinute = index;
+                        },
+                        childDelegate: ListWheelChildBuilderDelegate(
+                          childCount: 60,
+                          builder: (context, index) {
+                            return Center(
+                              child: Text(
+                                index.toString().padLeft(2, '0'),
+                                style: TextStyle(
+                                  color: index == selectedMinute
+                                      ? Colors.white
+                                      : Colors.white60,
+                                  fontSize: 24,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        '取消',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        final newTime = TimeOfDay(
+                          hour: selectedHour,
+                          minute: selectedMinute,
+                        );
+                        setState(() {
+                          _selectedTime = newTime;
+                          _updateDueDateText();
+                        });
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00D9A3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        '确定',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          child: child!,
         );
       },
     );
-
-    if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
-        _updateDueDateText();
-      });
-    }
   }
 
   void _updateDueDateText() {
@@ -487,7 +617,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           );
           _resetFormState();
-          Navigator.pop(context, resultTask);
+          Navigator.pop(context, true); // 修改为返回 true
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -617,8 +747,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                         },
                                       ];
                                       _updateAssigneeText();
-                                    }
-                                    else{
+                                    } else {
                                       _selectedAssignees = [];
                                       _updateAssigneeText();
                                     }
@@ -628,7 +757,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         ),
                         Text(
                           '分配给其他成员',
-                          style: TextStyle(color: widget.taskToEdit != null ? Colors.white54 : Colors.white),
+                          style: TextStyle(
+                            color: widget.taskToEdit != null
+                                ? Colors.white54
+                                : Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -638,7 +771,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       controller: _assigneeController,
                       hintText: '我 (当前用户)',
                       icon: Icons.arrow_forward_ios,
-                      onTap: (widget.taskToEdit != null || !_isAssigned) ? null : _selectAssignee,
+                      onTap: (widget.taskToEdit != null || !_isAssigned)
+                          ? null
+                          : _selectAssignee,
                       readOnly: widget.taskToEdit != null || !_isAssigned,
                     ),
                   ] else ...[
