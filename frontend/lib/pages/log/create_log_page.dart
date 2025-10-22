@@ -406,12 +406,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
       final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(logToProcess, isUpdate: isUpdate);
 
       if (result['success'] == true) {
-        Log? processedLog = isUpdate ? logToProcess : Log.fromJson(result['data'] ?? {});
-        if (processedLog != null && mounted) {
+        // Log? processedLog = isUpdate ? logToProcess : Log.fromJson(result['data'] ?? {}); // 移除这行
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
           );
-          Navigator.of(context).pop(processedLog);
+          Navigator.of(context).pop();
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

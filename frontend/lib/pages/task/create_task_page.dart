@@ -617,7 +617,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           );
           _resetFormState();
-          Navigator.pop(context, resultTask);
+          Navigator.pop(context, true); // 修改为返回 true
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
