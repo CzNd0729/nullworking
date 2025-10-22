@@ -56,4 +56,8 @@ public class LogFileService {
             logFileRepository.saveAll(logFiles);
         }
     }
+
+    public List<LogFile> getLogFilesByLogId(Integer logId) {
+        return logFileRepository.findByLogId(logId);
+    }
 }

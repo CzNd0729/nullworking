@@ -9,12 +9,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Log;
+import com.nullworking.model.LogFile;
 import com.nullworking.model.Task;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.LogCreateRequest;
@@ -257,5 +259,35 @@ public class LogService {
     public Integer getMaxCompletedTaskProgress(Integer taskId) {
         Optional<Log> latestCompletedLog = logRepository.findTopByTaskTaskIdAndLogStatusOrderByTaskProgressDesc(taskId, 1); // 1 for completed
         return latestCompletedLog.map(Log::getTaskProgress).orElse(0);
+    }
+
+    public ApiResponse<Map<String, Object>> logDetails(Integer logId, Integer userId) {
+        // 查找日志并验证所有权
+        Optional<Log> logOptional = logRepository.findByLogIdAndUserUserId(logId, userId);
+        if (logOptional.isEmpty()) {
+            return ApiResponse.error(404, "日志未找到或无权限访问");
+        }
+        
+        Log log = logOptional.get();
+        
+        // 获取关联的文件ID列表
+        List<LogFile> logFiles = logFileService.getLogFilesByLogId(logId);
+        List<Integer> fileIds = logFiles.stream()
+                .map(LogFile::getFileId)
+                .collect(Collectors.toList());
+        
+        // 构建返回数据
+        Map<String, Object> data = new HashMap<>();
+        data.put("taskId", log.getTask().getTaskId());
+        data.put("logTitle", log.getLogTitle());
+        data.put("logContent", log.getLogContent());
+        data.put("logStatus", log.getLogStatus());
+        data.put("taskProgress", log.getTaskProgress());
+        data.put("startTime", log.getStartTime().toString());
+        data.put("endTime", log.getEndTime().toString());
+        data.put("logDate", log.getLogDate().toString());
+        data.put("fileIds", fileIds);
+        
+        return ApiResponse.success(data);
     }
 }
