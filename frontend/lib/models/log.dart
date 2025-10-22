@@ -3,12 +3,12 @@ class Log {
   final int? taskId;
   final String logTitle;
   final String logContent;
-  final int logStatus; // 0/1/2 etc
-  final int taskProgress; // 0-100
-  final String startTime; // HH:mm
-  final String endTime; // HH:mm
+  final int logStatus;
+  final int? taskProgress;
+  final String startTime;
+  final String endTime;
   final DateTime logDate;
-  final List<int> fileIds;
+  final List<int>? fileIds;
 
   Log({
     required this.logId,
@@ -16,14 +16,23 @@ class Log {
     required this.logTitle,
     required this.logContent,
     required this.logStatus,
-    required this.taskProgress,
+    this.taskProgress,
     required this.startTime,
     required this.endTime,
     required this.logDate,
-    required this.fileIds,
+    this.fileIds,
   });
 
   factory Log.fromJson(Map<String, dynamic> json) {
+    String? taskProgressStr = json['taskProgress']?.toString();
+    int? parsedTaskProgress;
+    if (taskProgressStr != null) {
+      if (taskProgressStr.endsWith('%')) {
+        taskProgressStr = taskProgressStr.substring(0, taskProgressStr.length - 1);
+      }
+      parsedTaskProgress = int.tryParse(taskProgressStr);
+    }
+
     return Log(
       logId: json['logId']?.toString() ?? (json['id']?.toString() ?? ''),
       taskId: json['taskId'] != null
@@ -32,17 +41,17 @@ class Log {
       logTitle: json['logTitle']?.toString() ?? '',
       logContent: json['logContent']?.toString() ?? '',
       logStatus: int.tryParse(json['logStatus']?.toString() ?? '') ?? 0,
-      taskProgress: int.tryParse(json['taskProgress']?.toString() ?? '') ?? 0,
+      taskProgress: parsedTaskProgress,
       startTime: json['startTime']?.toString() ?? '',
       endTime: json['endTime']?.toString() ?? '',
       logDate: json['logDate'] != null
-          ? DateTime.parse(json['logDate'].toString())
+          ? (DateTime.tryParse(json['logDate'].toString()) ?? DateTime.now())
           : DateTime.now(),
       fileIds: json['fileIds'] != null
           ? List<int>.from(
               (json['fileIds'] as List).map((e) => int.parse(e.toString())),
             )
-          : [],
+          : null,
     );
   }
 }

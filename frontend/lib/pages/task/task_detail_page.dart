@@ -61,8 +61,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   int _getMaxCompletedProgress() {
     int maxProgress = 0;
     for (var log in _taskLogs) {
-      if (log.logStatus == 1 && log.taskProgress > maxProgress) {
-        maxProgress = log.taskProgress;
+      if (log.logStatus == 1 && (log.taskProgress ?? 0) > maxProgress) {
+        maxProgress = log.taskProgress ?? 0;
       }
     }
     return maxProgress;
@@ -72,9 +72,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final maxCompleted = _getMaxCompletedProgress();
     return _taskLogs.where((log) {
       if (log.logStatus == 1) return true;
-      return log.taskProgress > maxCompleted;
+      return (log.taskProgress ?? 0) > maxCompleted;
     }).toList()
-      ..sort((a, b) => a.taskProgress.compareTo(b.taskProgress));
+      ..sort((a, b) => (a.taskProgress ?? 0).compareTo(b.taskProgress ?? 0));
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -222,7 +222,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${DateFormat('yyyy年MM月dd日 HH:mm').format(log.logDate)}  ${log.taskProgress}%',
+                  '${DateFormat('yyyy年MM月dd日 HH:mm').format(log.logDate)}  ${log.taskProgress ?? 0}%',
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
