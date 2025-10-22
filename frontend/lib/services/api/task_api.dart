@@ -58,4 +58,9 @@ class TaskApi {
       'api/tasks/$taskId',
     );
   }
+
+  // 新增：根据任务ID获取任务详情
+  Future<http.Response> getTaskById(String taskId) async {
+    return await _baseApi.get('api/tasks/$taskId');
+  }
 }

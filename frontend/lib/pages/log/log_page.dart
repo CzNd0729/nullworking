@@ -348,7 +348,7 @@ class _LogPageState extends State<LogPage> {
     Color statusColor;
     switch (log.logStatus) {
       case 0:
-        statusText = '进行中';
+        statusText = '未完成';
         statusColor = Colors.blueAccent;
         break;
       case 1:
@@ -404,6 +404,13 @@ class _LogPageState extends State<LogPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
+                  log.logContent,
+                  style: const TextStyle(color: Colors.white70),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
                   '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
                   style: const TextStyle(color: Colors.white70),
                 ),
@@ -411,18 +418,6 @@ class _LogPageState extends State<LogPage> {
                 Text(
                   '时间: ${log.startTime} - ${log.endTime}',
                   style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '进度: ${log.taskProgress ?? 0}%',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logContent,
-                  style: const TextStyle(color: Colors.white70),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

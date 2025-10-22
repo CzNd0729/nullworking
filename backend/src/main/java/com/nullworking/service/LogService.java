@@ -52,6 +52,8 @@ public class LogService {
             Map<String, Object> item = new HashMap<>();
             item.put("logId", l.getLogId());
             item.put("taskId", l.getTask() != null ? l.getTask().getTaskId() : null);
+            item.put("taskTitle",l.getTask().getTaskTitle());
+            item.put("logTitle", l.getLogTitle());
             item.put("logContent", l.getLogContent());
             items.add(item);
         }

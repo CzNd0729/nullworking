@@ -154,14 +154,4 @@ public class LogController {
         }
         return logService.listLogs(userId, start, end);
     }
-
-    @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")
-    @GetMapping("/{taskId}")
-    public ApiResponse<Map<String, Object>> taskDetails(@PathVariable("taskId") Integer taskId, HttpServletRequest httpRequest) {
-        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
-        if (userId == null) {
-            return ApiResponse.error(401, "未授权: 无效的token或用户ID");
-        }
-        return logService.taskDetails(taskId, userId);
-    }
 }
