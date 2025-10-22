@@ -23,6 +23,21 @@ class Log {
     this.fileIds,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'logId': logId, // logId在更新时需要，创建时后端生成
+      'taskId': taskId,
+      'logTitle': logTitle,
+      'logContent': logContent,
+      'logStatus': logStatus,
+      'taskProgress': taskProgress,
+      'startTime': startTime,
+      'endTime': endTime,
+      'logDate': '${logDate.year}-${logDate.month.toString().padLeft(2, '0')}-${logDate.day.toString().padLeft(2, '0')}',
+      'fileIds': fileIds ?? [],
+    };
+  }
+
   factory Log.fromJson(Map<String, dynamic> json) {
     String? taskProgressStr = json['taskProgress']?.toString();
     int? parsedTaskProgress;

@@ -8,10 +8,12 @@ import '../../services/mock/mock_data.dart';
 
 class CreateLogPage extends StatefulWidget {
   final Task? preSelectedTask;
+  final Log? logToEdit;
 
   const CreateLogPage({
     super.key,
     this.preSelectedTask,
+    this.logToEdit,
   });
 
   @override
@@ -30,30 +32,44 @@ class _CreateLogPageState extends State<CreateLogPage> {
   final LogBusiness _logBusiness = LogBusiness();
   final TaskBusiness _taskBusiness = TaskBusiness();
   Task? _selectedTask;
-  final bool _debugMode = true;
+  // final bool _debugMode = true; // 移除 debugMode
 
   @override
   void initState() {
     super.initState();
     if (widget.preSelectedTask != null) {
       _selectedTask = widget.preSelectedTask;
+    } else if (widget.logToEdit != null) {
+      // 编辑模式下预填充表单
+      final log = widget.logToEdit!;
+      _titleController.text = log.logTitle;
+      _contentController.text = log.logContent;
+      _isCompleted = log.logStatus == 1;
+      _plannedDate = log.logDate; // logDate 是非空的，可以直接赋值
+      // 解析 startTime 和 endTime 字符串为 TimeOfDay 对象
+      final startParts = log.startTime.split(':');
+      _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+      final endParts = log.endTime.split(':');
+      _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+      _progress = (log.taskProgress ?? 0).toDouble();
+      // _selectedTask 暂时不处理，如果需要可以根据 taskId 加载 Task 对象
     }
   }
 
   Future<void> _openTaskSelection() async {
-    if (_debugMode) {
-      final testTasks = MockData.generateTestTasks();
-      final Task? chosen = await showModalBottomSheet<Task?>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => _buildTaskSelectionSheet(testTasks),
-      );
-      if (chosen != null) {
-        setState(() => _selectedTask = chosen);
-      }
-      return;
-    }
+    // if (_debugMode) {
+    //   final testTasks = MockData.generateTestTasks();
+    //   final Task? chosen = await showModalBottomSheet<Task?>(
+    //     context: context,
+    //     isScrollControlled: true,
+    //     backgroundColor: Colors.transparent,
+    //     builder: (context) => _buildTaskSelectionSheet(testTasks),
+    //   );
+    //   if (chosen != null) {
+    //     setState(() => _selectedTask = chosen);
+    //   }
+    //   return;
+    // }
 
     final taskMap = await _taskBusiness.loadUserTasks();
     final List<Task> tasks = [];
@@ -342,9 +358,19 @@ class _CreateLogPageState extends State<CreateLogPage> {
   Future<void> _onSubmit() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
-    if (title.isEmpty || content.isEmpty || _selectedTask == null) {
+    
+    // If in create mode and no task is selected, show error.
+    // In edit mode, _selectedTask might be null if not associated with a task, but editing should still be allowed.
+    if (widget.logToEdit == null && _selectedTask == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入标题、内容并选择关联任务')),
+        const SnackBar(content: Text('请选择关联任务')),
+      );
+      return;
+    }
+
+    if (title.isEmpty || content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入标题和内容')),
       );
       return;
     }
@@ -360,56 +386,41 @@ class _CreateLogPageState extends State<CreateLogPage> {
 
     setState(() => _isSubmitting = true);
 
-    final body = {
-      'taskId': int.tryParse(_selectedTask!.taskId) ?? _selectedTask!.taskId,
-      'logTitle': title,
-      'logContent': content,
-      'logStatus': _isCompleted ? 1 : 0,
-      'taskProgress': _progress.toInt(),
-      'startTime':
+    // 构建Log对象
+    final Log logToProcess = Log(
+      logId: widget.logToEdit?.logId ?? '', // 编辑时使用现有logId，创建时为空
+      taskId: _selectedTask?.taskId != null ? int.tryParse(_selectedTask!.taskId) : null,      logTitle: title,
+      logContent: content,
+      logStatus: _isCompleted ? 1 : 0,
+      taskProgress: _progress.toInt(),
+      startTime:
           '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
-      'endTime':
+      endTime:
           '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
-      'logDate':
-          '${_plannedDate.year}-${_plannedDate.month.toString().padLeft(2, '0')}-${_plannedDate.day.toString().padLeft(2, '0')}',
-      'fileIds': [],
-    };
+      logDate: _plannedDate,
+      fileIds: [],
+    );
 
     try {
-      if (_debugMode) {
-        // 修正Duration参数（使用命名参数milliseconds）
-        await Future.delayed(const Duration(milliseconds: 1000));
-        final newLog = Log(
-          logId: DateTime.now().millisecondsSinceEpoch.toString(),
-          taskId: int.tryParse(_selectedTask!.taskId),
-          logTitle: title,
-          logContent: content,
-          logStatus: _isCompleted ? 1 : 0,
-          taskProgress: _progress.toInt(),
-          startTime: body['startTime'] as String,
-          endTime: body['endTime'] as String,
-          logDate: _plannedDate,
-          fileIds: [],
-        );
-        if (mounted) {
-          Navigator.of(context).pop(newLog);
-        }
-        return;
-      }
+      final bool isUpdate = widget.logToEdit != null;
+      final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(logToProcess, isUpdate: isUpdate);
 
-      final res = await _logBusiness.createLog(body);
-      if (res['success'] == true) {
-        final data = res['data'] ?? {};
-        final createdLog = Log.fromJson(data);
-        Navigator.of(context).pop(createdLog);
+      if (result['success'] == true) {
+        Log? processedLog = isUpdate ? logToProcess : Log.fromJson(result['data'] ?? {});
+        if (processedLog != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
+          );
+          Navigator.of(context).pop(processedLog);
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message']?.toString() ?? '创建失败')),
+          SnackBar(content: Text(result['message']?.toString() ?? (isUpdate ? '更新失败' : '创建失败'))),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('创建日志失败: ${e.toString()}')),
+        SnackBar(content: Text(widget.logToEdit != null ? '更新日志失败: ${e.toString()}' : '创建日志失败: ${e.toString()}')),
       );
     } finally {
       if (mounted) {
@@ -420,9 +431,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.logToEdit != null;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('新建日志'),
+        title: Text(isEditing ? '编辑日志' : '新建日志'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

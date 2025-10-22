@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'create_log_page.dart';
+import '../../models/log.dart';
+import '../../services/business/log_business.dart';
+import 'log_detail_page.dart'; // 导入LogDetailPage
 
 class LogPage extends StatefulWidget {
   const LogPage({super.key});
@@ -12,21 +15,37 @@ class _LogPageState extends State<LogPage> {
   final TextEditingController _searchController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
+  final FocusNode _searchFocusNode = FocusNode();
 
-  List<LogEntry> _allLogs = [];
-  List<LogEntry> _filteredLogs = [];
+  final LogBusiness _logBusiness = LogBusiness();
+  List<Log> _allLogs = [];
+  List<Log> _filteredLogs = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // 初始不填充示例数据，保持空列表
-    _applyFilters();
+    _endDate = DateTime.now();
+    _startDate = DateTime(_endDate!.year, _endDate!.month - 1, _endDate!.day);
+    _loadLogs();
+    _searchFocusNode.addListener(() {
+      if (!mounted) return;
+      if (!_searchFocusNode.hasFocus) {
+        FocusScope.of(context).unfocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _forceSearchUnfocus() {
+    _searchFocusNode.unfocus();
+    FocusScope.of(context).unfocus();
   }
 
   void _applyFilters() {
@@ -35,44 +54,9 @@ class _LogPageState extends State<LogPage> {
       _filteredLogs = _allLogs.where((log) {
         final matchesQuery =
             query.isEmpty ||
-            log.title.toLowerCase().contains(query) ||
-            log.content.toLowerCase().contains(query);
-        // Date range matching (date-only comparison)
-        final logDateOnly = DateTime(
-          log.date.year,
-          log.date.month,
-          log.date.day,
-        );
-        bool matchesDate = true;
-        if (_startDate != null && _endDate != null) {
-          final startOnly = DateTime(
-            _startDate!.year,
-            _startDate!.month,
-            _startDate!.day,
-          );
-          final endOnly = DateTime(
-            _endDate!.year,
-            _endDate!.month,
-            _endDate!.day,
-          );
-          matchesDate =
-              !logDateOnly.isBefore(startOnly) && !logDateOnly.isAfter(endOnly);
-        } else if (_startDate != null) {
-          final startOnly = DateTime(
-            _startDate!.year,
-            _startDate!.month,
-            _startDate!.day,
-          );
-          matchesDate = !logDateOnly.isBefore(startOnly);
-        } else if (_endDate != null) {
-          final endOnly = DateTime(
-            _endDate!.year,
-            _endDate!.month,
-            _endDate!.day,
-          );
-          matchesDate = !logDateOnly.isAfter(endOnly);
-        }
-        return matchesQuery && matchesDate;
+            (log.logTitle.toLowerCase().contains(query)) ||
+            (log.logContent.toLowerCase().contains(query));
+        return matchesQuery;
       }).toList();
     });
   }
@@ -80,6 +64,7 @@ class _LogPageState extends State<LogPage> {
   // single date picker removed; using start/end pickers instead
 
   Future<void> _pickStartDate() async {
+    _forceSearchUnfocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -103,11 +88,12 @@ class _LogPageState extends State<LogPage> {
       setState(() {
         _startDate = picked;
       });
-      _applyFilters();
+      _loadLogs();
     }
   }
 
   Future<void> _pickEndDate() async {
+    _forceSearchUnfocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -131,29 +117,128 @@ class _LogPageState extends State<LogPage> {
       setState(() {
         _endDate = picked;
       });
-      _applyFilters();
+      _loadLogs();
     }
   }
 
   void _clearFilters() {
+    _forceSearchUnfocus();
     setState(() {
       _startDate = null;
       _endDate = null;
       _searchController.clear();
     });
-    _applyFilters();
+    _loadLogs();
   }
 
-  Color _priorityColor(String p) {
-    switch (p) {
-      case 'P0':
-        return Colors.redAccent;
-      case 'P1':
-        return Colors.orange;
-      case 'P2':
-        return Colors.blueGrey;
-      default:
-        return Colors.grey;
+  Widget _buildFilterBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                '日志安排时间',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (_startDate != null || _endDate != null || _searchController.text.isNotEmpty)
+                GestureDetector(
+                  onTap: _clearFilters,
+                  child: const Text(
+                    '清除筛选',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: _pickStartDate,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Text(
+                      _startDate == null
+                          ? '开始日期'
+                          : '${_startDate!.year} / ${_startDate!.month.toString().padLeft(2, '0')} / ${_startDate!.day.toString().padLeft(2, '0')}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: _pickEndDate,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Text(
+                      _endDate == null
+                          ? '结束日期'
+                          : '${_endDate!.year} / ${_endDate!.month.toString().padLeft(2, '0')} / ${_endDate!.day.toString().padLeft(2, '0')}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadLogs() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      String? startFormatted = _startDate != null
+          ? "${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}"
+          : null;
+      String? endFormatted = _endDate != null
+          ? "${_endDate!.year}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}"
+          : null;
+
+      final logs = await _logBusiness.listLogs(startTime: startFormatted, endTime: endFormatted);
+      setState(() {
+        _allLogs = logs;
+        _applyFilters(); // Apply text filter after loading new logs
+      });
+    } catch (e) {
+      debugPrint('加载日志列表失败: $e');
+      setState(() {
+        _allLogs = [];
+        _filteredLogs = [];
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -161,16 +246,26 @@ class _LogPageState extends State<LogPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}),
         title: const Text('日志管理'),
-        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        // leading: IconButton(icon: const Icon(Icons.menu), onPressed: () {}), // 移除菜单按钮
+        centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: () {
+              _forceSearchUnfocus();
+              // TODO: Add notification functionality if needed
+            },
+            icon: const Icon(Icons.notifications),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF2CB7B3),
         onPressed: () async {
-          final newLog = await Navigator.push<LogEntry?>(
+          _forceSearchUnfocus();
+          final newLog = await Navigator.push<Log?>(
             context,
             MaterialPageRoute(builder: (_) => const CreateLogPage()),
           );
@@ -190,222 +285,150 @@ class _LogPageState extends State<LogPage> {
           children: [
             // Search
             TextField(
+              focusNode: _searchFocusNode,
               controller: _searchController,
-              onChanged: (_) => _applyFilters(),
+              onChanged: (value) => _applyFilters(), // Call setState to re-evaluate filter conditions
               decoration: InputDecoration(
                 hintText: '按标题或日志内容搜索',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: const Color(0xFF1E1E1E),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8.0), // Changed from 12 to 8
                   borderSide: BorderSide.none,
                 ),
               ),
+              onTapOutside: (event) {
+                _forceSearchUnfocus();
+              },
+              textInputAction: TextInputAction.done,
+              onSubmitted: (value) {
+                _forceSearchUnfocus();
+              },
             ),
             const SizedBox(height: 16),
 
-            // Filter section
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    '日志安排时间',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _clearFilters,
-                  child: const Text(
-                    '清除筛选',
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Date range selectors: start / end
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E1E1E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: _pickStartDate,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text(
-                        _startDate == null
-                            ? '开始日期'
-                            : '${_startDate!.year} / ${_startDate!.month.toString().padLeft(2, '0')} / ${_startDate!.day.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E1E1E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: _pickEndDate,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      child: Text(
-                        _endDate == null
-                            ? '结束日期'
-                            : '${_endDate!.year} / ${_endDate!.month.toString().padLeft(2, '0')} / ${_endDate!.day.toString().padLeft(2, '0')}',
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildFilterBar(), // 使用新的筛选栏 Widget
+
             const SizedBox(height: 16),
 
             // Logs list
-            Column(
-              children: _filteredLogs.isEmpty
-                  ? [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40.0),
-                        child: Text(
-                          '暂无日志',
-                          style: TextStyle(color: Colors.white54),
-                        ),
+            _isLoading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
                       ),
-                    ]
-                  : _filteredLogs.map((log) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            // 未来可跳转到日志详情
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E1E1E),
-                              borderRadius: BorderRadius.circular(12),
+                    ),
+                  )
+                : Column(
+                    children: _filteredLogs.isEmpty
+                        ? [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40.0),
+                              child: Text(
+                                '暂无日志',
+                                style: TextStyle(color: Colors.white54),
+                              ),
                             ),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        log.title,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: log.status == '进行中'
-                                                ? Colors.redAccent
-                                                : Colors.grey.shade700,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            log.status,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _priorityColor(log.priority),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            log.priority,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '${log.date.year}-${log.date.month.toString().padLeft(2, '0')}-${log.date.day.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(color: Colors.white54),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  log.content,
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-            ),
+                          ]
+                        : _filteredLogs.map((log) {
+                            return _buildLogCard(log);
+                          }).toList(),
+                  ),
           ],
         ),
       ),
     );
   }
-}
 
-class LogEntry {
-  final String id;
-  final String title;
-  final String content;
-  final DateTime date;
-  final String status;
-  final String priority;
+  Widget _buildLogCard(Log log) {
+    String statusText;
+    Color statusColor;
+    switch (log.logStatus) {
+      case 0:
+        statusText = '进行中';
+        statusColor = Colors.blueAccent;
+        break;
+      case 1:
+        statusText = '已完成';
+        statusColor = Colors.green;
+        break;
+      default:
+        statusText = '未知';
+        statusColor = Colors.grey;
+    }
 
-  LogEntry({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.date,
-    required this.status,
-    required this.priority,
-  });
+    return FractionallySizedBox(
+      widthFactor: 0.95,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        color: const Color(0xFF1E1E1E), // 设置卡片背景色
+        child: InkWell(
+          onTap: () async {
+            _forceSearchUnfocus();
+            final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => LogDetailPage(log: log)));
+            if (result != null) {
+              _loadLogs(); // 刷新日志列表
+            }
+          },
+          borderRadius: BorderRadius.circular(12.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  log.logTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '时间: ${log.startTime} - ${log.endTime}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '进度: ${log.taskProgress ?? 0}%',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  log.logContent,
+                  style: const TextStyle(color: Colors.white70),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

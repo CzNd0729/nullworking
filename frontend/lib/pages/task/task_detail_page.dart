@@ -28,7 +28,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   final LogBusiness _logBusiness = LogBusiness();
   List<Log> _taskLogs = [];
   bool _isLoadingLogs = true;
-  final bool _debugMode = true;
 
   @override
   void initState() {
@@ -40,12 +39,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     try {
       setState(() => _isLoadingLogs = true);
 
-      if (_debugMode) {
-        await Future.delayed(const Duration(milliseconds: 800));
-        final mockLogs = MockData.generateTestLogs(widget.task.taskId);
-        setState(() => _taskLogs = mockLogs);
-        return;
-      }
+      // 移除 _debugMode 相关的逻辑和 MockData.generateTestLogs 调用
 
       final logs = await _logBusiness.getLogsByTaskId(widget.task.taskId);
       logs.sort((a, b) => b.logDate.compareTo(a.logDate));

@@ -12,10 +12,9 @@ class LogBusiness {
     try {
       // 调用LogApi新增的getLogsByTaskId方法
       final http.Response res = await _logApi.getLogsByTaskId(taskId);
-      
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 0) {
+        if (resp['code'] == 200) {
           List<Log> logs = [];
           if (resp['data'] is List) {
             for (var item in resp['data']) {
@@ -43,7 +42,7 @@ class LogBusiness {
       final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 0) {
+        if (resp['code'] == 200) {
           List<Log> logs = [];
           if (resp['data'] is Map && resp['data']['logs'] is List) {
             for (var item in resp['data']['logs']) {
@@ -71,7 +70,7 @@ class LogBusiness {
       final http.Response res = await _logApi.deleteLog(logId);
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 0) {
+        if (resp['code'] == 200) {
           return {'success': true, 'message': resp['message'] ?? '删除成功'};
         } else {
           return {'success': false, 'message': resp['message'] ?? '删除失败'};
@@ -90,7 +89,7 @@ class LogBusiness {
       final http.Response res = await _logApi.updateLog(logId, body);
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 0) {
+        if (resp['code'] == 200) {
           return {'success': true, 'message': resp['message'] ?? '更新成功'};
         } else {
           return {'success': false, 'message': resp['message'] ?? '更新失败'};
@@ -103,21 +102,42 @@ class LogBusiness {
     }
   }
 
-  /// 创建日志（原有方法保持不变）
-  Future<Map<String, dynamic>> createLog(Map<String, dynamic> body) async {
+  /// 创建或更新日志
+  Future<Map<String, dynamic>> createOrUpdateLog(Log log, {required bool isUpdate}) async {
     try {
-      final http.Response res = await _logApi.createLog(body);
+      Map<String, dynamic> body = log.toJson();
+      // 移除后端不需要的logId字段，只在更新时使用
+      if (!isUpdate) {
+        body.remove('logId');
+      }
+      // 如果taskId为null，则移除taskId字段
+      if (log.taskId == null) {
+        body.remove('taskId');
+      }
+      http.Response res;
+      if (isUpdate) {
+        res = await _logApi.updateLog(log.logId, body);
+      } else {
+        res = await _logApi.createLog(log);
+      }
+      
       if (res.statusCode == 200) {
         final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 0) {
-          return {'success': true, 'data': resp['data'] ?? {}};
+        if (resp['code'] == 200) {
+          if (isUpdate) {
+            return {'success': true, 'message': resp['message'] ?? '更新成功'};
+          } else {
+            return {'success': true, 'data': resp['data'] ?? {}};
+          }
         } else {
-          return {'success': false, 'message': resp['message'] ?? '创建失败'};
+          return {'success': false, 'message': resp['message'] ?? (isUpdate ? '更新失败' : '创建失败')};
         }
-      } else {
+      }
+      else {
         return {'success': false, 'message': '网络错误 ${res.statusCode}'};
       }
     } catch (e) {
+      debugPrint('创建或更新日志异常: $e');
       return {'success': false, 'message': e.toString()};
     }
   }

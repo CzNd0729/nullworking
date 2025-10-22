@@ -1,11 +1,19 @@
 import 'package:http/http.dart' as http;
 import 'base_api.dart';
+import '/models/log.dart';
 
 class LogApi {
   final BaseApi _baseApi = BaseApi();
 
   // 已有：创建日志
-  Future<http.Response> createLog(Map<String, dynamic> body) async {
+  Future<http.Response> createLog(Log log) async {
+    final body = log.toJson();
+    // 在创建日志时，后端会自动生成logId，所以这里将其移除
+    body.remove('logId');
+    // 如果taskId为null，则移除taskId字段
+    if (log.taskId == null) {
+      body.remove('taskId');
+    }
     return await _baseApi.post('api/logs', body: body);
   }
 
