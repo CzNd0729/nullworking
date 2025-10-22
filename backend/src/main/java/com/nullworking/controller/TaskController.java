@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -62,13 +63,16 @@ public class TaskController {
 
     @Operation(summary = "查询任务列表", description = "返回当前用户创建与参与的任务列表（默认包含已删除任务），完成任务包含finishTime")
     @GetMapping("")
-    public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
+    public ApiResponse<Map<String, Object>> listUserTasks(
+            HttpServletRequest request,
+            @Parameter(description = "任务状态 (0:进行中, 1:已延期, 2:已完成, 3:已关闭)") @RequestParam(value = "taskStatus", required = false) Byte taskStatus,
+            @Parameter(description = "参与者类型 (creator:创建者, executor:执行者)") @RequestParam(value = "participantType", required = false) String participantType) {
         Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
 
-        return taskService.listUserTasks(userId);
+        return taskService.listUserTasks(userId, taskStatus, participantType);
     }
 
     @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")

@@ -253,4 +253,9 @@ public class LogService {
 
         return ApiResponse.success(data);
     }
+
+    public Integer getMaxCompletedTaskProgress(Integer taskId) {
+        Optional<Log> latestCompletedLog = logRepository.findTopByTaskTaskIdAndLogStatusOrderByTaskProgressDesc(taskId, 1); // 1 for completed
+        return latestCompletedLog.map(Log::getTaskProgress).orElse(0);
+    }
 }

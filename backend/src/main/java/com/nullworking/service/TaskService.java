@@ -40,6 +40,9 @@ public class TaskService {
     // @Autowired
     // private JwtUtil jwtUtil;
 
+    @Autowired
+    private LogService logService;
+
     // 所有的业务逻辑将在这里实现
 
     @Transactional
@@ -64,17 +67,34 @@ public class TaskService {
         }
     }
 
-    public ApiResponse<Map<String, Object>> listUserTasks(Integer userId) {
-        final Integer finalUserId = userId;
+    public ApiResponse<Map<String, Object>> listUserTasks(Integer userId, Byte taskStatus, String participantType) {
 
-        List<Task> createdTasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId,(byte)3);
+        List<Task> createdTasks = Collections.emptyList();
+        List<Task> executingTasks = Collections.emptyList();
 
-        List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
-        Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
-        List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
-                : taskRepository.findAllById(executingIdSet).stream()
-                .filter(t -> t.getCreator() == null || t.getCreator().getUserId() == null || !t.getCreator().getUserId().equals(finalUserId)) // 排除自己创建的任务
-                .collect(Collectors.toList());
+        if (participantType == null || "creator".equals(participantType)) {
+            List<Task> tasks = taskRepository.findByCreator_UserIdAndTaskStatusNot(userId, (byte) 3);
+            if (taskStatus != null) {
+                tasks = tasks.stream()
+                        .filter(task -> task.getTaskStatus().equals(taskStatus))
+                        .collect(Collectors.toList());
+            }
+            createdTasks = tasks;
+        }
+
+        if (participantType == null || "executor".equals(participantType)) {
+            List<Integer> executingTaskIds = taskExecutorRelationRepository.findActiveTaskIdsByExecutor(userId);
+            Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
+            List<Task> tasks = executingIdSet.isEmpty() ? Collections.emptyList()
+                    : taskRepository.findAllById(executingIdSet).stream()
+                    .collect(Collectors.toList());
+            if (taskStatus != null) {
+                tasks = tasks.stream()
+                        .filter(task -> task.getTaskStatus().equals(taskStatus))
+                        .collect(Collectors.toList());
+            }
+            executingTasks = tasks;
+        }
 
         Map<String, Object> data = new HashMap<>();
         data.put("created", createdTasks.stream().map(this::toDtoWithExecutors).collect(Collectors.toList()));
@@ -127,6 +147,7 @@ public class TaskService {
                 .filter(n -> n != null)
                 .collect(Collectors.toList());
         m.put("executorNames", executorNames);
+        m.put("taskProgress", logService.getMaxCompletedTaskProgress(t.getTaskId())); // Add task progress
         return m;
     }
 
