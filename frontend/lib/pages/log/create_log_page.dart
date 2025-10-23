@@ -10,11 +10,7 @@ class CreateLogPage extends StatefulWidget {
   final Task? preSelectedTask;
   final Log? logToEdit;
 
-  const CreateLogPage({
-    super.key,
-    this.preSelectedTask,
-    this.logToEdit,
-  });
+  const CreateLogPage({super.key, this.preSelectedTask, this.logToEdit});
 
   @override
   State<CreateLogPage> createState() => _CreateLogPageState();
@@ -31,9 +27,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
   bool _isSubmitting = false;
   final LogBusiness _logBusiness = LogBusiness();
   Task? _selectedTask;
-  
+
   // 照片相关变量
-  final List<Map<String, dynamic>> _selectedImages = []; // 存储 { 'file': File, 'fileId': int? }
+  final List<Map<String, dynamic>> _selectedImages =
+      []; // 存储 { 'file': File, 'fileId': int? }
   bool _isUploadingImages = false;
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -50,9 +47,15 @@ class _CreateLogPageState extends State<CreateLogPage> {
       _isCompleted = log.logStatus == 1;
       _plannedDate = log.logDate;
       final startParts = log.startTime.split(':');
-      _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+      _startTime = TimeOfDay(
+        hour: int.parse(startParts[0]),
+        minute: int.parse(startParts[1]),
+      );
       final endParts = log.endTime.split(':');
-      _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+      _endTime = TimeOfDay(
+        hour: int.parse(endParts[0]),
+        minute: int.parse(endParts[1]),
+      );
       _progress = (log.taskProgress ?? 0).toDouble();
       // 加载日志图片
       _loadLogImages(log.fileIds ?? []);
@@ -67,7 +70,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
     });
 
     try {
-      final List<Map<String, dynamic>> fetchedFiles = await _logBusiness.fetchLogFiles(fileIds);
+      final List<Map<String, dynamic>> fetchedFiles = await _logBusiness
+          .fetchLogFiles(fileIds);
       for (var fileData in fetchedFiles) {
         // 假设fileData包含一个url字段和fileId字段
         // 这里我们需要下载图片并转换为File对象，或者直接使用网络图片URL
@@ -366,170 +370,223 @@ class _CreateLogPageState extends State<CreateLogPage> {
     );
   }
 
-// 从相册选择图片（移除相机功能）
-Future<void> _pickImagesFromGallery() async {
-  try {
-    setState(() {
-      _isUploadingImages = true;
-    });
-
-    final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 80,
-    );
-
-    if (selectedFiles != null && selectedFiles.isNotEmpty) {
-      final List<File> filesToUpload = selectedFiles.map((xfile) => File(xfile.path)).toList();
-      final List<int> uploadedFileIds = await _logBusiness.uploadLogFiles(filesToUpload);
-
+  // 从相册选择图片（移除相机功能）
+  Future<void> _pickImagesFromGallery() async {
+    try {
       setState(() {
-        for (int i = 0; i < filesToUpload.length; i++) {
-          _selectedImages.add({
-            'file': filesToUpload[i],
-            'fileId': uploadedFileIds.length > i ? uploadedFileIds[i] : null,
-          });
-        }
+        _isUploadingImages = true;
       });
+
+      final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (selectedFiles != null && selectedFiles.isNotEmpty) {
+        final List<File> filesToUpload = selectedFiles
+            .map((xfile) => File(xfile.path))
+            .toList();
+        final List<int> uploadedFileIds = await _logBusiness.uploadLogFiles(
+          filesToUpload,
+        );
+
+        setState(() {
+          for (int i = 0; i < filesToUpload.length; i++) {
+            _selectedImages.add({
+              'file': filesToUpload[i],
+              'fileId': uploadedFileIds.length > i ? uploadedFileIds[i] : null,
+            });
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('照片选择并上传成功'),
+            backgroundColor: Color(0xFF4CAF50),
+          ),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('照片选择并上传成功'),
-          backgroundColor: Color(0xFF4CAF50),
+        SnackBar(
+          content: Text('照片选择失败: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      setState(() {
+        _isUploadingImages = false;
+      });
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('照片选择失败: ${e.toString()}'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
+  }
+
+  // 删除照片
+  void _removeImage(int index) {
     setState(() {
-      _isUploadingImages = false;
+      _selectedImages.removeAt(index);
     });
   }
-}
 
-// 删除照片
-void _removeImage(int index) {
-  setState(() {
-    _selectedImages.removeAt(index);
-  });
-}
+  // 预览照片
+  void _previewImage(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: _selectedImages[index]['file'] != null
+                  ? Image.file(
+                      _selectedImages[index]['file'] as File,
+                      fit: BoxFit.contain,
+                    )
+                  : (_selectedImages[index]['url'] != null
+                        ? Image.network(
+                            _selectedImages[index]['url'] as String,
+                            fit: BoxFit.contain,
+                          )
+                        : const SizedBox.shrink()),
+            ),
+            Positioned(
+              top: 40,
+              right: 40,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-// 预览照片
-void _previewImage(int index) {
-  showDialog(
-    context: context,
-    builder: (context) => Dialog(
-      backgroundColor: Colors.transparent,
-      child: Stack(
-        children: [
-          Center(
-            child: _selectedImages[index]['file'] != null
-                ? Image.file(
-                    _selectedImages[index]['file'] as File,
-                    fit: BoxFit.contain,
-                  )
-                : (_selectedImages[index]['url'] != null
-                    ? Image.network(
-                        _selectedImages[index]['url'] as String,
-                        fit: BoxFit.contain,
-                      )
-                    : const SizedBox.shrink()),
-          ),
-          Positioned(
-            top: 40,
-            right: 40,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              onPressed: () => Navigator.of(context).pop(),
+  Future<void> _onSubmit() async {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+
+    if (widget.logToEdit == null && _selectedTask == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请选择关联任务')));
+      return;
+    }
+
+    // 当进度为100%且状态为已完成时，显示确认对话框
+    if (_progress == 100 && _isCompleted) {
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF232325),
+            title: const Text('注意', style: TextStyle(color: Colors.white)),
+            content: const Text(
+              '注意到进度为100%，此时提交日志会关闭任务，是否提交？',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text(
+                  '取消',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child: const Text('确认', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirm != true) {
+        return;
+      }
+    }
+
+    if (title.isEmpty || content.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入标题和内容')));
+      return;
+    }
+
+    final startMinutes = _startTime.hour * 60 + _startTime.minute;
+    final endMinutes = _endTime.hour * 60 + _endTime.minute;
+    if (endMinutes < startMinutes) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('结束时间不能早于开始时间')));
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final List<int> fileIdsToAttach = _selectedImages
+          .where((image) => image['fileId'] != null)
+          .map<int>((image) => image['fileId'] as int)
+          .toList();
+
+      // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
+      final Log logToProcess = Log(
+        logId: widget.logToEdit?.logId ?? '',
+        taskId: _selectedTask?.taskId != null
+            ? int.tryParse(_selectedTask!.taskId)
+            : null,
+        logTitle: title,
+        logContent: content,
+        logStatus: _isCompleted ? 1 : 0,
+        taskProgress: _progress.toInt(),
+        startTime:
+            '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+        endTime:
+            '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
+        logDate: _plannedDate,
+        fileIds: fileIdsToAttach, // 图片仅在前端显示，不传文件ID到后端
+      );
+
+      final bool isUpdate = widget.logToEdit != null;
+      final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(
+        logToProcess,
+        isUpdate: isUpdate,
+      );
+
+      if (result['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
+          );
+          Navigator.of(context).pop();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message']?.toString() ?? (isUpdate ? '更新失败' : '创建失败'),
             ),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-Future<void> _onSubmit() async {
-  final title = _titleController.text.trim();
-  final content = _contentController.text.trim();
-  
-  if (widget.logToEdit == null && _selectedTask == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('请选择关联任务')),
-    );
-    return;
-  }
-
-  if (title.isEmpty || content.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('请输入标题和内容')),
-    );
-    return;
-  }
-
-  final startMinutes = _startTime.hour * 60 + _startTime.minute;
-  final endMinutes = _endTime.hour * 60 + _endTime.minute;
-  if (endMinutes < startMinutes) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('结束时间不能早于开始时间')),
-    );
-    return;
-  }
-
-  setState(() => _isSubmitting = true);
-
-  try {
-    final List<int> fileIdsToAttach = _selectedImages
-        .where((image) => image['fileId'] != null)
-        .map<int>((image) => image['fileId'] as int)
-        .toList();
-
-    // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
-    final Log logToProcess = Log(
-      logId: widget.logToEdit?.logId ?? '',
-      taskId: _selectedTask?.taskId != null ? int.tryParse(_selectedTask!.taskId) : null,
-      logTitle: title,
-      logContent: content,
-      logStatus: _isCompleted ? 1 : 0,
-      taskProgress: _progress.toInt(),
-      startTime:
-          '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
-      endTime:
-          '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
-      logDate: _plannedDate,
-      fileIds: fileIdsToAttach, // 图片仅在前端显示，不传文件ID到后端
-    );
-
-    final bool isUpdate = widget.logToEdit != null;
-    final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(logToProcess, isUpdate: isUpdate);
-
-    if (result['success'] == true) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
         );
-        Navigator.of(context).pop();
       }
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message']?.toString() ?? (isUpdate ? '更新失败' : '创建失败'))),
+        SnackBar(
+          content: Text(
+            widget.logToEdit != null
+                ? '更新日志失败: ${e.toString()}'
+                : '创建日志失败: ${e.toString()}',
+          ),
+        ),
       );
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(widget.logToEdit != null ? '更新日志失败: ${e.toString()}' : '创建日志失败: ${e.toString()}')),
-    );
-  } finally {
-    if (mounted) {
-      setState(() => _isSubmitting = false);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -639,7 +696,7 @@ Future<void> _onSubmit() async {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  
+
                   // 已选择的照片预览
                   if (_selectedImages.isNotEmpty) ...[
                     SizedBox(
@@ -654,22 +711,31 @@ Future<void> _onSubmit() async {
 
                           Widget imageWidget;
                           if (imageFile != null) {
-                            imageWidget = Image.file(imageFile, fit: BoxFit.cover);
+                            imageWidget = Image.file(
+                              imageFile,
+                              fit: BoxFit.cover,
+                            );
                           } else if (imageUrl != null) {
                             imageWidget = Image.network(
                               imageUrl,
                               fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value:
+                                            loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
                               errorBuilder: (context, error, stackTrace) =>
                                   const Icon(Icons.error, color: Colors.red),
                             );
@@ -688,7 +754,8 @@ Future<void> _onSubmit() async {
                                     height: 100,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
-                                      color: Colors.grey[800], // Placeholder background
+                                      color: Colors
+                                          .grey[800], // Placeholder background
                                     ),
                                     child: ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
@@ -722,7 +789,7 @@ Future<void> _onSubmit() async {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  
+
                   // 上传按钮
                   Center(
                     child: Container(
@@ -738,7 +805,9 @@ Future<void> _onSubmit() async {
                         ),
                       ),
                       child: InkWell(
-                        onTap: _isUploadingImages ? null : _pickImagesFromGallery,
+                        onTap: _isUploadingImages
+                            ? null
+                            : _pickImagesFromGallery,
                         borderRadius: BorderRadius.circular(12),
                         child: _isUploadingImages
                             ? const Column(
@@ -1035,9 +1104,7 @@ Future<void> _onSubmit() async {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _onSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 child: _isSubmitting
                     ? const SizedBox(
                         width: 16,
@@ -1047,10 +1114,7 @@ Future<void> _onSubmit() async {
                           color: Colors.white,
                         ),
                       )
-                    : const Text(
-                        '提交',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                    : const Text('提交', style: TextStyle(color: Colors.white)),
               ),
             ),
           ],
