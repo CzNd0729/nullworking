@@ -149,7 +149,7 @@ class MonthView extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: weeks.length,
               itemBuilder: (context, weekIndex) {
-                return Container(
+                return SizedBox(
                   height: 80,
                   child: Row(
                     children: weeks[weekIndex].map((date) {

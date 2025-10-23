@@ -396,17 +396,21 @@ class _LogPageState extends State<LogPage> {
                       ),
                     ),
                   )
-                : _filteredLogs.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40.0),
-                    child: Text(
-                      '暂无日志',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
                 : SizedBox(
                     height: MediaQuery.of(context).size.height * 0.7,
-                    child: _buildCurrentView(),
+                    child:
+                        _filteredLogs.isEmpty &&
+                            _currentViewMode == ViewMode.list
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40.0),
+                              child: Text(
+                                '暂无日志',
+                                style: TextStyle(color: Colors.white54),
+                              ),
+                            ),
+                          )
+                        : _buildCurrentView(),
                   ),
           ],
         ),
@@ -440,7 +444,10 @@ class _LogPageState extends State<LogPage> {
       case ViewMode.week:
         return WeekView(logs: _filteredLogs);
       case ViewMode.day:
-        return DayView(logs: _filteredLogs);
+        return DayView(
+          logs: _filteredLogs,
+          initialDate: _startDate ?? DateTime.now(),
+        );
     }
   }
 
