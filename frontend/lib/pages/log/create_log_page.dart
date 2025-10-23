@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/task.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart';
@@ -29,7 +31,11 @@ class _CreateLogPageState extends State<CreateLogPage> {
   bool _isSubmitting = false;
   final LogBusiness _logBusiness = LogBusiness();
   Task? _selectedTask;
-  // final bool _debugMode = true; // 移除 debugMode
+  
+  // 照片相关变量
+  final List<File> _selectedImages = []; // 使用 File 对象存储本地图片
+  bool _isUploadingImages = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -42,38 +48,17 @@ class _CreateLogPageState extends State<CreateLogPage> {
       _titleController.text = log.logTitle;
       _contentController.text = log.logContent;
       _isCompleted = log.logStatus == 1;
-      _plannedDate = log.logDate; // logDate 是非空的，可以直接赋值
-      // 解析 startTime 和 endTime 字符串为 TimeOfDay 对象
+      _plannedDate = log.logDate;
       final startParts = log.startTime.split(':');
       _startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
       final endParts = log.endTime.split(':');
       _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
       _progress = (log.taskProgress ?? 0).toDouble();
-      // _selectedTask 暂时不处理，如果需要可以根据 taskId 加载 Task 对象
     }
   }
 
   Future<void> _openTaskSelection() async {
-    // if (_debugMode) {
-    //   final testTasks = MockData.generateTestTasks();
-    //   final Task? chosen = await showModalBottomSheet<Task?>(
-    //     context: context,
-    //     isScrollControlled: true,
-    //     backgroundColor: Colors.transparent,
-    //     builder: (context) => _buildTaskSelectionSheet(testTasks),
-    //   );
-    //   if (chosen != null) {
-    //     setState(() => _selectedTask = chosen);
-    //   }
-    //   return;
-    // }
-
     final tasks = await _logBusiness.getExecutorTasksForLogSelection();
-    // final List<Task> tasks = [];
-    // if (taskMap != null) {
-    //   tasks.addAll(taskMap['createdTasks'] ?? []);
-    //   tasks.addAll(taskMap['participatedTasks'] ?? []);
-    // }
     final Task? chosen = await showModalBottomSheet<Task?>(
       context: context,
       isScrollControlled: true,
@@ -204,7 +189,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 小时选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -251,7 +235,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // 分钟选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -352,41 +335,114 @@ class _CreateLogPageState extends State<CreateLogPage> {
     );
   }
 
-  Future<void> _onSubmit() async {
-    final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
-    
-    // If in create mode and no task is selected, show error.
-    // In edit mode, _selectedTask might be null if not associated with a task, but editing should still be allowed.
-    if (widget.logToEdit == null && _selectedTask == null) {
+// 从相册选择图片（移除相机功能）
+Future<void> _pickImagesFromGallery() async {
+  try {
+    setState(() {
+      _isUploadingImages = true;
+    });
+
+    final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1080,
+      imageQuality: 80,
+    );
+
+    if (selectedFiles != null && selectedFiles.isNotEmpty) {
+      setState(() {
+        _selectedImages.addAll(selectedFiles.map((xfile) => File(xfile.path)).toList());
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择关联任务')),
+        const SnackBar(
+          content: Text('照片选择成功'),
+          backgroundColor: Color(0xFF4CAF50),
+        ),
       );
-      return;
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('照片选择失败: ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    setState(() {
+      _isUploadingImages = false;
+    });
+  }
+}
 
-    if (title.isEmpty || content.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入标题和内容')),
-      );
-      return;
-    }
+// 删除照片
+void _removeImage(int index) {
+  setState(() {
+    _selectedImages.removeAt(index);
+  });
+}
 
-    final startMinutes = _startTime.hour * 60 + _startTime.minute;
-    final endMinutes = _endTime.hour * 60 + _endTime.minute;
-    if (endMinutes < startMinutes) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('结束时间不能早于开始时间')),
-      );
-      return;
-    }
+// 预览照片
+void _previewImage(int index) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Stack(
+        children: [
+          Center(
+            child: Image.file(
+              _selectedImages[index],
+              fit: BoxFit.contain,
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 40,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
-    setState(() => _isSubmitting = true);
+Future<void> _onSubmit() async {
+  final title = _titleController.text.trim();
+  final content = _contentController.text.trim();
+  
+  if (widget.logToEdit == null && _selectedTask == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('请选择关联任务')),
+    );
+    return;
+  }
 
-    // 构建Log对象
+  if (title.isEmpty || content.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('请输入标题和内容')),
+    );
+    return;
+  }
+
+  final startMinutes = _startTime.hour * 60 + _startTime.minute;
+  final endMinutes = _endTime.hour * 60 + _endTime.minute;
+  if (endMinutes < startMinutes) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('结束时间不能早于开始时间')),
+    );
+    return;
+  }
+
+  setState(() => _isSubmitting = true);
+
+  try {
+    // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
     final Log logToProcess = Log(
-      logId: widget.logToEdit?.logId ?? '', // 编辑时使用现有logId，创建时为空
-      taskId: _selectedTask?.taskId != null ? int.tryParse(_selectedTask!.taskId) : null,      logTitle: title,
+      logId: widget.logToEdit?.logId ?? '',
+      taskId: _selectedTask?.taskId != null ? int.tryParse(_selectedTask!.taskId) : null,
+      logTitle: title,
       logContent: content,
       logStatus: _isCompleted ? 1 : 0,
       taskProgress: _progress.toInt(),
@@ -395,36 +451,34 @@ class _CreateLogPageState extends State<CreateLogPage> {
       endTime:
           '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
       logDate: _plannedDate,
-      fileIds: [],
+      fileIds: [], // 图片仅在前端显示，不传文件ID到后端
     );
 
-    try {
-      final bool isUpdate = widget.logToEdit != null;
-      final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(logToProcess, isUpdate: isUpdate);
+    final bool isUpdate = widget.logToEdit != null;
+    final Map<String, dynamic> result = await _logBusiness.createOrUpdateLog(logToProcess, isUpdate: isUpdate);
 
-      if (result['success'] == true) {
-        // Log? processedLog = isUpdate ? logToProcess : Log.fromJson(result['data'] ?? {}); // 移除这行
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
-          );
-          Navigator.of(context).pop();
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message']?.toString() ?? (isUpdate ? '更新失败' : '创建失败'))),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.logToEdit != null ? '更新日志失败: ${e.toString()}' : '创建日志失败: ${e.toString()}')),
-      );
-    } finally {
+    if (result['success'] == true) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
+        );
+        Navigator.of(context).pop();
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']?.toString() ?? (isUpdate ? '更新失败' : '创建失败'))),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(widget.logToEdit != null ? '更新日志失败: ${e.toString()}' : '创建日志失败: ${e.toString()}')),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => _isSubmitting = false);
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -513,7 +567,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 ],
               ),
             ),
-            // Upload photos card
+            // 上传照片卡片
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -534,6 +588,61 @@ class _CreateLogPageState extends State<CreateLogPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
+                  
+                  // 已选择的照片预览
+                  if (_selectedImages.isNotEmpty) ...[
+                    SizedBox(
+                      height: 100,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedImages.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Stack(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _previewImage(index),
+                                  child: Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      image: DecorationImage(
+                                        image: FileImage(_selectedImages[index]),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: GestureDetector(
+                                    onTap: () => _removeImage(index),
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  
+                  // 上传按钮
                   Center(
                     child: Container(
                       width: double.infinity,
@@ -548,49 +657,63 @@ class _CreateLogPageState extends State<CreateLogPage> {
                         ),
                       ),
                       child: InkWell(
-                        onTap: () {
-                          // TODO: Implement photo upload functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('照片上传功能即将上线'),
-                              backgroundColor: Color(0xFF4CAF50),
-                            ),
-                          );
-                        },
+                        onTap: _isUploadingImages ? null : _pickImagesFromGallery,
                         borderRadius: BorderRadius.circular(12),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_photo_alternate_outlined,
-                              color: Color(0xFF4CAF50),
-                              size: 40,
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              '点击上传照片',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
+                        child: _isUploadingImages
+                            ? const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF4CAF50),
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    '处理中...',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_outlined,
+                                    color: Color(0xFF4CAF50),
+                                    size: 40,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    '点击上传照片',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '支持 jpg、png 格式',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              '支持 jpg、png 格式',
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            // Related task card (prototype: select existing or create new)
+            // 关联任务卡片
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -600,7 +723,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // 将 crossAxisAlignment 设置为 start
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     '关联任务',
@@ -659,6 +782,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 ],
               ),
             ),
+            // ... 其余部分保持不变
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -693,7 +817,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                       borderRadius: BorderRadius.circular(8),
                       color: Colors.white70,
                       selectedColor: Colors.white,
-                      fillColor: const Color(0xFF4CAF50), // 高亮绿色
+                      fillColor: const Color(0xFF4CAF50),
                       constraints: const BoxConstraints(
                         minHeight: 40,
                         minWidth: 120,

@@ -1,14 +1,36 @@
-import 'package:flutter/foundation.dart'; // 导入debugPrint所需包
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:nullworking/services/api/task_api.dart';
 import '../api/log_api.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../models/log.dart';
-import '../../models/task.dart'; // 导入 Task 模型
+import '../../models/task.dart';
 
 class LogBusiness {
   final LogApi _logApi = LogApi();
-  final TaskApi _taskApi=TaskApi();
+  final TaskApi _taskApi = TaskApi();
+  final ImagePicker _imagePicker = ImagePicker();
+
+  /// 选择图片（仅前端功能，不上传）
+  Future<List<File>> pickImages() async {
+    try {
+      final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (selectedFiles != null && selectedFiles.isNotEmpty) {
+        return selectedFiles.map((xfile) => File(xfile.path)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('选择图片异常: $e');
+      return [];
+    }
+  }
 
   /// 根据任务ID获取日志列表
   Future<List<Log>> getLogsByTaskId(String taskId) async {
