@@ -217,7 +217,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${DateFormat('yyyy年MM月dd日 HH:mm').format(log.logDate)}  ${log.taskProgress ?? 0}%',
+                  DateFormat('yyyy年MM月dd日 HH:mm').format(log.logDate),
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 12,
@@ -226,6 +226,19 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               ],
             ),
           ),
+          // 进度值独立显示在右侧
+          if (log.taskProgress != null) 
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: log.logStatus == 1 ? Colors.green : Colors.grey,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${log.taskProgress!}%',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
@@ -364,7 +377,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        '任务关联日志',
+                        '关联日志',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -387,7 +400,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2CB7B3),
+                          backgroundColor: Colors.black,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,

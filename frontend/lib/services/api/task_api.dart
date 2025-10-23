@@ -63,4 +63,16 @@ class TaskApi {
   Future<http.Response> getTaskById(String taskId) async {
     return await _baseApi.get('api/tasks/$taskId');
   }
+
+  Future<TaskListResponse?> listExecutorTasks({String taskStatus = '0', String participantType = 'executor'}) async {
+    final response = await _baseApi.get('api/tasks?taskStatus=$taskStatus&participantType=$participantType');
+    
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['code'] == 200 && body['data'] != null) {
+        return TaskListResponse.fromJson(body['data']);
+      }
+    }
+    return null;
+  }
 }

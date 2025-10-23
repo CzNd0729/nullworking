@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/task.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart';
-import '../../services/business/task_business.dart';
 import '../task/create_task_page.dart';
-import '../../services/mock/mock_data.dart';
 
 class CreateLogPage extends StatefulWidget {
   final Task? preSelectedTask;
@@ -30,7 +28,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
   double _progress = 50.0;
   bool _isSubmitting = false;
   final LogBusiness _logBusiness = LogBusiness();
-  final TaskBusiness _taskBusiness = TaskBusiness();
   Task? _selectedTask;
   // final bool _debugMode = true; // 移除 debugMode
 
@@ -71,12 +68,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
     //   return;
     // }
 
-    final taskMap = await _taskBusiness.loadUserTasks();
-    final List<Task> tasks = [];
-    if (taskMap != null) {
-      tasks.addAll(taskMap['createdTasks'] ?? []);
-      tasks.addAll(taskMap['participatedTasks'] ?? []);
-    }
+    final tasks = await _logBusiness.getExecutorTasksForLogSelection();
+    // final List<Task> tasks = [];
+    // if (taskMap != null) {
+    //   tasks.addAll(taskMap['createdTasks'] ?? []);
+    //   tasks.addAll(taskMap['participatedTasks'] ?? []);
+    // }
     final Task? chosen = await showModalBottomSheet<Task?>(
       context: context,
       isScrollControlled: true,
@@ -603,6 +600,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, // 将 crossAxisAlignment 设置为 start
                 children: [
                   const Text(
                     '关联任务',
@@ -672,16 +670,18 @@ class _CreateLogPageState extends State<CreateLogPage> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    '日志状态',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: const Text(
+                      '日志状态',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  // Use ToggleButtons for single-selection of status
                   Center(
                     child: ToggleButtons(
                       isSelected: [_isCompleted, !_isCompleted],
@@ -831,7 +831,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _onSubmit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2CB7B3),
+                  backgroundColor: Colors.green,
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
@@ -842,7 +842,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('提交'),
+                    : const Text(
+                        '提交',
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
             ),
           ],

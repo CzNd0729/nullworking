@@ -4,6 +4,7 @@ import '../api/log_api.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../models/log.dart';
+import '../../models/task.dart'; // 导入 Task 模型
 
 class LogBusiness {
   final LogApi _logApi = LogApi();
@@ -140,6 +141,29 @@ class LogBusiness {
     } catch (e) {
       debugPrint('创建或更新日志异常: $e');
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// 获取特定条件下的任务列表
+  Future<List<Task>> getExecutorTasksForLogSelection() async {
+    try {
+      final tasksResponse = await _taskApi.listExecutorTasks();
+      if (tasksResponse != null) {
+        List<Task> tasks = [];
+        if (tasksResponse.createdTasks != null) {
+          tasks.addAll(tasksResponse.createdTasks!);
+        }
+        if (tasksResponse.participatedTasks != null) {
+          tasks.addAll(tasksResponse.participatedTasks!);
+        }
+        return tasks;
+      } else {
+        debugPrint('获取任务列表失败: tasksResponse is null');
+        return <Task>[];
+      }
+    } catch (e) {
+      debugPrint('获取任务列表异常: $e');
+      return <Task>[];
     }
   }
 }
