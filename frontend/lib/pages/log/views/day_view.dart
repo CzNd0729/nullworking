@@ -240,11 +240,38 @@ class _DayViewState extends State<DayView> {
     );
   }
 
+  // 获取所在周的起始日期（周日）
+  DateTime _getStartOfWeek(DateTime date) {
+    return date.subtract(Duration(days: date.weekday % 7));
+  }
+
+  // 获取本月的第几周
+  int _getWeekOfMonth(DateTime date) {
+    final firstDayOfMonth = DateTime(date.year, date.month, 1);
+    final firstWeekdayOfMonth = firstDayOfMonth.weekday % 7;
+    final offset = date.day + firstWeekdayOfMonth - 1;
+    return (offset / 7).ceil();
+  }
+
+  // 切换到前一周
+  void _previousWeek() {
+    setState(() {
+      _selectedDate = _selectedDate.subtract(const Duration(days: 7));
+    });
+  }
+
+  // 切换到后一周
+  void _nextWeek() {
+    setState(() {
+      _selectedDate = _selectedDate.add(const Duration(days: 7));
+    });
+  }
+
   // 构建日期选择器
   Widget _buildDateSelector() {
     final weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
     final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
+    final startOfWeek = _getStartOfWeek(_selectedDate);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -254,13 +281,50 @@ class _DayViewState extends State<DayView> {
       ),
       child: Column(
         children: [
-          Text(
-            '${_selectedDate.year}年${_selectedDate.month}月',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, color: Colors.white54),
+                onPressed: _previousWeek,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '${_selectedDate.year}年${_selectedDate.month}月',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2CB7B3).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '第${_getWeekOfMonth(_selectedDate)}周',
+                      style: const TextStyle(
+                        color: Color(0xFF2CB7B3),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, color: Colors.white54),
+                onPressed: _nextWeek,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
