@@ -10,6 +10,7 @@ class Task {
   final DateTime deadline;
   final List<String> executorNames;
   final bool isParticipated;
+  final int taskProgress;
 
   Task({
     required this.taskId,
@@ -22,6 +23,7 @@ class Task {
     required this.deadline,
     required this.executorNames,
     this.isParticipated = false,
+    this.taskProgress = 0,
   });
 
   factory Task.fromJson(Map<String, dynamic> json, {bool isParticipated = false}) {
@@ -36,6 +38,7 @@ class Task {
       deadline: DateTime.parse(json['deadline']),
       executorNames: List<String>.from(json['executorNames']),
       isParticipated: isParticipated,
+      taskProgress: json['taskProgress'] != null ? int.parse(json['taskProgress'].toString()) : 0,
     );
   }
 }

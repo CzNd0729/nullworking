@@ -196,6 +196,21 @@ class _TasksPageState extends State<TasksPage> {
     final assignee = task.executorNames.join(', ');
     final deadline = task.deadline.toString().substring(0, 10);
     final priority = 'P${task.taskPriority}';
+    final progress = task.taskProgress / 100.0; // Assuming taskProgress is 0-100
+
+    Color progressColor;
+    if (task.taskProgress == 100) {
+      progressColor = Colors.purple;
+    } else if (task.taskProgress >= 76) {
+      progressColor = Colors.green;
+    } else if (task.taskProgress >= 51) {
+      progressColor = Colors.blue;
+    } else if (task.taskProgress >= 26) {
+      progressColor = Colors.orange;
+    } else {
+      progressColor = Colors.red;
+    }
+
     return FractionallySizedBox(
       widthFactor: 0.95,
       child: Card(
@@ -221,46 +236,76 @@ class _TasksPageState extends State<TasksPage> {
               }
             });
           },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  child: Text(
-                    statusTag,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        statusTag,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      taskTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('负责人: $assignee'),
+                    const SizedBox(height: 4),
+                    Text('截止日期: $deadline'),
+                    const SizedBox(height: 4),
+                    Text(
+                      '优先级: $priority',
+                      style: TextStyle(
+                        color: priority == 'P0'
+                            ? Colors.red
+                            : (priority == 'P1' ? Colors.orange : Colors.blue),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  taskTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        backgroundColor: Colors.grey.shade300,
+                        color: progressColor,
+                        strokeWidth: 4,
+                      ),
+                    ),
+                    Text(
+                      '${task.taskProgress}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: progressColor,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text('分配给: $assignee'),
-                const SizedBox(height: 4),
-                Text('截止日期: $deadline'),
-                const SizedBox(height: 4),
-                Text(
-                  '优先级: $priority',
-                  style: TextStyle(
-                    color: priority == 'P0'
-                        ? Colors.red
-                        : (priority == 'P1' ? Colors.orange : Colors.blue),
-                  ),
-                ),
-                // Removed ElevatedButton for "查看详情"
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
