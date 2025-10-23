@@ -93,6 +93,14 @@ public class TaskService {
                         .filter(task -> task.getTaskStatus().equals(taskStatus))
                         .collect(Collectors.toList());
             }
+            
+            // 当participantType为null时，需要过滤掉创建者和执行者相同的任务
+            if (participantType == null) {
+                tasks = tasks.stream()
+                        .filter(task -> !task.getCreator().getUserId().equals(userId))
+                        .collect(Collectors.toList());
+            }
+            
             executingTasks = tasks;
         }
 
