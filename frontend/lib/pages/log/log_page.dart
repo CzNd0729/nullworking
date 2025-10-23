@@ -400,14 +400,17 @@ class _LogPageState extends State<LogPage> {
                     ),
                   )
                 : _filteredLogs.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40.0),
-                        child: Text(
-                          '暂无日志',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      )
-                    : _buildCurrentView(),
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40.0),
+                    child: Text(
+                      '暂无日志',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  )
+                : SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
+                    child: _buildCurrentView(),
+                  ),
           ],
         ),
       ),
@@ -418,7 +421,7 @@ class _LogPageState extends State<LogPage> {
   Widget _buildCurrentView() {
     switch (_currentViewMode) {
       case ViewMode.list:
-        return Column(
+        return ListView(
           children: _filteredLogs.map((log) => _buildLogCard(log)).toList(),
         );
       case ViewMode.month:
@@ -539,69 +542,69 @@ class _LogPageState extends State<LogPage> {
 
     return Center(
       child: FractionallySizedBox(
-        widthFactor: 0.95,
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          color: const Color(0xFF1E1E1E),
-          child: InkWell(
-            onTap: () async {
-              _forceSearchUnfocus();
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
-              );
-              if (result != null) _loadLogs();
-            },
-            borderRadius: BorderRadius.circular(12.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Text(
-                      statusText,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
+      widthFactor: 0.95,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        color: const Color(0xFF1E1E1E),
+        child: InkWell(
+          onTap: () async {
+            _forceSearchUnfocus();
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
+            );
+            if (result != null) _loadLogs();
+          },
+          borderRadius: BorderRadius.circular(12.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    log.logTitle,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4.0),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    log.logContent,
-                    style: const TextStyle(color: Colors.white70),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    statusText,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  log.logTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '时间: ${log.startTime} - ${log.endTime}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  log.logContent,
+                  style: const TextStyle(color: Colors.white70),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '时间: ${log.startTime} - ${log.endTime}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
               ),
             ),
           ),
