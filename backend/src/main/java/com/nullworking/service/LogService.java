@@ -282,6 +282,7 @@ public class LogService {
         // 构建返回数据
         Map<String, Object> data = new HashMap<>();
         data.put("taskId", log.getTask().getTaskId());
+        data.put("logId", log.getLogId());
         data.put("logTitle", log.getLogTitle());
         data.put("logContent", log.getLogContent());
         data.put("logStatus", log.getLogStatus());
