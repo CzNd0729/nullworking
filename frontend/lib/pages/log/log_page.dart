@@ -153,10 +153,7 @@ class _LogPageState extends State<LogPage> {
           onPressed: onPressed,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: Text(
-              text,
-              style: const TextStyle(color: Colors.white70),
-            ),
+            child: Text(text, style: const TextStyle(color: Colors.white70)),
           ),
         ),
       ),
@@ -431,6 +428,14 @@ class _LogPageState extends State<LogPage> {
           onMonthChanged: (newMonth) {
             setState(() => _currentMonth = newMonth);
           },
+          onDaySelected: (selectedDate) {
+            setState(() {
+              _currentViewMode = ViewMode.day;
+              _startDate = selectedDate;
+              _endDate = selectedDate;
+            });
+            _loadLogs();
+          },
         );
       case ViewMode.week:
         return WeekView(logs: _filteredLogs);
@@ -542,69 +547,71 @@ class _LogPageState extends State<LogPage> {
 
     return Center(
       child: FractionallySizedBox(
-      widthFactor: 0.95,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        color: const Color(0xFF1E1E1E),
-        child: InkWell(
-          onTap: () async {
-            _forceSearchUnfocus();
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LogDetailPage(logId: log.logId)),
-            );
-            if (result != null) _loadLogs();
-          },
-          borderRadius: BorderRadius.circular(12.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+        widthFactor: 0.95,
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          color: const Color(0xFF1E1E1E),
+          child: InkWell(
+            onTap: () async {
+              _forceSearchUnfocus();
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LogDetailPage(logId: log.logId),
+                ),
+              );
+              if (result != null) _loadLogs();
+            },
+            borderRadius: BorderRadius.circular(12.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(4.0),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logContent,
+                    style: const TextStyle(color: Colors.white70),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  const SizedBox(height: 8),
+                  Text(
+                    '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Colors.white70),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logContent,
-                  style: const TextStyle(color: Colors.white70),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '时间: ${log.startTime} - ${log.endTime}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '时间: ${log.startTime} - ${log.endTime}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
               ),
             ),
           ),

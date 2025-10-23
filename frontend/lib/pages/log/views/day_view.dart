@@ -4,8 +4,9 @@ import '../log_detail_page.dart';
 
 class DayView extends StatefulWidget {
   final List<Log> logs;
+  final DateTime? initialDate;
 
-  const DayView({super.key, required this.logs});
+  const DayView({super.key, required this.logs, this.initialDate});
 
   @override
   State<DayView> createState() => _DayViewState();
@@ -18,7 +19,7 @@ class _DayViewState extends State<DayView> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = DateTime.now();
+    _selectedDate = widget.initialDate ?? DateTime.now();
   }
 
   @override
