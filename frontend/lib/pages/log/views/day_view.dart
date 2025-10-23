@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/log.dart';
+import '../log_detail_page.dart';
 
 class DayView extends StatefulWidget {
   final List<Log> logs;
@@ -183,59 +184,69 @@ class _DayViewState extends State<DayView> {
         statusColor = Colors.grey;
     }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LogDetailPage(logId: log.logId),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
                 ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    timeRange,
+                    style: TextStyle(color: statusColor, fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              log.logTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(width: 6),
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (log.logContent.isNotEmpty) ...[
+              const SizedBox(height: 4),
               Expanded(
                 child: Text(
-                  timeRange,
-                  style: TextStyle(color: statusColor, fontSize: 11),
+                  log.logContent,
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            log.logTitle,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (log.logContent.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Expanded(
-              child: Text(
-                log.logContent,
-                style: const TextStyle(color: Colors.white60, fontSize: 11),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
