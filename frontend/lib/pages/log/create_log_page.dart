@@ -93,6 +93,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
   }
 
   Future<void> _openTaskSelection() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final tasks = await _logBusiness.getExecutorTasksForLogSelection();
     final Task? chosen = await showModalBottomSheet<Task?>(
       context: context,
@@ -174,6 +175,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
   }
 
   Future<void> _pickDate() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     final picked = await showDatePicker(
       context: context,
       initialDate: _plannedDate,
@@ -186,6 +188,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
   }
 
   void _showTimePickerDialog(bool isStartTime) {
+    FocusManager.instance.primaryFocus?.unfocus();
     showDialog(
       context: context,
       builder: (BuildContext context) {
