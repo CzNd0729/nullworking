@@ -5,12 +5,14 @@ class MonthView extends StatelessWidget {
   final List<Log> logs;
   final DateTime currentMonth;
   final Function(DateTime) onMonthChanged;
+  final Function(DateTime) onDaySelected;
 
   const MonthView({
     super.key,
     required this.logs,
     required this.currentMonth,
     required this.onMonthChanged,
+    required this.onDaySelected,
   });
 
   // 获取月份的第一天
@@ -147,7 +149,7 @@ class MonthView extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: weeks.length,
               itemBuilder: (context, weekIndex) {
-                return Container(
+                return SizedBox(
                   height: 80,
                   child: Row(
                     children: weeks[weekIndex].map((date) {
@@ -155,84 +157,93 @@ class MonthView extends StatelessWidget {
                       final dayLogs = _getLogsForDate(date);
 
                       return Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.all(1),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: isCurrentMonth
-                                  ? Colors.white24
-                                  : Colors.white10,
+                        child: GestureDetector(
+                          onTap: () {
+                            // 只允许点击当前月份的日期
+                            if (isCurrentMonth) {
+                              onDaySelected(date);
+                            }
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.all(1),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isCurrentMonth
+                                    ? Colors.white24
+                                    : Colors.white10,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Column(
-                            children: [
-                              // 日期数字
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                child: Text(
-                                  '${date.day}',
-                                  style: TextStyle(
-                                    color: isCurrentMonth
-                                        ? Colors.white
-                                        : Colors.white38,
-                                    fontSize: 12,
-                                    fontWeight:
-                                        date.day == DateTime.now().day &&
-                                            date.month ==
-                                                DateTime.now().month &&
-                                            date.year == DateTime.now().year
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
+                            child: Column(
+                              children: [
+                                // 日期数字
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Text(
+                                    '${date.day}',
+                                    style: TextStyle(
+                                      color: isCurrentMonth
+                                          ? Colors.white
+                                          : Colors.white38,
+                                      fontSize: 12,
+                                      fontWeight:
+                                          date.day == DateTime.now().day &&
+                                              date.month ==
+                                                  DateTime.now().month &&
+                                              date.year == DateTime.now().year
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
                                   ),
                                 ),
-                              ),
 
-                              // 日志标识区域
-                              Expanded(
-                                child: dayLogs.isEmpty
-                                    ? const SizedBox()
-                                    : GridView.builder(
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        gridDelegate:
-                                            const SliverGridDelegateWithFixedCrossAxisCount(
-                                              crossAxisCount: 2,
-                                              crossAxisSpacing: 1,
-                                              mainAxisSpacing: 1,
-                                              childAspectRatio: 1.5,
-                                            ),
-                                        itemCount: dayLogs.length,
-                                        itemBuilder: (context, logIndex) {
-                                          final log = dayLogs[logIndex];
-                                          final color =
-                                              colors[logIndex % colors.length];
-                                          final firstChar =
-                                              log.logTitle.isNotEmpty
-                                              ? log.logTitle[0]
-                                              : '?';
+                                // 日志标识区域
+                                Expanded(
+                                  child: dayLogs.isEmpty
+                                      ? const SizedBox()
+                                      : GridView.builder(
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          gridDelegate:
+                                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                                crossAxisCount: 2,
+                                                crossAxisSpacing: 1,
+                                                mainAxisSpacing: 1,
+                                                childAspectRatio: 1.5,
+                                              ),
+                                          itemCount: dayLogs.length,
+                                          itemBuilder: (context, logIndex) {
+                                            final log = dayLogs[logIndex];
+                                            final color =
+                                                colors[logIndex %
+                                                    colors.length];
+                                            final firstChar =
+                                                log.logTitle.isNotEmpty
+                                                ? log.logTitle[0]
+                                                : '?';
 
-                                          return Container(
-                                            decoration: BoxDecoration(
-                                              color: color.withOpacity(0.7),
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                firstChar,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 8,
-                                                  fontWeight: FontWeight.bold,
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: color.withOpacity(0.7),
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  firstChar,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 8,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                              ),
-                            ],
+                                            );
+                                          },
+                                        ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );

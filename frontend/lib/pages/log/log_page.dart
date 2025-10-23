@@ -153,10 +153,7 @@ class _LogPageState extends State<LogPage> {
           onPressed: onPressed,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12.0),
-            child: Text(
-              text,
-              style: const TextStyle(color: Colors.white70),
-            ),
+            child: Text(text, style: const TextStyle(color: Colors.white70)),
           ),
         ),
       ),
@@ -354,63 +351,55 @@ class _LogPageState extends State<LogPage> {
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 搜索框 - 只在列表视图显示
-            if (_currentViewMode == ViewMode.list)
-              Column(
-                children: [
-                  TextField(
-                    focusNode: _searchFocusNode,
-                    controller: _searchController,
-                    onChanged: (value) => _applyFilters(),
-                    decoration: InputDecoration(
-                      hintText: '按标题或日志内容搜索',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    onTapOutside: (event) => _forceSearchUnfocus(),
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (value) => _forceSearchUnfocus(),
+            if (_currentViewMode == ViewMode.list) ...[
+              TextField(
+                focusNode: _searchFocusNode,
+                controller: _searchController,
+                onChanged: (value) => _applyFilters(),
+                decoration: InputDecoration(
+                  hintText: '按标题或日志内容搜索',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
-                  const SizedBox(height: 16),
-                ],
+                ),
+                onTapOutside: (event) => _forceSearchUnfocus(),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) => _forceSearchUnfocus(),
               ),
-
-            // 筛选栏 - 只在列表视图显示
-            _buildFilterBar(),
-
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              _buildFilterBar(),
+              const SizedBox(height: 16),
+            ],
 
             // 内容区域
-            _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(
                           Color(0xFF2CB7B3),
                         ),
                       ),
-                    ),
-                  )
-                : _filteredLogs.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40.0),
-                    child: Text(
-                      '暂无日志',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child: _buildCurrentView(),
-                  ),
+                    )
+                  : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40.0),
+                        child: Text(
+                          '暂无日志',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    )
+                  : _buildCurrentView(),
+            ),
           ],
         ),
       ),
@@ -421,8 +410,9 @@ class _LogPageState extends State<LogPage> {
   Widget _buildCurrentView() {
     switch (_currentViewMode) {
       case ViewMode.list:
-        return ListView(
-          children: _filteredLogs.map((log) => _buildLogCard(log)).toList(),
+        return ListView.builder(
+          itemCount: _filteredLogs.length,
+          itemBuilder: (context, index) => _buildLogCard(_filteredLogs[index]),
         );
       case ViewMode.month:
         return MonthView(
@@ -431,11 +421,22 @@ class _LogPageState extends State<LogPage> {
           onMonthChanged: (newMonth) {
             setState(() => _currentMonth = newMonth);
           },
+          onDaySelected: (selectedDate) {
+            setState(() {
+              _currentViewMode = ViewMode.day;
+              _startDate = selectedDate;
+              _endDate = selectedDate;
+            });
+            _loadLogs();
+          },
         );
       case ViewMode.week:
         return WeekView(logs: _filteredLogs);
       case ViewMode.day:
-        return DayView(logs: _filteredLogs);
+        return DayView(
+          logs: _filteredLogs,
+          initialDate: _startDate ?? DateTime.now(),
+        );
     }
   }
 
@@ -542,69 +543,71 @@ class _LogPageState extends State<LogPage> {
 
     return Center(
       child: FractionallySizedBox(
-      widthFactor: 0.95,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        color: const Color(0xFF1E1E1E),
-        child: InkWell(
-          onTap: () async {
-            _forceSearchUnfocus();
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LogDetailPage(logId: log.logId)),
-            );
-            if (result != null) _loadLogs();
-          },
-          borderRadius: BorderRadius.circular(12.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+        widthFactor: 0.95,
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          color: const Color(0xFF1E1E1E),
+          child: InkWell(
+            onTap: () async {
+              _forceSearchUnfocus();
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LogDetailPage(logId: log.logId),
+                ),
+              );
+              if (result != null) _loadLogs();
+            },
+            borderRadius: BorderRadius.circular(12.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(4.0),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logContent,
+                    style: const TextStyle(color: Colors.white70),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  const SizedBox(height: 8),
+                  Text(
+                    '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Colors.white70),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logContent,
-                  style: const TextStyle(color: Colors.white70),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '时间: ${log.startTime} - ${log.endTime}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '时间: ${log.startTime} - ${log.endTime}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
               ),
             ),
           ),
