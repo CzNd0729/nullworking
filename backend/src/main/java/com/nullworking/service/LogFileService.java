@@ -15,6 +15,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import com.nullworking.model.dto.FileDownloadInfo;
+
 @Service
 public class LogFileService {
 
@@ -45,6 +49,20 @@ public class LogFileService {
         logFile.setUploadTime(LocalDateTime.now());
 
         return logFileRepository.save(logFile);
+    }
+
+    public FileDownloadInfo loadFileAsResource(Integer fileId) throws IOException {
+        LogFile logFile = logFileRepository.findById(fileId)
+                .orElseThrow(() -> new IOException("文件未找到，ID：" + fileId));
+
+        Path filePath = Paths.get(uploadDir + logFile.getStoragePath()).toAbsolutePath().normalize();
+        Resource resource = new UrlResource(filePath.toUri());
+
+        if (resource.exists()) {
+            return new FileDownloadInfo(resource, logFile.getOriginalName(), logFile.getFileType());
+        } else {
+            throw new IOException("文件未找到：" + logFile.getOriginalName());
+        }
     }
 
     public void updateLogIdForFiles(List<Integer> fileIds, Integer logId) {

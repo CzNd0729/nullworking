@@ -554,7 +554,7 @@ class _LogPageState extends State<LogPage> {
             _forceSearchUnfocus();
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
+              MaterialPageRoute(builder: (context) => LogDetailPage(logId: log.logId)),
             );
             if (result != null) _loadLogs();
           },

@@ -38,4 +38,14 @@ class LogApi {
   Future<http.Response> updateLog(String logId, Map<String, dynamic> body) async {
     return await _baseApi.put('api/logs/$logId', body: body);
   }
+
+  // 新增：获取日志详情
+  Future<http.Response> getLogDetails(String logId) async {
+    return await _baseApi.get('api/logs/$logId');
+  }
+
+  // 新增：获取日志文件详情
+  Future<http.Response> getLogFile(int fileId) async {
+    return await _baseApi.get('api/log-files/$fileId');
+  }
 }

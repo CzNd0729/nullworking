@@ -188,4 +188,49 @@ class LogBusiness {
       return <Task>[];
     }
   }
+
+  /// 获取日志详情
+  Future<Log?> fetchLogDetails(String logId) async {
+    try {
+      final http.Response res = await _logApi.getLogDetails(logId);
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> resp = jsonDecode(res.body);
+        if (resp['code'] == 200 && resp['data'] != null) {
+          return Log.fromJson(resp['data']);
+        } else {
+          debugPrint('获取日志详情失败: ${resp['message']}');
+          return null;
+        }
+      } else {
+        debugPrint('获取日志详情网络错误: ${res.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('获取日志详情异常: $e');
+      return null;
+    }
+  }
+
+  /// 获取日志文件详情列表
+  Future<List<Map<String, dynamic>>> fetchLogFiles(List<int> fileIds) async {
+    List<Map<String, dynamic>> files = [];
+    for (int fileId in fileIds) {
+      try {
+        final http.Response res = await _logApi.getLogFile(fileId);
+        if (res.statusCode == 200) {
+          final Map<String, dynamic> resp = jsonDecode(res.body);
+          if (resp['code'] == 200 && resp['data'] != null) {
+            files.add(resp['data']); // 假设data就是文件详情Map
+          } else {
+            debugPrint('获取文件详情失败: ${resp['message']}');
+          }
+        } else {
+          debugPrint('获取文件详情网络错误: ${res.statusCode}');
+        }
+      } catch (e) {
+        debugPrint('获取文件详情异常: $e');
+      }
+    }
+    return files;
+  }
 }
