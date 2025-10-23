@@ -35,62 +35,135 @@ class _DayViewState extends State<DayView> {
     }).toList();
   }
 
-  // 获取特定时间段的日志
-  List<Log> _getLogsForHour(int hour) {
-    final logsForDate = _getLogsForDate();
-    return logsForDate.where((log) {
-      final startHour = int.tryParse(log.startTime.split(':')[0]) ?? 0;
-      return startHour == hour;
-    }).toList();
+  // 计算日志时间位置
+  double _calculateLogPosition(String time) {
+    final parts = time.split(':');
+    final hour = int.parse(parts[0]);
+    final minute = int.parse(parts[1]);
+    return hour + (minute / 60);
   }
 
-  // 构建时间段卡片
-  Widget _buildTimeSlotCard(int hour) {
-    final logs = _getLogsForHour(hour);
-    final hasLogs = logs.isNotEmpty;
+  // 计算日志高度
+  double _calculateLogHeight(String startTime, String endTime) {
+    final start = _calculateLogPosition(startTime);
+    final end = _calculateLogPosition(endTime);
+    return (end - start) * 60; // 每小时60逻辑像素
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 时间线和点
-          SizedBox(
-            width: 60,
-            child: Column(
-              children: [
-                Text(
-                  '$hour:00',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: hasLogs ? const Color(0xFF2C2C2C) : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: hasLogs
-                  ? Column(
-                      children: logs.map((log) => _buildLogItem(log)).toList(),
-                    )
-                  : Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: const Text(
-                        '暂无计划',
-                        style: TextStyle(color: Colors.white38, fontSize: 12),
+  // 检查两个日志是否时间重叠
+  bool _isOverlapping(Log a, Log b) {
+    final aStart = _calculateLogPosition(a.startTime);
+    final aEnd = _calculateLogPosition(a.endTime);
+    final bStart = _calculateLogPosition(b.startTime);
+    final bEnd = _calculateLogPosition(b.endTime);
+    return aStart < bEnd && bStart < aEnd;
+  }
+
+  // 计算日志应该在第几列
+  int _calculateColumn(
+    Log log,
+    List<Log> allLogs,
+    Map<String, int> columnAssignments,
+  ) {
+    if (columnAssignments.containsKey(log.logId)) {
+      return columnAssignments[log.logId]!;
+    }
+
+    Set<int> usedColumns = {};
+    for (var other in allLogs) {
+      if (other.logId != log.logId &&
+          columnAssignments.containsKey(other.logId) &&
+          _isOverlapping(log, other)) {
+        usedColumns.add(columnAssignments[other.logId]!);
+      }
+    }
+
+    int column = 0;
+    while (usedColumns.contains(column)) {
+      column++;
+    }
+
+    columnAssignments[log.logId] = column;
+    return column;
+  }
+
+  // 获取重叠日志组的最大列数
+  int _getMaxColumns(List<Log> logs) {
+    Map<String, int> columnAssignments = {};
+    for (var log in logs) {
+      _calculateColumn(log, logs, columnAssignments);
+    }
+    return columnAssignments.values.fold(
+          0,
+          (max, col) => col > max ? col : max,
+        ) +
+        1;
+  }
+
+  // 构建时间段网格
+  Widget _buildTimeGrid(List<Log> logs) {
+    Map<String, int> columnAssignments = {};
+    final maxColumns = _getMaxColumns(logs);
+    final availableWidth =
+        MediaQuery.of(context).size.width -
+        108; // 60 for timeline + 32 for padding + 16 for margins
+    final columnWidth = availableWidth / maxColumns;
+
+    return Stack(
+      children: [
+        // 时间轴
+        Column(
+          children: List.generate(24, (hour) {
+            return Container(
+              height: 60,
+              margin: const EdgeInsets.only(bottom: 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 时间标签
+                  SizedBox(
+                    width: 60,
+                    child: Text(
+                      '${hour.toString().padLeft(2, '0')}:00',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-            ),
-          ),
-        ],
-      ),
+                  ),
+                  // 时间网格线
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ),
+        // 日志卡片
+        ...logs.map((log) {
+          final startPosition = _calculateLogPosition(log.startTime) * 60;
+          final height = _calculateLogHeight(log.startTime, log.endTime);
+          final column = _calculateColumn(log, logs, columnAssignments);
+
+          return Positioned(
+            top: startPosition,
+            left: 60 + (column * columnWidth), // 时间轴宽度 + 列偏移
+            width: columnWidth - 8, // 减去边距
+            child: SizedBox(height: height, child: _buildLogItem(log)),
+          );
+        }).toList(),
+      ],
     );
   }
 
@@ -111,11 +184,12 @@ class _DayViewState extends State<DayView> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5),
-        ),
+        color: const Color(0xFF2C2C2C),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,36 +197,42 @@ class _DayViewState extends State<DayView> {
           Row(
             children: [
               Container(
-                width: 8,
-                height: 8,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   color: statusColor,
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                timeRange,
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  timeRange,
+                  style: TextStyle(color: statusColor, fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             log.logTitle,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           if (log.logContent.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(
-              log.logContent,
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: Text(
+                log.logContent,
+                style: const TextStyle(color: Colors.white60, fontSize: 11),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ],
@@ -243,32 +323,7 @@ class _DayViewState extends State<DayView> {
 
   @override
   Widget build(BuildContext context) {
-    const timeSlots = [
-      0,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-    ];
+    final logsForDate = _getLogsForDate();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -285,11 +340,7 @@ class _DayViewState extends State<DayView> {
           Expanded(
             child: SingleChildScrollView(
               controller: _scrollController,
-              child: Column(
-                children: timeSlots
-                    .map((hour) => _buildTimeSlotCard(hour))
-                    .toList(),
-              ),
+              child: _buildTimeGrid(logsForDate),
             ),
           ),
         ],
