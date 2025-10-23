@@ -216,24 +216,22 @@ public class LogService {
 
         List<Log> logs = logRepository.findByTaskTaskIdOrderByTaskProgressAsc(taskId);
 
-        // 过滤出当前用户的日志
-        List<Log> userLogs = new ArrayList<>();
+        // 返回所有与任务关联的日志，不再过滤只返回当前用户的日志
+        List<Log> allLogs = new ArrayList<>();
         for (Log log : logs) {
-            if (log.getUser().getUserId().equals(userId)) {
-                userLogs.add(log);
-            }
+            allLogs.add(log);
         }
 
         // 找到已完成日志的最新进度
         int maxCompletedProgress = 0;
-        for (Log log : userLogs) {
+        for (Log log : allLogs) {
             if (log.getLogStatus() == 1) { // 已完成
                 maxCompletedProgress = Math.max(maxCompletedProgress, log.getTaskProgress());
             }
         }
 
         List<Map<String, Object>> items = new ArrayList<>();
-        for (Log l : userLogs) {
+        for (Log l : allLogs) {
             // 如果是待完成日志且进度落后于已完成日志的最新进度，则跳过
             if (l.getLogStatus() == 0 && l.getTaskProgress() <= maxCompletedProgress) {
                 continue;
@@ -245,6 +243,8 @@ public class LogService {
             item.put("logContent", l.getLogContent());
             item.put("taskProgress", l.getTaskProgress() + "%");
             item.put("logStatus", l.getLogStatus().toString());
+            item.put("userId", l.getUser().getUserId()); // 添加用户ID信息
+            item.put("userName", l.getUser().getRealName()); // 添加用户姓名信息
             
             // 格式化时间：yyyy-MM-dd-HH:mm
             String endTime = l.getLogDate().toString() + " " + l.getEndTime().toString().substring(0, 5);

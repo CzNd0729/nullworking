@@ -324,14 +324,6 @@ class _LogDetailPageState extends State<LogDetailPage> {
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
-            Positioned(
-              top: 40,
-              left: 20,
-              child: Text(
-                fileName,
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-              ),
-            ),
           ],
         ),
       ),
