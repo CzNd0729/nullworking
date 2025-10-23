@@ -217,7 +217,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('yyyy年MM月dd日 HH:mm').format(log.logDate),
+                  log.endTime,
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 12,

@@ -247,7 +247,7 @@ public class LogService {
             item.put("logStatus", l.getLogStatus().toString());
             
             // 格式化时间：yyyy-MM-dd-HH:mm
-            String endTime = l.getLogDate().toString() + "-" + l.getEndTime().toString().substring(0, 5);
+            String endTime = l.getLogDate().toString() + " " + l.getEndTime().toString().substring(0, 5);
             item.put("endTime", endTime);
             
             items.add(item);
