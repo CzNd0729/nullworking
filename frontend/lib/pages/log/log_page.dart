@@ -351,67 +351,55 @@ class _LogPageState extends State<LogPage> {
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 搜索框 - 只在列表视图显示
-            if (_currentViewMode == ViewMode.list)
-              Column(
-                children: [
-                  TextField(
-                    focusNode: _searchFocusNode,
-                    controller: _searchController,
-                    onChanged: (value) => _applyFilters(),
-                    decoration: InputDecoration(
-                      hintText: '按标题或日志内容搜索',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    onTapOutside: (event) => _forceSearchUnfocus(),
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (value) => _forceSearchUnfocus(),
+            if (_currentViewMode == ViewMode.list) ...[
+              TextField(
+                focusNode: _searchFocusNode,
+                controller: _searchController,
+                onChanged: (value) => _applyFilters(),
+                decoration: InputDecoration(
+                  hintText: '按标题或日志内容搜索',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
-                  const SizedBox(height: 16),
-                ],
+                ),
+                onTapOutside: (event) => _forceSearchUnfocus(),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) => _forceSearchUnfocus(),
               ),
-
-            // 筛选栏 - 只在列表视图显示
-            _buildFilterBar(),
-
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              _buildFilterBar(),
+              const SizedBox(height: 16),
+            ],
 
             // 内容区域
-            _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(
                           Color(0xFF2CB7B3),
                         ),
                       ),
-                    ),
-                  )
-                : SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child:
-                        _filteredLogs.isEmpty &&
-                            _currentViewMode == ViewMode.list
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40.0),
-                              child: Text(
-                                '暂无日志',
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            ),
-                          )
-                        : _buildCurrentView(),
-                  ),
+                    )
+                  : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40.0),
+                        child: Text(
+                          '暂无日志',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    )
+                  : _buildCurrentView(),
+            ),
           ],
         ),
       ),
@@ -422,8 +410,9 @@ class _LogPageState extends State<LogPage> {
   Widget _buildCurrentView() {
     switch (_currentViewMode) {
       case ViewMode.list:
-        return ListView(
-          children: _filteredLogs.map((log) => _buildLogCard(log)).toList(),
+        return ListView.builder(
+          itemCount: _filteredLogs.length,
+          itemBuilder: (context, index) => _buildLogCard(_filteredLogs[index]),
         );
       case ViewMode.month:
         return MonthView(
