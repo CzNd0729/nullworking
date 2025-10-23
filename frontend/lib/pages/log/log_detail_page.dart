@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart'; // 导入LogBusiness
 import 'create_log_page.dart'; // 导入CreateLogPage
+import 'dart:typed_data'; // 导入Uint8List，用于图片显示
 
 class LogDetailPage extends StatefulWidget {
   final String logId;
@@ -239,16 +240,98 @@ class _LogDetailPageState extends State<LogDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ..._logFiles.map((file) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Text(
-                            file['fileName'] ?? '未知文件', // 假设文件详情包含文件名
-                            style: const TextStyle(color: Colors.blueAccent),
-                          ),
-                        )),
+                    SizedBox(
+                      height: 100, // 固定高度以便横向滚动
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _logFiles.length,
+                        itemBuilder: (context, index) {
+                          final fileData = _logFiles[index];
+                          final fileBytes = fileData['fileBytes'] as Uint8List?;
+                          final fileName = fileData['fileName'] as String? ?? '未知文件';
+
+                          Widget contentWidget;
+                          if (fileBytes != null) {
+                            contentWidget = Image.memory(fileBytes, fit: BoxFit.cover);
+                          } else {
+                            contentWidget = Center(
+                              child: Text(
+                                fileName,
+                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ),
+                            );
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: GestureDetector(
+                              onTap: () => _previewImage(fileBytes, fileName), // 调用预览功能
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800], // Placeholder background
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: contentWidget,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _previewImage(Uint8List? imageBytes, String fileName) {
+    if (imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法预览文件')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: EdgeInsets.zero, // 使对话框全屏
+        child: Stack(
+          children: [
+            Center(
+              child: Image.memory(
+                imageBytes,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const Center(
+                  child: Icon(Icons.broken_image, color: Colors.white, size: 50),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              left: 20,
+              child: Text(
+                fileName,
+                style: const TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
           ],
         ),
       ),

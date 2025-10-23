@@ -55,6 +55,27 @@ class BaseApi {
     return response;
   }
 
+  Future<http.Response> postFile(
+    String endpoint,
+    List<int> fileBytes,
+    String filename, {
+    bool authenticated = true,
+  }) async {
+    var uri = Uri.parse('$_baseUrl/$endpoint');
+    final headers = await _getHeaders(authenticated: authenticated);
+
+    var request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(headers)
+      ..files.add(http.MultipartFile.fromBytes(
+        'file', // 后端接收文件的字段名，可能需要根据实际API调整
+        fileBytes,
+        filename: filename,
+      ));
+
+    final streamedResponse = await request.send();
+    return await http.Response.fromStream(streamedResponse);
+  }
+
   Future<http.Response> put(
     String endpoint, {
     Map<String, dynamic>? body,

@@ -33,7 +33,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
   Task? _selectedTask;
   
   // 照片相关变量
-  final List<File> _selectedImages = []; // 使用 File 对象存储本地图片
+  final List<Map<String, dynamic>> _selectedImages = []; // 存储 { 'file': File, 'fileId': int? }
   bool _isUploadingImages = false;
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -54,6 +54,37 @@ class _CreateLogPageState extends State<CreateLogPage> {
       final endParts = log.endTime.split(':');
       _endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
       _progress = (log.taskProgress ?? 0).toDouble();
+      // 加载日志图片
+      _loadLogImages(log.fileIds ?? []);
+    }
+  }
+
+  Future<void> _loadLogImages(List<int> fileIds) async {
+    if (fileIds.isEmpty) return;
+
+    setState(() {
+      _isUploadingImages = true; // 暂时用这个状态来表示加载中
+    });
+
+    try {
+      final List<Map<String, dynamic>> fetchedFiles = await _logBusiness.fetchLogFiles(fileIds);
+      for (var fileData in fetchedFiles) {
+        // 假设fileData包含一个url字段和fileId字段
+        // 这里我们需要下载图片并转换为File对象，或者直接使用网络图片URL
+        // 为了简化，我们假设直接存储一个placeholder或者一个能展示的File对象
+        // 实际应用中需要更复杂的逻辑来处理网络图片
+        _selectedImages.add({
+          'file': null, // 这里暂时为空，实际应该下载图片或使用网络图片组件
+          'fileId': fileData['fileId'], // 假设后端返回的fileId字段
+          'url': fileData['url'], // 假设后端返回的url字段
+        });
+      }
+    } catch (e) {
+      debugPrint('加载日志图片失败: $e');
+    } finally {
+      setState(() {
+        _isUploadingImages = false;
+      });
     }
   }
 
@@ -349,12 +380,20 @@ Future<void> _pickImagesFromGallery() async {
     );
 
     if (selectedFiles != null && selectedFiles.isNotEmpty) {
+      final List<File> filesToUpload = selectedFiles.map((xfile) => File(xfile.path)).toList();
+      final List<int> uploadedFileIds = await _logBusiness.uploadLogFiles(filesToUpload);
+
       setState(() {
-        _selectedImages.addAll(selectedFiles.map((xfile) => File(xfile.path)).toList());
+        for (int i = 0; i < filesToUpload.length; i++) {
+          _selectedImages.add({
+            'file': filesToUpload[i],
+            'fileId': uploadedFileIds.length > i ? uploadedFileIds[i] : null,
+          });
+        }
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('照片选择成功'),
+          content: Text('照片选择并上传成功'),
           backgroundColor: Color(0xFF4CAF50),
         ),
       );
@@ -389,10 +428,17 @@ void _previewImage(int index) {
       child: Stack(
         children: [
           Center(
-            child: Image.file(
-              _selectedImages[index],
-              fit: BoxFit.contain,
-            ),
+            child: _selectedImages[index]['file'] != null
+                ? Image.file(
+                    _selectedImages[index]['file'] as File,
+                    fit: BoxFit.contain,
+                  )
+                : (_selectedImages[index]['url'] != null
+                    ? Image.network(
+                        _selectedImages[index]['url'] as String,
+                        fit: BoxFit.contain,
+                      )
+                    : const SizedBox.shrink()),
           ),
           Positioned(
             top: 40,
@@ -438,6 +484,11 @@ Future<void> _onSubmit() async {
   setState(() => _isSubmitting = true);
 
   try {
+    final List<int> fileIdsToAttach = _selectedImages
+        .where((image) => image['fileId'] != null)
+        .map<int>((image) => image['fileId'] as int)
+        .toList();
+
     // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
     final Log logToProcess = Log(
       logId: widget.logToEdit?.logId ?? '',
@@ -451,7 +502,7 @@ Future<void> _onSubmit() async {
       endTime:
           '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
       logDate: _plannedDate,
-      fileIds: [], // 图片仅在前端显示，不传文件ID到后端
+      fileIds: fileIdsToAttach, // 图片仅在前端显示，不传文件ID到后端
     );
 
     final bool isUpdate = widget.logToEdit != null;
@@ -597,6 +648,35 @@ Future<void> _onSubmit() async {
                         scrollDirection: Axis.horizontal,
                         itemCount: _selectedImages.length,
                         itemBuilder: (context, index) {
+                          final imageEntry = _selectedImages[index];
+                          final File? imageFile = imageEntry['file'];
+                          final String? imageUrl = imageEntry['url'];
+
+                          Widget imageWidget;
+                          if (imageFile != null) {
+                            imageWidget = Image.file(imageFile, fit: BoxFit.cover);
+                          } else if (imageUrl != null) {
+                            imageWidget = Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.error, color: Colors.red),
+                            );
+                          } else {
+                            imageWidget = const Icon(Icons.broken_image);
+                          }
+
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: Stack(
@@ -608,10 +688,11 @@ Future<void> _onSubmit() async {
                                     height: 100,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
-                                      image: DecorationImage(
-                                        image: FileImage(_selectedImages[index]),
-                                        fit: BoxFit.cover,
-                                      ),
+                                      color: Colors.grey[800], // Placeholder background
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: imageWidget,
                                     ),
                                   ),
                                 ),

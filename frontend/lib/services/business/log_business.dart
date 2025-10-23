@@ -7,11 +7,35 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../models/log.dart';
 import '../../models/task.dart';
+import 'dart:typed_data'; // 导入 Uint8List
 
 class LogBusiness {
   final LogApi _logApi = LogApi();
   final TaskApi _taskApi = TaskApi();
   final ImagePicker _imagePicker = ImagePicker();
+
+  /// 上传多个文件并返回它们的 fileId
+  Future<List<int>> uploadLogFiles(List<File> files) async {
+    List<int> fileIds = [];
+    for (File file in files) {
+      try {
+        Uint8List fileBytes = await file.readAsBytes();
+        String filename = file.path.split('/').last;
+        final http.Response res = await _logApi.uploadLogFile(fileBytes.toList(), filename);
+        if (res.statusCode == 200) {
+          final Map<String, dynamic> resp = jsonDecode(res.body);
+          if (resp['code'] == 200 && resp['data'] != null) {
+            fileIds.add(resp['data'] as int); // 假设data就是fileId
+          }
+        } else {
+          debugPrint('上传文件网络错误: ${res.statusCode}');
+        }
+      } catch (e) {
+        debugPrint('上传文件异常: $e');
+      }
+    }
+    return fileIds;
+  }
 
   /// 选择图片（仅前端功能，不上传）
   Future<List<File>> pickImages() async {
@@ -138,6 +162,10 @@ class LogBusiness {
       if (log.taskId == null) {
         body.remove('taskId');
       }
+      // 添加fileIds到body
+      if (log.fileIds?.isNotEmpty == true) {
+        body['fileIds'] = log.fileIds;
+      }
       http.Response res;
       if (isUpdate) {
         res = await _logApi.updateLog(log.logId, body);
@@ -218,11 +246,20 @@ class LogBusiness {
       try {
         final http.Response res = await _logApi.getLogFile(fileId);
         if (res.statusCode == 200) {
-          final Map<String, dynamic> resp = jsonDecode(res.body);
-          if (resp['code'] == 200 && resp['data'] != null) {
-            files.add(resp['data']); // 假设data就是文件详情Map
+          String? filename;
+          String? contentDisposition = res.headers['content-disposition'];
+          if (contentDisposition != null) {
+            final filenameRegex = RegExp(r'filename="([^"]+)"');
+            final match = filenameRegex.firstMatch(contentDisposition);
+            if (match != null && match.groupCount > 0) {
+              filename = match.group(1);
+            }
+          }
+
+          if (filename != null) {
+            files.add({'fileId': fileId, 'fileName': filename, 'fileBytes': res.bodyBytes});
           } else {
-            debugPrint('获取文件详情失败: ${resp['message']}');
+            debugPrint('获取文件详情失败: 无法从Content-Disposition头中提取文件名');
           }
         } else {
           debugPrint('获取文件详情网络错误: ${res.statusCode}');
