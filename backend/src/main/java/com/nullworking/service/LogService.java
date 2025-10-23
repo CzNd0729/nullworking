@@ -57,6 +57,9 @@ public class LogService {
             item.put("taskTitle",l.getTask().getTaskTitle());
             item.put("logTitle", l.getLogTitle());
             item.put("logContent", l.getLogContent());
+            item.put("logDate", l.getLogDate());
+            item.put("startTime", l.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm")));
+            item.put("endTime", l.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm")));
             items.add(item);
         }
 

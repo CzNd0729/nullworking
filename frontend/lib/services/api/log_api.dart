@@ -20,17 +20,11 @@ class LogApi {
   // 新增：获取日志列表
   Future<http.Response> listLogs({String? startTime, String? endTime}) async {
     Map<String, String> queryParams = {};
-    String timeRange = '';
-    if (startTime != null) {
-      timeRange += startTime;
+    if(startTime!=null){
+      queryParams['startTime'] = startTime;
     }
-    timeRange += '~';
-    if (endTime != null) {
-      timeRange += endTime;
-    }
-
-    if (timeRange != '~') {
-      queryParams['startTime-endTime'] = timeRange;
+    if(endTime!=null){
+      queryParams['endTime'] = endTime;
     }
     return await _baseApi.get('api/logs', queryParams: queryParams);
   }
