@@ -203,65 +203,64 @@ class _TasksPageState extends State<TasksPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  statusTag,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12.0), // Ensure InkWell has rounded corners
+          onTap: () {
+            _forceSearchUnfocus();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TaskDetailPage(
+                  task: task,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                taskTitle,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            ).then((result) {
+              _forceSearchUnfocus();
+              if (result != null) {
+                _loadTasks();
+              }
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    statusTag,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text('分配给: $assignee'),
-              const SizedBox(height: 4),
-              Text('截止日期: $deadline'),
-              const SizedBox(height: 4),
-              Text(
-                '优先级: $priority',
-                style: TextStyle(
-                  color: priority == 'P0'
-                      ? Colors.red
-                      : (priority == 'P1' ? Colors.orange : Colors.blue),
+                const SizedBox(height: 8),
+                Text(
+                  taskTitle,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () {
-                  _forceSearchUnfocus();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TaskDetailPage(
-                        task: task,
-                        isAssignedTask: isAssignedTask,
-                      ),
-                    ),
-                  ).then((result) {
-                    _forceSearchUnfocus();
-                    if (result != null) {
-                      _loadTasks();
-                    }
-                  });
-                },
-                child: const Text('查看详情'),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text('分配给: $assignee'),
+                const SizedBox(height: 4),
+                Text('截止日期: $deadline'),
+                const SizedBox(height: 4),
+                Text(
+                  '优先级: $priority',
+                  style: TextStyle(
+                    color: priority == 'P0'
+                        ? Colors.red
+                        : (priority == 'P1' ? Colors.orange : Colors.blue),
+                  ),
+                ),
+                // Removed ElevatedButton for "查看详情"
+              ],
+            ),
           ),
         ),
       ),

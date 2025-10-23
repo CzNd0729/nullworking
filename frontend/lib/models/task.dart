@@ -9,6 +9,7 @@ class Task {
   final DateTime creationTime;
   final DateTime deadline;
   final List<String> executorNames;
+  final bool isParticipated;
 
   Task({
     required this.taskId,
@@ -20,9 +21,10 @@ class Task {
     required this.creationTime,
     required this.deadline,
     required this.executorNames,
+    this.isParticipated = false,
   });
 
-  factory Task.fromJson(Map<String, dynamic> json) {
+  factory Task.fromJson(Map<String, dynamic> json, {bool isParticipated = false}) {
     return Task(
       taskId: json['taskId'].toString(),
       creatorName: json['creatorName'].toString(),
@@ -33,6 +35,7 @@ class Task {
       creationTime: DateTime.parse(json['creationTime']),
       deadline: DateTime.parse(json['deadline']),
       executorNames: List<String>.from(json['executorNames']),
+      isParticipated: isParticipated,
     );
   }
 }
@@ -49,10 +52,10 @@ class TaskListResponse {
   factory TaskListResponse.fromJson(Map<String, dynamic> json) {
     return TaskListResponse(
       createdTasks: (json['created'] as List)
-          .map((taskJson) => Task.fromJson(taskJson))
+          .map((taskJson) => Task.fromJson(taskJson, isParticipated: false))
           .toList(),
       participatedTasks: (json['participated'] as List)
-          .map((taskJson) => Task.fromJson(taskJson))
+          .map((taskJson) => Task.fromJson(taskJson, isParticipated: true))
           .toList(),
     );
   }

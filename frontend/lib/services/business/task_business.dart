@@ -84,6 +84,7 @@ class TaskBusiness {
             creationTime: DateTime.now(),
             deadline: deadline,
             executorNames: _mapUserIdsToNames(executorIds),
+            isParticipated: false, // 新发布的任务，isParticipated 设为 false
           );
         } else {
           print('任务发布/更新失败: ${responseBody['message'] ?? '未知错误'}');

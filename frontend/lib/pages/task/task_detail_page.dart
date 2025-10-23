@@ -7,16 +7,15 @@ import '../log/create_log_page.dart';
 import 'create_task_page.dart';
 import '../../services/business/task_business.dart';
 import '../../services/business/log_business.dart';
-import '../../services/mock/mock_data.dart';
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
-  final bool isAssignedTask;
+  // final bool isAssignedTask; // 删除此行
 
   const TaskDetailPage({
     super.key,
     required this.task,
-    this.isAssignedTask = false,
+    // this.isAssignedTask = false, // 删除此行
   });
 
   @override
@@ -175,6 +174,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     painter: DashedLinePainter(
                       color: isDashedLine ? Colors.grey : Colors.green,
                       isDashed: isDashedLine,
+                      isBottom: isBottom, // 传递 isBottom 参数
                     ),
                   ),
                 ),
@@ -186,6 +186,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     painter: DashedLinePainter(
                       color: Colors.grey,
                       isDashed: true,
+                      isBottom: isBottom, // 传递 isBottom 参数
                     ),
                   ),
                 ),
@@ -269,6 +270,18 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white),
+              onPressed: () => _editTask(),
+            ),
+          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              onPressed: () => _confirmDeleteTask(),
+            ),
+        ],
       ),
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
@@ -391,118 +404,77 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: widget.isAssignedTask
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final updatedTask = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      CreateTaskPage(taskToEdit: widget.task),
-                                ),
-                              );
-                              if (updatedTask != null) {
-                                Navigator.of(context).pop(updatedTask);
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blueAccent,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              '修改',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    backgroundColor: const Color(0xFF1E1E1E),
-                                    title: const Text(
-                                      '确认删除',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: const Text(
-                                      '您确定要删除此任务吗？',
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () => Navigator.of(context).pop(),
-                                        child: const Text(
-                                          '取消',
-                                          style: TextStyle(color: Colors.blueAccent),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          _taskBusiness.deleteTask(widget.task.taskId).then((response) {
-                                            if (response == true) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('任务删除成功！'),
-                                                  backgroundColor: Color(0xFF2CB7B3),
-                                                ),
-                                              );
-                                              Navigator.of(context).pop(true);
-                                            } else {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('任务删除失败，请重试！'),
-                                                  backgroundColor: Color(0xFF2CB7B3),
-                                                ),
-                                              );
-                                            }
-                                          });
-                                        },
-                                        child: const Text(
-                                          '删除',
-                                          style: TextStyle(color: Colors.redAccent),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              '删除',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
+            // 原来的按钮区域已移除
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _editTask() async {
+    final updatedTask = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateTaskPage(taskToEdit: widget.task),
+      ),
+    );
+    if (updatedTask != null) {
+      Navigator.of(context).pop(updatedTask);
+    }
+  }
+
+  Future<void> _confirmDeleteTask() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: const Text(
+            '确认删除',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            '您确定要删除此任务吗？',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                '取消',
+                style: TextStyle(color: Colors.blueAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _taskBusiness.deleteTask(widget.task.taskId).then((response) {
+                  if (response == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('任务删除成功！'),
+                        backgroundColor: Color(0xFF2CB7B3),
+                      ),
+                    );
+                    Navigator.of(context).pop(true);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('任务删除失败，请重试！'),
+                        backgroundColor: Color(0xFF2CB7B3),
+                      ),
+                    );
+                  }
+                });
+              },
+              child: const Text(
+                '删除',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -510,10 +482,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 class DashedLinePainter extends CustomPainter {
   final Color color;
   final bool isDashed;
+  final bool isBottom; // 添加 isBottom 参数
 
   DashedLinePainter({
     required this.color,
     required this.isDashed,
+    this.isBottom = false, // 默认为 false
   });
 
   @override
@@ -522,8 +496,10 @@ class DashedLinePainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    const fixLength = 90.0;
-
+    final fixLength = 65.0;
+    if(isBottom){
+      return;
+    }
     if (isDashed) {
       const dashLength = 2.0;
       const gapLength = 4.0;

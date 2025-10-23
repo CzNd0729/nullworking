@@ -138,6 +138,60 @@ class _LogPageState extends State<LogPage> {
     _loadLogs();
   }
 
+  Widget _buildTimeFilterButton(String text, VoidCallback onPressed) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E1E1E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            elevation: 0,
+          ),
+          onPressed: onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Text(
+              text,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _setToday() {
+    _forceSearchUnfocus();
+    setState(() {
+      _startDate = DateTime.now();
+      _endDate = DateTime.now();
+    });
+    _loadLogs();
+  }
+
+  void _setThisWeek() {
+    _forceSearchUnfocus();
+    setState(() {
+      final now = DateTime.now();
+      _startDate = now.subtract(Duration(days: now.weekday - 1));
+      _endDate = now.add(Duration(days: DateTime.daysPerWeek - now.weekday));
+    });
+    _loadLogs();
+  }
+
+  void _setThisMonth() {
+    _forceSearchUnfocus();
+    setState(() {
+      final now = DateTime.now();
+      _startDate = DateTime(now.year, now.month, 1);
+      _endDate = DateTime(now.year, now.month + 1, 0);
+    });
+    _loadLogs();
+  }
+
   // 只在列表视图显示的筛选栏
   Widget _buildFilterBar() {
     if (_currentViewMode != ViewMode.list) {
@@ -154,7 +208,7 @@ class _LogPageState extends State<LogPage> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
-                '日志安排时间',
+                '时间筛选',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -171,6 +225,15 @@ class _LogPageState extends State<LogPage> {
                     style: TextStyle(color: Colors.orange),
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildTimeFilterButton('今天', _setToday),
+              _buildTimeFilterButton('本周', _setThisWeek),
+              _buildTimeFilterButton('本月', _setThisMonth),
             ],
           ),
           const SizedBox(height: 8),
@@ -307,11 +370,8 @@ class _LogPageState extends State<LogPage> {
                     decoration: InputDecoration(
                       hintText: '按标题或日志内容搜索',
                       prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: const Color(0xFF1E1E1E),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
                       ),
                     ),
                     onTapOutside: (event) => _forceSearchUnfocus(),
@@ -340,17 +400,14 @@ class _LogPageState extends State<LogPage> {
                     ),
                   )
                 : _filteredLogs.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40.0),
-                    child: Text(
-                      '暂无日志',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child: _buildCurrentView(),
-                  ),
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40.0),
+                        child: Text(
+                          '暂无日志',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
+                    : _buildCurrentView(),
           ],
         ),
       ),
@@ -361,7 +418,7 @@ class _LogPageState extends State<LogPage> {
   Widget _buildCurrentView() {
     switch (_currentViewMode) {
       case ViewMode.list:
-        return ListView(
+        return Column(
           children: _filteredLogs.map((log) => _buildLogCard(log)).toList(),
         );
       case ViewMode.month:
@@ -480,70 +537,72 @@ class _LogPageState extends State<LogPage> {
         statusColor = Colors.grey;
     }
 
-    return FractionallySizedBox(
-      widthFactor: 0.95,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        color: const Color(0xFF1E1E1E),
-        child: InkWell(
-          onTap: () async {
-            _forceSearchUnfocus();
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
-            );
-            if (result != null) _loadLogs();
-          },
-          borderRadius: BorderRadius.circular(12.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
+    return Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.95,
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          color: const Color(0xFF1E1E1E),
+          child: InkWell(
+            onTap: () async {
+              _forceSearchUnfocus();
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => LogDetailPage(log: log)),
+              );
+              if (result != null) _loadLogs();
+            },
+            borderRadius: BorderRadius.circular(12.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(4.0),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(4.0),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  const SizedBox(height: 8),
+                  Text(
+                    log.logContent,
+                    style: const TextStyle(color: Colors.white70),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  const SizedBox(height: 8),
+                  Text(
+                    '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
+                    style: const TextStyle(color: Colors.white70),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  log.logContent,
-                  style: const TextStyle(color: Colors.white70),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '日期: ${log.logDate.year}-${log.logDate.month.toString().padLeft(2, '0')}-${log.logDate.day.toString().padLeft(2, '0')}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '时间: ${log.startTime} - ${log.endTime}',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '时间: ${log.startTime} - ${log.endTime}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
