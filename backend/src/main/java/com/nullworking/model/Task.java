@@ -12,8 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
+
 
 @Entity
 @Table(name = "Task")
@@ -48,16 +47,8 @@ public class Task {
     private LocalDateTime deadline;
 
 
-    @Column(name = "Finish_Time")
-    private LocalDateTime finishTime;
-
-    @PrePersist
-    @PreUpdate
-    private void ensureFinishTimeWhenCompleted() {
-        if (this.taskStatus != null && this.taskStatus == (byte)2 && this.finishTime == null) {
-            this.finishTime = LocalDateTime.now();
-        }
-    }
+    @Column(name = "Completion_Time")
+    private LocalDateTime completionTime;
 
     // Getters and Setters
     public Integer getTaskId() {
@@ -124,11 +115,11 @@ public class Task {
         this.deadline = deadline;
     }
 
-    public LocalDateTime getFinishTime() {
-        return finishTime;
+    public LocalDateTime getCompletionTime() {
+        return completionTime;
     }
 
-    public void setFinishTime(LocalDateTime finishTime) {
-        this.finishTime = finishTime;
+    public void setCompletionTime(LocalDateTime completionTime) {
+        this.completionTime = completionTime;
     }
 }

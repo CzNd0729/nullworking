@@ -1,291 +1,118 @@
 package com.nullworking.controller;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 
 import com.nullworking.common.ApiResponse;
-import com.nullworking.model.Task;
-import com.nullworking.model.TaskExecutorRelation;
-import com.nullworking.model.User;
-import com.nullworking.repository.TaskExecutorRelationRepository;
-import com.nullworking.repository.TaskRepository;
-import com.nullworking.repository.UserRepository;
+import com.nullworking.service.LogService;
+import com.nullworking.service.TaskService;
 import com.nullworking.util.JwtUtil;
+import com.nullworking.model.dto.TaskPublishRequest;
+import com.nullworking.model.dto.TaskUpdateRequest;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
-@RequestMapping("/api/task")
+@RequestMapping("/api/tasks")
 public class TaskController {
 
-    @Autowired
-    private TaskRepository taskRepository;
+    // @Autowired
+    // private TaskRepository taskRepository;
 
-    @Autowired
-    private TaskExecutorRelationRepository taskExecutorRelationRepository;
+    // @Autowired
+    // private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    // @Autowired
+    // private UserRepository userRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，仅创建者可操作，返回code：200成功，208已关闭，401未授权，403无权限，404不存在，500失败")
-    @DeleteMapping("/deleteTask")
+    @Autowired
+    private TaskService taskService;
+
+    @Autowired
+    private LogService logService;
+
+    @Operation(summary = "删除任务(关闭)", description = "根据任务ID将任务状态置为3=已关闭，仅创建者可操作，返回code：200成功，401未授权，403无权限，404不存在，500失败")
+    @DeleteMapping("/{taskId}")
     @Transactional
-    public ApiResponse<String> deleteTask(@RequestParam("taskID") Integer taskId, HttpServletRequest request) {
-        // 从Token解析当前用户
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
+    public ApiResponse<String> deleteTask(
+            @Parameter(description = "任务ID") @PathVariable("taskId") Integer taskId, HttpServletRequest request) {
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权或Token无效");
         }
+        return taskService.deleteTask(taskId, userId);
+    }
+
+    @Operation(summary = "查询任务列表", description = "返回当前用户创建与参与的任务列表（默认包含已删除任务），完成任务包含finishTime")
+    @GetMapping("")
+    public ApiResponse<Map<String, Object>> listUserTasks(
+            HttpServletRequest request,
+            @Parameter(description = "任务状态 (0:进行中, 1:已延期, 2:已完成, 3:已关闭)") @RequestParam(value = "taskStatus", required = false) Byte taskStatus,
+            @Parameter(description = "参与者类型 (creator:创建者, executor:执行者)") @RequestParam(value = "participantType", required = false) String participantType) {
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
 
-        Optional<Task> taskOpt = taskRepository.findById(taskId);
-        if (taskOpt.isEmpty()) {
-            return ApiResponse.error(404, "任务不存在");
-        }
-        try {
-            Task task = taskOpt.get();
-            // 仅任务创建者可删除（关闭）
-            if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
-                return ApiResponse.error(403, "无权限删除此任务");
-            }
-            if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
-                // 已经是关闭状态
-                return ApiResponse.error(208, "任务已关闭");
-            }
-            task.setTaskStatus((byte)3);
-            taskRepository.save(task);
-
-            return ApiResponse.success("任务删除成功");
-        } catch (Exception e) {
-            return ApiResponse.error(500, "任务删除失败: " + e.getMessage());
-        }
+        return taskService.listUserTasks(userId, taskStatus, participantType);
     }
 
-    @Operation(summary = "查看任务", description = "返回当前用户创建与参与的任务列表（默认包含已删除任务），完成任务包含finishTime")
-    @GetMapping("/listUserTasks")
-    public ApiResponse<Map<String, Object>> listUserTasks(HttpServletRequest request) {
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
-
+    @Operation(summary = "任务详情", description = "获取指定任务的所有日志，按进度排序，包含已完成和待完成的日志")
+    @GetMapping("/{taskId}")
+    public ApiResponse<Map<String, Object>> taskDetails(@PathVariable("taskId") Integer taskId, HttpServletRequest httpRequest) {
+        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
-            return ApiResponse.error(401, "未授权或Token无效");
+            return ApiResponse.error(401, "未授权: 无效的token或用户ID");
         }
-
-        final Integer finalUserId = userId;
-
-        List<Task> createdTasks = taskRepository.findByCreator_UserId(userId);
-
-        List<Integer> executingTaskIds = taskExecutorRelationRepository.findAllTaskIdsByExecutor(userId);
-        Set<Integer> executingIdSet = new HashSet<>(executingTaskIds);
-        List<Task> executingTasks = executingIdSet.isEmpty() ? Collections.emptyList()
-                : taskRepository.findAllById(executingIdSet).stream()
-                .filter(t -> t.getCreator() == null || t.getCreator().getUserId() == null || !t.getCreator().getUserId().equals(finalUserId)) // 排除自己创建的任务
-                .collect(Collectors.toList());
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("created", createdTasks.stream().map(this::toDtoWithExecutors).collect(Collectors.toList()));
-        data.put("participated", executingTasks.stream().map(this::toDtoWithExecutors).collect(Collectors.toList()));
-
-        return ApiResponse.success(data);
-    }
-
-    private Map<String, Object> toDto(Task t) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("taskID", String.valueOf(t.getTaskId()));
-        m.put("creatorName", t.getCreator() != null ? t.getCreator().getRealName() : null);
-        m.put("taskTitle", t.getTaskTitle());
-        m.put("taskContent", t.getTaskContent());
-        m.put("taskPriority", String.valueOf(t.getPriority()));
-        m.put("taskStatus", String.valueOf(t.getTaskStatus()));
-        m.put("creationTime", t.getCreationTime() != null ? t.getCreationTime().toString() : null);
-        m.put("deadline", t.getDeadline() != null ? t.getDeadline().toString() : null);
-        if (Byte.valueOf((byte)2).equals(t.getTaskStatus())) {
-            m.put("finishTime", t.getFinishTime() != null ? t.getFinishTime().toString() : null);
-        }
-        return m;
-    }
-
-    private Map<String, Object> toDtoWithExecutors(Task t) {
-        Map<String, Object> m = toDto(t);
-        List<String> executorNames = taskExecutorRelationRepository
-                .findAllExecutorIdsByTaskId(t.getTaskId())
-                .stream()
-                .map(id -> {
-                    return userRepository.findById(id).map(User::getRealName).orElse(null);
-                })
-                .filter(n -> n != null)
-                .filter(name -> !name.equals(t.getCreator() != null ? t.getCreator().getRealName() : null)) // 排除创建者
-                .collect(Collectors.toList());
-        m.put("executorNames", executorNames);
-        return m;
+        return logService.taskDetails(taskId, userId);
     }
 
     @Operation(summary = "发布任务", description = "创建新任务并分配多个执行者，优先级0-3，创建者从Token获取，返回code：200成功，400参数错误，404创建者不存在，500失败")
-    @PostMapping("/publishTask")
+    @PostMapping("")
     public ApiResponse<Map<String, Object>> publishTask(
             HttpServletRequest request,
-            @RequestParam("title") String title,
-            @RequestParam("content") String content,
-            @RequestParam("priority") Integer priority,
-            @RequestParam("executorIDs") List<Integer> executorIDs,
-            @RequestParam("deadline") LocalDateTime deadline) {
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "任务发布信息",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = TaskPublishRequest.class))) @RequestBody TaskPublishRequest taskPublishRequest) {
 
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer creatorID = null;
-
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            creatorID = jwtUtil.extractUserId(jwt);
-        }
-
-        if (creatorID == null) {
+        Integer creatorId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (creatorId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
-
-        try {
-            // 验证优先级范围 (0-3)
-            if (priority < 0 || priority > 3) {
-                return ApiResponse.error(400, "优先级必须在0-3之间");
-            }
-
-            // 验证创建者是否存在
-            Optional<User> creatorOpt = userRepository.findById(creatorID);
-            if (creatorOpt.isEmpty()) {
-                return ApiResponse.error(404, "创建者不存在");
-            }
-
-            // 验证执行者是否都存在
-            for (Integer executorID : executorIDs) {
-                Optional<User> executorOpt = userRepository.findById(executorID);
-                if (executorOpt.isEmpty()) {
-                    return ApiResponse.error(404, "执行者ID " + executorID + " 不存在");
-                }
-            }
-
-            // 创建任务
-            Task task = new Task();
-            task.setCreator(creatorOpt.get());
-            task.setTaskTitle(title);
-            task.setTaskContent(content);
-            task.setPriority(priority.byteValue());
-            task.setTaskStatus((byte) 0); // 0-待开始
-            task.setCreationTime(LocalDateTime.now());
-            task.setDeadline(deadline);
-
-            // 保存任务
-            Task savedTask = taskRepository.save(task);
-
-            // 创建执行者关联关系
-            for (Integer executorID : executorIDs) {
-                User executor = userRepository.findById(executorID).get();
-                TaskExecutorRelation relation = new TaskExecutorRelation();
-                relation.setTask(savedTask);
-                relation.setExecutor(executor);
-                taskExecutorRelationRepository.save(relation);
-            }
-            Map<String, Object> data = new HashMap<>();
-            data.put("taskID", savedTask.getTaskId());
-            return ApiResponse.success(data);
-
-        } catch (Exception e) {
-            return ApiResponse.error(500, "任务发布失败: " + e.getMessage());
-        }
+        return taskService.publishTask(creatorId, taskPublishRequest);
     }
 
     @Operation(summary = "更新任务", description = "仅创建者可更新任务信息，优先级0-3，返回code：200成功，400参数错误，401未授权，403无权限，404任务不存在，500失败")
-    @PutMapping("/updateTask")
+    @PutMapping("/{taskId}")
     public ApiResponse<Map<String, Object>> updateTask(
             HttpServletRequest request,
-            @RequestParam("taskID") Integer taskID,
-            @RequestParam("title") String title,
-            @RequestParam("content") String content,
-            @RequestParam("priority") Integer priority,
-            @RequestParam("deadline") LocalDateTime deadline) {
+            @Parameter(description = "任务ID") @PathVariable("taskId") Integer taskId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "任务更新信息",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = TaskUpdateRequest.class))) @RequestBody TaskUpdateRequest taskUpdateRequest) {
 
-        // 从Token解析当前用户
-        String authorizationHeader = request.getHeader("Authorization");
-        String jwt;
-        Integer userId = null;
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            userId = jwtUtil.extractUserId(jwt);
-        }
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         if (userId == null) {
             return ApiResponse.error(401, "未授权或Token无效");
         }
-
-        try {
-            // 验证优先级范围 (0-3)
-            if (priority < 0 || priority > 3) {
-                return ApiResponse.error(400, "优先级必须在0-3之间");
-            }
-
-            // 查找任务
-            Optional<Task> taskOpt = taskRepository.findById(taskID);
-            if (taskOpt.isEmpty()) {
-                return ApiResponse.error(404, "任务不存在");
-            }
-
-            Task task = taskOpt.get();
-
-            // 仅创建者可更新
-            if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
-                return ApiResponse.error(403, "无权限更新此任务");
-            }
-
-            // 检查任务是否已关闭
-            if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
-                return ApiResponse.error(404, "任务已关闭");
-            }
-
-            // 更新任务信息
-            task.setTaskTitle(title);
-            task.setTaskContent(content);
-            task.setPriority(priority.byteValue());
-            task.setDeadline(deadline);
-
-            // 保存更新后的任务
-            taskRepository.save(task);
-            Map<String, Object> data = new HashMap<>();
-            data.put("taskID", task.getTaskId());
-            return ApiResponse.success(data);
-
-        } catch (Exception e) {
-            return ApiResponse.error(500, "任务更新失败: " + e.getMessage());
-        }
+        return taskService.updateTask(taskId, userId, taskUpdateRequest);
     }
 }

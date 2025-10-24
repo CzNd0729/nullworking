@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'create_task_page.dart';
 import 'task_detail_page.dart';
-import '../../services/api/task_api.dart';
 import '../../models/task.dart';
-// import '../login/login_page.dart'; // 导入登录页面
+import '../../services/business/task_business.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -13,22 +12,19 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  final TaskApi _taskApi = TaskApi();
+  final TaskBusiness _taskBusiness = TaskBusiness();
   List<Task> _assignedTasks = [];
   List<Task> _myTasks = [];
   bool _isLoading = false;
 
-  // 筛选相关状态（保留原功能）
   final TextEditingController _searchController = TextEditingController();
-  Set<String> _selectedStatusFilters = {'0', '1'}; // 默认选中进行中和已延期
-  // 新增：搜索框焦点节点（核心修复）
+  Set<String> _selectedStatusFilters = {'0', '1'};
   final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _loadTasks();
-    // 新增：监听搜索框焦点变化
     _searchFocusNode.addListener(() {
       if (!mounted) return;
       if (!_searchFocusNode.hasFocus) {
@@ -40,11 +36,10 @@ class _TasksPageState extends State<TasksPage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _searchFocusNode.dispose(); // 新增：销毁焦点节点
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
-  // 新增：强制搜索框失焦
   void _forceSearchUnfocus() {
     _searchFocusNode.unfocus();
     FocusScope.of(context).unfocus();
@@ -55,11 +50,11 @@ class _TasksPageState extends State<TasksPage> {
       _isLoading = true;
     });
     try {
-      final response = await _taskApi.listUserTasks();
-      if (response != null) {
+      final taskData = await _taskBusiness.loadUserTasks();
+      if (taskData != null) {
         setState(() {
-          _assignedTasks = response.createdTasks;
-          _myTasks = response.participatedTasks;
+          _assignedTasks = taskData['createdTasks']!;
+          _myTasks = taskData['participatedTasks']!;
         });
       }
     } catch (e) {
@@ -85,23 +80,11 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   List<Task> _filterTasks(List<Task> tasks) {
-    return tasks.where((task) {
-      final searchQuery = _searchController.text.toLowerCase();
-      final matchesSearch =
-          searchQuery.isEmpty ||
-          task.taskTitle.toLowerCase().contains(searchQuery) ||
-          task.taskContent.toLowerCase().contains(searchQuery);
-
-      final matchesStatus =
-          _selectedStatusFilters.isEmpty ||
-          _selectedStatusFilters.contains(task.taskStatus);
-
-      return matchesSearch && matchesStatus;
-    }).toList();
+    return _taskBusiness.filterTasks(tasks, _searchController.text, _selectedStatusFilters);
   }
 
   void _toggleStatusFilter(String status) {
-    _forceSearchUnfocus(); // 新增：切换筛选时失焦
+    _forceSearchUnfocus();
     setState(() {
       if (_selectedStatusFilters.contains(status)) {
         _selectedStatusFilters.remove(status);
@@ -112,7 +95,7 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   void _clearAllFilters() {
-    _forceSearchUnfocus(); // 新增：清除筛选时失焦
+    _forceSearchUnfocus();
     setState(() {
       _searchController.clear();
       _selectedStatusFilters.clear();
@@ -127,6 +110,7 @@ class _TasksPageState extends State<TasksPage> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Text(
                 '状态筛选',
@@ -138,8 +122,8 @@ class _TasksPageState extends State<TasksPage> {
               ),
               if (_selectedStatusFilters.isNotEmpty ||
                   _searchController.text.isNotEmpty)
-                TextButton(
-                  onPressed: _clearAllFilters,
+                GestureDetector(
+                  onTap: _clearAllFilters,
                   child: const Text(
                     '清除筛选',
                     style: TextStyle(color: Colors.orange),
@@ -212,6 +196,21 @@ class _TasksPageState extends State<TasksPage> {
     final assignee = task.executorNames.join(', ');
     final deadline = task.deadline.toString().substring(0, 10);
     final priority = 'P${task.taskPriority}';
+    final progress = task.taskProgress / 100.0; // Assuming taskProgress is 0-100
+
+    Color progressColor;
+    if (task.taskProgress == 100) {
+      progressColor = Colors.purple;
+    } else if (task.taskProgress >= 76) {
+      progressColor = Colors.green;
+    } else if (task.taskProgress >= 51) {
+      progressColor = Colors.blue;
+    } else if (task.taskProgress >= 26) {
+      progressColor = Colors.orange;
+    } else {
+      progressColor = Colors.red;
+    }
+
     return FractionallySizedBox(
       widthFactor: 0.95,
       child: Card(
@@ -219,63 +218,92 @@ class _TasksPageState extends State<TasksPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12.0), // Ensure InkWell has rounded corners
+          onTap: () {
+            _forceSearchUnfocus();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TaskDetailPage(
+                  task: task,
+                ),
+              ),
+            ).then((result) {
+              _forceSearchUnfocus();
+              if (result != null) {
+                _loadTasks();
+              }
+            });
+          },
+          child: Stack(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  statusTag,
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                taskTitle,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('分配给: $assignee'),
-              const SizedBox(height: 4),
-              Text('截止日期: $deadline'),
-              const SizedBox(height: 4),
-              Text(
-                '优先级: $priority',
-                style: TextStyle(
-                  color: priority == 'P0'
-                      ? Colors.red
-                      : (priority == 'P1' ? Colors.orange : Colors.blue),
-                ),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () {
-                  _forceSearchUnfocus(); // 新增：进入详情页前失焦
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TaskDetailPage(
-                        task: task,
-                        isAssignedTask: isAssignedTask, // 传递任务来源信息
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                      child: Text(
+                        statusTag,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
-                  ).then((result) {
-                    _forceSearchUnfocus(); // 新增：从详情页返回后失焦
-                    if (result != null) {
-                      _loadTasks(); // 如果详情页返回了结果，则刷新任务列表
-                    }
-                  });
-                },
-                child: const Text('查看详情'),
+                    const SizedBox(height: 8),
+                    Text(
+                      taskTitle,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('负责人: $assignee'),
+                    const SizedBox(height: 4),
+                    Text('截止日期: $deadline'),
+                    const SizedBox(height: 4),
+                    Text(
+                      '优先级: $priority',
+                      style: TextStyle(
+                        color: priority == 'P0'
+                            ? Colors.red
+                            : (priority == 'P1' ? Colors.orange : Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        backgroundColor: Colors.grey.shade300,
+                        color: progressColor,
+                        strokeWidth: 4,
+                      ),
+                    ),
+                    Text(
+                      '${task.taskProgress}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: progressColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -294,7 +322,7 @@ class _TasksPageState extends State<TasksPage> {
         actions: [
           IconButton(
             onPressed: () {
-              _forceSearchUnfocus(); // 新增：点击通知时失焦
+              _forceSearchUnfocus();
             },
             icon: const Icon(Icons.notifications),
           ),
@@ -305,7 +333,6 @@ class _TasksPageState extends State<TasksPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 搜索栏（修改：绑定焦点节点）
             TextField(
               focusNode: _searchFocusNode,
               controller: _searchController,
@@ -318,17 +345,16 @@ class _TasksPageState extends State<TasksPage> {
                 ),
               ),
               onTapOutside: (event) {
-                _forceSearchUnfocus(); // 点击外部强制失焦
+                _forceSearchUnfocus();
               },
               textInputAction: TextInputAction.done,
               onSubmitted: (value) {
-                _forceSearchUnfocus(); // 输入完成后失焦
+                _forceSearchUnfocus();
               },
             ),
             const SizedBox(height: 16),
             _buildFilterBar(),
             const SizedBox(height: 16),
-            // 派发任务模块（修改：展开/折叠时失焦）
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ExpansionTile(
@@ -363,7 +389,6 @@ class _TasksPageState extends State<TasksPage> {
                     }(),
                   ),
             const SizedBox(height: 16),
-            // 我的任务模块（修改：展开/折叠时失焦）
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ExpansionTile(
@@ -400,7 +425,7 @@ class _TasksPageState extends State<TasksPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          _forceSearchUnfocus(); // 新增：进入创建页前失焦
+          _forceSearchUnfocus();
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CreateTaskPage()),

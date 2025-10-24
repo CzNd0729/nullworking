@@ -1,15 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/task.dart';
-import '../../services/api/task_api.dart'; // 导入 TaskApi
-import 'create_task_page.dart'; // 导入 CreateTaskPage
+import '../../models/log.dart';
+import '../log/create_log_page.dart';
+import 'create_task_page.dart';
+import '../../services/business/task_business.dart';
+import '../../services/business/log_business.dart';
+import '../log/log_detail_page.dart';
 
-class TaskDetailPage extends StatelessWidget {
+class TaskDetailPage extends StatefulWidget {
   final Task task;
-  final bool isAssignedTask; // 新增任务来源信息
+  // final bool isAssignedTask; // 删除此行
 
-  TaskDetailPage({super.key, required this.task, this.isAssignedTask = false});
+  const TaskDetailPage({
+    super.key,
+    required this.task,
+    // this.isAssignedTask = false, // 删除此行
+  });
 
-  final TaskApi _taskApi = TaskApi(); // 实例化 TaskApi
+  @override
+  State<TaskDetailPage> createState() => _TaskDetailPageState();
+}
+
+class _TaskDetailPageState extends State<TaskDetailPage> {
+  final TaskBusiness _taskBusiness = TaskBusiness();
+  final LogBusiness _logBusiness = LogBusiness();
+  List<Log> _taskLogs = [];
+  bool _isLoadingLogs = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTaskLogs();
+  }
+
+  Future<void> _loadTaskLogs() async {
+    try {
+      setState(() => _isLoadingLogs = true);
+
+      // 移除 _debugMode 相关的逻辑和 MockData.generateTestLogs 调用
+
+      final logs = await _logBusiness.getLogsByTaskId(widget.task.taskId);
+      logs.sort((a, b) => b.logDate.compareTo(a.logDate));
+      setState(() => _taskLogs = logs);
+    } catch (e) {
+      debugPrint('加载任务日志失败: $e');
+      setState(() => _taskLogs = []);
+    } finally {
+      setState(() => _isLoadingLogs = false);
+    }
+  }
+
+  int _getMaxCompletedProgress() {
+    int maxProgress = 0;
+    for (var log in _taskLogs) {
+      if (log.logStatus == 1 && (log.taskProgress ?? 0) > maxProgress) {
+        maxProgress = log.taskProgress ?? 0;
+      }
+    }
+    return maxProgress;
+  }
+
+  List<Log> _getFilteredLogs() {
+    final maxCompleted = _getMaxCompletedProgress();
+    return _taskLogs.where((log) {
+      if (log.logStatus == 1) return true;
+      return (log.taskProgress ?? 0) > maxCompleted;
+    }).toList()
+      ..sort((a, b) => (a.taskProgress ?? 0).compareTo(b.taskProgress ?? 0));
+  }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
@@ -29,21 +88,181 @@ class TaskDetailPage extends StatelessWidget {
     );
   }
 
+  Widget _buildLogTimeline() {
+    if (_isLoadingLogs) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+          ),
+        ),
+      );
+    }
+
+    final filteredLogs = _getFilteredLogs();
+    
+    if (filteredLogs.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            '暂无日志，点击"添加日志"开始记录',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    final reversedLogs = List<Log>.from(filteredLogs.reversed);
+
+    return Column(
+      children: List.generate(reversedLogs.length, (index) {
+        final log = reversedLogs[index];
+        final isTop = index == 0;
+        final isBottom = index == reversedLogs.length - 1;
+        final prevLog = index > 0 ? reversedLogs[index - 1] : null;
+        
+        return _buildTimelineItem(
+          log: log,
+          isTop: isTop,
+          isBottom: isBottom,
+          prevLog: prevLog,
+        );
+      }),
+    );
+  }
+
+  Widget _buildTimelineItem({
+    required Log log,
+    required bool isTop,
+    required bool isBottom,
+    Log? prevLog,
+  }) {
+    Color dotColor;
+    bool isDashedLine = false;
+
+    if (log.logStatus == 1) {
+      dotColor = Colors.green;
+      isDashedLine = false; // 已完成日志用实线
+    } else {
+      dotColor = Colors.grey;
+      isDashedLine = true; // 未完成日志用虚线
+    }
+
+    return InkWell(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => LogDetailPage(logId: log.logId)));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 32),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF1E1E1E), width: 1),
+                  ),
+                ),
+                if (!isTop)
+                  Container(
+                    height: 32,
+                    width: 1,
+                    child: CustomPaint(
+                      painter: DashedLinePainter(
+                        color: isDashedLine ? Colors.grey : Colors.green,
+                        isDashed: isDashedLine,
+                        isBottom: isBottom, // 传递 isBottom 参数
+                      ),
+                    ),
+                  ),
+                if (isTop && isDashedLine)
+                  Container(
+                    height: 20,
+                    width: 1,
+                    child: CustomPaint(
+                      painter: DashedLinePainter(
+                        color: Colors.grey,
+                        isDashed: true,
+                        isBottom: isBottom, // 传递 isBottom 参数
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    log.logTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    log.logContent,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    log.endTime,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 进度值独立显示在右侧
+            if (log.taskProgress != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: log.logStatus == 1 ? Colors.green : Colors.grey,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${log.taskProgress!}%',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final title = task.taskTitle;
-    final description = task.taskContent;
-    final assignee = task.executorNames.join(', ');
-    final assigneeRole = ""; // Task 模型中没有直接的 assigneeRole 字段
-    final dueDate = task.deadline.toLocal().toString().split(' ')[0];
-    final dueTime = task.deadline
+    final title = widget.task.taskTitle;
+    final description = widget.task.taskContent;
+    final assignee = widget.task.executorNames.join(', ');
+    final dueDate = widget.task.deadline.toLocal().toString().split(' ')[0];
+    final dueTime = widget.task.deadline
         .toLocal()
         .toString()
         .split(' ')[1]
         .substring(0, 5);
-    final priority = 'P${task.taskPriority}';
+    final priority = 'P${widget.task.taskPriority}';
     String status;
-    switch (task.taskStatus) {
+    switch (widget.task.taskStatus) {
       case '0':
         status = '进行中';
         break;
@@ -63,10 +282,26 @@ class TaskDetailPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('任务详情'),
-        backgroundColor: const Color(0xFF000000),
+        backgroundColor: Colors.black,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white),
+              onPressed: () => _editTask(),
+            ),
+          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              onPressed: () => _confirmDeleteTask(),
+            ),
+        ],
       ),
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: Colors.black,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -118,7 +353,7 @@ class TaskDetailPage extends StatelessWidget {
                   _buildInfoRow(
                     Icons.person_outline,
                     '负责人',
-                    '$assignee ($assigneeRole)',
+                    assignee,
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
@@ -127,9 +362,9 @@ class TaskDetailPage extends StatelessWidget {
                     '$dueDate $dueTime',
                   ),
                   const SizedBox(height: 8),
-                  _buildInfoRow(Icons.flag, '优先级', '$priority'),
+                  _buildInfoRow(Icons.flag, '优先级', priority),
                   const SizedBox(height: 8),
-                  _buildInfoRow(Icons.info_outline, '当前状态', '$status'),
+                  _buildInfoRow(Icons.info_outline, '当前状态', status),
                 ],
               ),
             ),
@@ -142,143 +377,167 @@ class TaskDetailPage extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '任务关联日志',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '关联日志',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('添加日志'),
+                        onPressed: () async {
+                          final newLog = await Navigator.push<Log?>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CreateLogPage(
+                                preSelectedTask: widget.task,
+                              ),
+                            ),
+                          );
+                          if (newLog != null) {
+                            _loadTaskLogs();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 12),
-                  Text('暂无日志', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 16),
+                  _buildLogTimeline(),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: isAssignedTask // 根据任务来源信息条件性显示按钮
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final updatedTask = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        CreateTaskPage(taskToEdit: task)),
-                              );
-                              if (updatedTask != null) {
-                                Navigator.of(context)
-                                    .pop(updatedTask); // 返回更新后的任务，让上一个页面接收并刷新
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blueAccent,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              '修改',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    backgroundColor: const Color(0xFF1E1E1E), // 与主色调相同
-                                    title: const Text(
-                                      '确认删除',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                    content: const Text(
-                                      '您确定要删除此任务吗？',
-                                      style: TextStyle(color: Colors.white70),
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop(); // 关闭弹窗
-                                        },
-                                        child: const Text(
-                                          '取消',
-                                          style: TextStyle(
-                                              color: Colors.blueAccent),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context)
-                                              .pop(); // 关闭弹窗
-                                          _taskApi
-                                              .deleteTask(task.taskID)
-                                              .then((response) {
-                                            if (response.statusCode == 200) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('任务删除成功！'),
-                                                  backgroundColor: Color(
-                                                      0xFF2CB7B3), // 与主色调相同
-                                                ),
-                                              );
-                                              Navigator.of(context).pop(
-                                                  true); // 返回上一页并指示刷新
-                                            } else {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('任务删除失败，请重试！'),
-                                                  backgroundColor: Color(
-                                                      0xFF2CB7B3), // 与主色调相同
-                                                ),
-                                              );
-                                            }
-                                          });
-                                        },
-                                        child: const Text(
-                                          '删除',
-                                          style: TextStyle(
-                                              color: Colors.redAccent),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              '删除',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(), // 如果不是派发任务，则隐藏按钮
-            ),
+            // 原来的按钮区域已移除
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _editTask() async {
+    final updatedTask = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateTaskPage(taskToEdit: widget.task),
+      ),
+    );
+    if (updatedTask != null) {
+      Navigator.of(context).pop(updatedTask);
+    }
+  }
+
+  Future<void> _confirmDeleteTask() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: const Text(
+            '确认删除',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            '您确定要删除此任务吗？',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                '取消',
+                style: TextStyle(color: Colors.blueAccent),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _taskBusiness.deleteTask(widget.task.taskId).then((response) {
+                  if (response == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('任务删除成功！'),
+                        backgroundColor: Color(0xFF2CB7B3),
+                      ),
+                    );
+                    Navigator.of(context).pop(true);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('任务删除失败，请重试！'),
+                        backgroundColor: Color(0xFF2CB7B3),
+                      ),
+                    );
+                  }
+                });
+              },
+              child: const Text(
+                '删除',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+  final bool isDashed;
+  final bool isBottom; // 添加 isBottom 参数
+
+  DashedLinePainter({
+    required this.color,
+    required this.isDashed,
+    this.isBottom = false, // 默认为 false
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+    final fixLength = 65.0;
+    if(isBottom){
+      return;
+    }
+    if (isDashed) {
+      const dashLength = 2.0;
+      const gapLength = 4.0;
+      double currentPosition = 0.0;
+
+      while (currentPosition < size.height + fixLength) {
+        canvas.drawLine(
+          Offset(0, currentPosition),
+          Offset(0, currentPosition + dashLength),
+          paint,
+        );
+        currentPosition += dashLength + gapLength;
+      }
+    } else {
+      canvas.drawLine(Offset(0, 0), Offset(0, size.height+fixLength), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant DashedLinePainter oldDelegate) {
+    return color != oldDelegate.color || isDashed != oldDelegate.isDashed;
   }
 }

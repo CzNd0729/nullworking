@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import jakarta.servlet.http.HttpServletRequest;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -75,5 +76,18 @@ public class JwtUtil {
 
     private Boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
+    }
+
+    // New static method to extract userId from HttpServletRequest
+    public static Integer extractUserIdFromRequest(HttpServletRequest request, JwtUtil jwtUtil) {
+        String authorizationHeader = request.getHeader("Authorization");
+        String jwt = null;
+        Integer userId = null;
+
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7);
+            userId = jwtUtil.extractUserId(jwt);
+        }
+        return userId;
     }
 }

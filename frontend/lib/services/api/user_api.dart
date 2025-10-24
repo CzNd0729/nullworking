@@ -8,14 +8,14 @@ class UserApi {
   final AuthService _authService = AuthService();
 
   Future<http.Response> login(String username, String password) async {
-    final queryParams = {
+    final body = {
       'userName': username,
       'password': password,
     };
 
-    final response = await _baseApi.get(
+    final response = await _baseApi.post(
       'api/auth/login',
-      queryParams: queryParams,
+      body: body,
       authenticated: false,
     );
 
@@ -32,11 +32,11 @@ class UserApi {
   Future<http.Response> register(
     String username,
     String password,
-    String phone,
+    String? phone,
     String realName, {
     String? email,
   }) async {
-    final queryParams = {
+    final body = {
       'userName': username,
       'password': password,
       'phone': phone,
@@ -44,12 +44,12 @@ class UserApi {
     };
 
     if (email != null && email.isNotEmpty) {
-      queryParams['email'] = email;
+      body['email'] = email;
     }
 
-    final response = await _baseApi.get(
+    final response = await _baseApi.post(
       'api/auth/register',
-      queryParams: queryParams,
+      body: body,
       authenticated: false,
     );
     return response;

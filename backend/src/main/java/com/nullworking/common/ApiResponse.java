@@ -26,12 +26,12 @@ public class ApiResponse<T> implements Serializable {
 
     // 成功响应（带数据）
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(200, "操作成功", data);
+        return new ApiResponse<>(200, "success", data);
     }
 
     // 成功响应（无数据）
     public static <T> ApiResponse<T> success() {
-        return new ApiResponse<>(200, "操作成功", null);
+        return new ApiResponse<>(200, "success", null);
     }
 
     // 错误响应

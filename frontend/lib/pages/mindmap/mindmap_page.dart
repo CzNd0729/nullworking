@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nullworking/services/api/user_api.dart';
+import '../../services/business/mindmap_business.dart';
 
 class MindMapPage extends StatefulWidget {
   const MindMapPage({super.key});
@@ -9,11 +9,12 @@ class MindMapPage extends StatefulWidget {
 }
 
 class _MindMapPageState extends State<MindMapPage> {
-  // 为四个分框分别定义数据状态，等待API返回
   String _companyImportant = '加载中...';
   String _companyTask = '加载中...';
   String _personalImportant = '加载中...';
   String _personalLog = '加载中...';
+
+  final MindMapBusiness _mindMapBusiness = MindMapBusiness();
 
   @override
   void initState() {
@@ -21,39 +22,16 @@ class _MindMapPageState extends State<MindMapPage> {
     _fetchData();
   }
 
-  // 这里可以根据实际API情况分别请求四个分框的数据
   Future<void> _fetchData() async {
-    try {
-      // 示例：调用健康状态API，实际应替换为各分框对应的API
-      final response = await UserApi().getHealth();
-      
-      if (response.statusCode == 200) {
-        setState(() {
-          // 临时用同一数据填充，实际应根据API返回分别赋值
-          _companyImportant = "公司重要事项数据";
-          _companyTask = "公司任务调度数据";
-          _personalImportant = "个人重要事项数据";
-          _personalLog = "个人日志数据";
-        });
-      } else {
-        setState(() {
-          _companyImportant = '请求失败: ${response.statusCode}';
-          _companyTask = '请求失败: ${response.statusCode}';
-          _personalImportant = '请求失败: ${response.statusCode}';
-          _personalLog = '请求失败: ${response.statusCode}';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _companyImportant = '发生错误: $e';
-        _companyTask = '发生错误: $e';
-        _personalImportant = '发生错误: $e';
-        _personalLog = '发生错误: $e';
-      });
-    }
+    final data = await _mindMapBusiness.fetchMindMapData();
+    setState(() {
+      _companyImportant = data['companyImportant']!;
+      _companyTask = data['companyTask']!;
+      _personalImportant = data['personalImportant']!;
+      _personalLog = data['personalLog']!;
+    });
   }
 
-  // 分框卡片组件
   Widget _buildCard(String title, String content) {
     return Card(
       elevation: 4,
@@ -81,7 +59,6 @@ class _MindMapPageState extends State<MindMapPage> {
               child: SingleChildScrollView(
                 child: Text(
                   content,
-                  // 移除了这里的const关键字，因为使用了Colors.grey[700]
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[700],
@@ -107,7 +84,6 @@ class _MindMapPageState extends State<MindMapPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 顶端导图名称
             const Padding(
               padding: EdgeInsets.only(bottom: 20),
               child: Text(
@@ -119,13 +95,12 @@ class _MindMapPageState extends State<MindMapPage> {
               ),
             ),
             
-            // 四个分框网格布局
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.9, // 调整卡片宽高比
+                childAspectRatio: 0.9,
                 children: [
                   _buildCard('公司重要事项', _companyImportant),
                   _buildCard('公司任务调度', _companyTask),

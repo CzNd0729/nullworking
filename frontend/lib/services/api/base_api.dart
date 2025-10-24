@@ -32,15 +32,7 @@ class BaseApi {
       uri = uri.replace(queryParameters: queryParams);
     }
     final headers = await _getHeaders(authenticated: authenticated);
-
-    print('发送GET请求到: $uri');
-    print('请求头: $headers');
-
     final response = await http.get(uri, headers: headers);
-
-    print('收到响应: ${response.statusCode}');
-    print('响应头: ${response.headers}');
-
     return response;
   }
 
@@ -55,16 +47,33 @@ class BaseApi {
       url = url.replace(queryParameters: queryParams);
     }
     final headers = await _getHeaders(authenticated: authenticated);
-
-    print('发送POST请求到: $url');
-    print('请求头: $headers');
-
     final response = await http.post(
       url,
       headers: headers,
       body: body != null ? jsonEncode(body) : null,
     );
     return response;
+  }
+
+  Future<http.Response> postFile(
+    String endpoint,
+    List<int> fileBytes,
+    String filename, {
+    bool authenticated = true,
+  }) async {
+    var uri = Uri.parse('$_baseUrl/$endpoint');
+    final headers = await _getHeaders(authenticated: authenticated);
+
+    var request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(headers)
+      ..files.add(http.MultipartFile.fromBytes(
+        'file', // 后端接收文件的字段名，可能需要根据实际API调整
+        fileBytes,
+        filename: filename,
+      ));
+
+    final streamedResponse = await request.send();
+    return await http.Response.fromStream(streamedResponse);
   }
 
   Future<http.Response> put(

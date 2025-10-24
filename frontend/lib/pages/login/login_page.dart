@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nullworking/services/api/user_api.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 导入shared_preferences
-import 'dart:convert';
+import '../../services/business/auth_business.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +14,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  final AuthBusiness _authBusiness = AuthBusiness();
 
   @override
   void dispose() {
@@ -33,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _onLoginPressed() async {
-    // 输入验证
     if (_usernameController.text.trim().isEmpty) {
       setState(() {
         _errorMessage = '请输入用户名';
@@ -54,52 +53,38 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // 调用云端服务器的登录API
-      final response = await UserApi().login(
+      final errorMessage = await _authBusiness.login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      if (response.statusCode == 200) {
-        // 解析响应JSON
-        final responseData = json.decode(response.body);
-
-        // 检查API返回的code字段
-        if (responseData['code'] == 200) {
-          // 登录成功，Token已自动保存，直接跳转到主页
-          print('登录成功');
-
-          // 存储用户ID
-          final int userID = responseData['data']['userID'];
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userID', userID.toString());
-
+      if (mounted) {
+        if (errorMessage == null) {
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
-          // 根据API返回的message显示错误信息
           setState(() {
-            _errorMessage = responseData['message'] ?? '登录失败';
+            _errorMessage = errorMessage;
           });
         }
-      } else {
-        setState(() {
-          _errorMessage = '网络请求失败，请稍后重试';
-        });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryTeal = const Color(0xFF2CB7B3); // 接近示意图按钮色
+    final Color primaryTeal = const Color(0xFF2CB7B3);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -111,7 +96,6 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo + 应用名
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -138,7 +122,6 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 32),
 
-                // 错误消息显示
                 if (_errorMessage != null)
                   Container(
                     width: double.infinity,
@@ -156,13 +139,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                // 用户名
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '用户名',
                     style: TextStyle(
-                      color: primaryTeal, // 将灰色改为主色调绿色
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -195,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text(
                     '密码',
                     style: TextStyle(
-                      color: primaryTeal, // 将灰色改为主色调绿色
+                      color: primaryTeal,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -209,7 +191,7 @@ class _LoginPageState extends State<LoginPage> {
                   onChanged: (_) => _clearError(),
                   decoration: InputDecoration(
                     hintText: '请输入密码',
-                    hintStyle: TextStyle(color: Colors.grey.shade500), // 将灰色改为主色调绿色
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
                     filled: true,
                     fillColor: const Color(0xFFE9EDF2),
                     contentPadding: const EdgeInsets.symmetric(
