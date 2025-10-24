@@ -2,6 +2,7 @@ class Log {
   final String logId;
   final int? taskId;
   final String logTitle;
+  final String? taskTitle;
   final String logContent;
   final int logStatus;
   final int? taskProgress;
@@ -14,6 +15,7 @@ class Log {
     required this.logId,
     this.taskId,
     required this.logTitle,
+    this.taskTitle,
     required this.logContent,
     required this.logStatus,
     this.taskProgress,
@@ -27,6 +29,7 @@ class Log {
     return {
       'logId': logId, // logId在更新时需要，创建时后端生成
       'taskId': taskId,
+      'taskTitle': taskTitle,
       'logTitle': logTitle,
       'logContent': logContent,
       'logStatus': logStatus,
@@ -54,6 +57,7 @@ class Log {
           ? int.tryParse(json['taskId'].toString())
           : null,
       logTitle: json['logTitle']?.toString() ?? '',
+      taskTitle: json['taskTitle']?.toString() ?? '',
       logContent: json['logContent']?.toString() ?? '',
       logStatus: int.tryParse(json['logStatus']?.toString() ?? '') ?? 0,
       taskProgress: parsedTaskProgress,

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart'; // 导入LogBusiness
+import 'package:nullworking/services/business/task_business.dart';
 import 'create_log_page.dart'; // 导入CreateLogPage
 import 'dart:typed_data'; // 导入Uint8List，用于图片显示
+import 'package:nullworking/pages/task/task_detail_page.dart';
+import 'package:nullworking/models/task.dart';
 
 class LogDetailPage extends StatefulWidget {
   final String logId;
@@ -16,6 +19,7 @@ class LogDetailPage extends StatefulWidget {
 
 class _LogDetailPageState extends State<LogDetailPage> {
   final LogBusiness _logBusiness = LogBusiness();
+  final TaskBusiness _taskBusiness = TaskBusiness(); // 新增TaskBusiness实例
   Log? _logDetails;
   List<Map<String, dynamic>> _logFiles = [];
   bool _isLoading = true;
@@ -206,12 +210,6 @@ class _LogDetailPageState extends State<LogDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   _buildInfoRow(
-                    Icons.data_usage,
-                    '进度',
-                    '${log.taskProgress ?? 0}%',
-                  ),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(
                     Icons.info_outline,
                     '状态',
                     statusText,
@@ -220,6 +218,45 @@ class _LogDetailPageState extends State<LogDetailPage> {
               ),
             ),
             const SizedBox(height: 16),
+            // 新增的任务信息卡片
+            if (log.taskId != null || log.taskTitle != null || log.taskProgress != null)
+              GestureDetector(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E1E),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '关联任务信息',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (log.taskId != null)
+                        _buildInfoRow(
+                          Icons.assignment,
+                          '任务',
+                          log.taskTitle ?? log.taskId.toString(), 
+                        ),
+                      if (log.taskId != null) const SizedBox(height: 8),
+                      if (log.taskProgress != null)
+                        _buildInfoRow(
+                          Icons.data_usage,
+                          '任务进度',
+                          '${log.taskProgress ?? 0}%',
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             // 文件附件区域
             if (_logFiles.isNotEmpty)
               Container(
