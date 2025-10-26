@@ -2,8 +2,16 @@ package com.nullworking.service;
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Department;
+import com.nullworking.model.Log;
+import com.nullworking.model.Role;
+import com.nullworking.model.Task;
 import com.nullworking.model.User;
+import com.nullworking.model.dto.UserUpdateRequest;
 import com.nullworking.repository.DepartmentRepository;
+import com.nullworking.repository.LogRepository;
+import com.nullworking.repository.RoleRepository;
+import com.nullworking.repository.TaskExecutorRelationRepository;
+import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 // import com.nullworking.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +28,18 @@ public class UserService {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private TaskRepository taskRepository;
+
+    @Autowired
+    private LogRepository logRepository;
+
+    @Autowired
+    private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
     // @Autowired
     // private JwtUtil jwtUtil;
@@ -58,6 +78,147 @@ public class UserService {
         data.put("users",users);
 
         return ApiResponse.success(data);
+    }
+
+    /**
+     * 获取所有用户列表
+     * @return 包含所有用户信息的响应
+     */
+    public ApiResponse<Map<String, Object>> listUsers() {
+        try {
+            List<User> users = userRepository.findAll();
+            
+            List<Map<String, Object>> userList = new ArrayList<>();
+            for (User user : users) {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("userId", user.getUserId());
+                userMap.put("realName", user.getRealName());
+                
+                // 获取角色名称
+                String roleName = user.getRole() != null ? user.getRole().getRoleName() : null;
+                userMap.put("roleName", roleName);
+                
+                // 获取部门名称
+                String deptName = user.getDepartment() != null ? user.getDepartment().getDepartmentName() : null;
+                userMap.put("deptName", deptName);
+                
+                userList.add(userMap);
+            }
+            
+            Map<String, Object> data = new HashMap<>();
+            data.put("users", userList);
+            
+            return ApiResponse.success(data);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取用户列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户信息
+     * @param userId 用户ID
+     * @param request 更新请求
+     * @return 更新结果
+     */
+    public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
+        try {
+            // 查找用户
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isEmpty()) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+            
+            User user = userOptional.get();
+            
+            // 更新角色
+            if (request.getRoleId() != null) {
+                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+                if (roleOptional.isEmpty()) {
+                    return ApiResponse.error(404, "角色不存在");
+                }
+                user.setRole(roleOptional.get());
+            }
+            
+            // 更新部门
+            if (request.getDeptId() != null) {
+                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+                if (deptOptional.isEmpty()) {
+                    return ApiResponse.error(404, "部门不存在");
+                }
+                user.setDepartment(deptOptional.get());
+            }
+            
+            // 更新其他字段
+            if (request.getUserName() != null && !request.getUserName().trim().isEmpty()) {
+                // 检查用户名是否已被其他用户使用
+                User existingUser = userRepository.findByUserName(request.getUserName());
+                if (existingUser != null && !existingUser.getUserId().equals(userId)) {
+                    return ApiResponse.error(400, "用户名已被使用");
+                }
+                user.setUserName(request.getUserName());
+            }
+            
+            if (request.getRealName() != null && !request.getRealName().trim().isEmpty()) {
+                user.setRealName(request.getRealName());
+            }
+            
+            if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+                user.setPhoneNumber(request.getPhoneNumber());
+            }
+            
+            if (request.getEmail() != null) {
+                user.setEmail(request.getEmail());
+            }
+            
+            // 保存更新
+            userRepository.save(user);
+            
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "更新用户失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除用户
+     * @param userId 用户ID
+     * @return 删除结果
+     */
+    public ApiResponse<Void> deleteUser(Integer userId) {
+        try {
+            // 查找用户
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isEmpty()) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+            
+            User user = userOptional.get();
+            
+            // 检查用户是否有关联的任务（作为创建者）
+            List<Task> createdTasks = taskRepository.findByCreator_UserId(userId);
+            if (!createdTasks.isEmpty()) {
+                return ApiResponse.error(400, "该用户创建了 " + createdTasks.size() + " 个任务，无法删除。请先处理相关任务。");
+            }
+            
+            // 检查用户是否有关联的任务（作为执行者）
+            boolean isExecutor = taskExecutorRelationRepository.existsByExecutor_UserId(userId);
+            if (isExecutor) {
+                return ApiResponse.error(400, "该用户正在执行任务，无法删除。请先从相关任务中移除该用户。");
+            }
+            
+            // 检查用户是否有关联的日志
+            List<Log> userLogs = logRepository.findByUserUserId(userId);
+            if (!userLogs.isEmpty()) {
+                return ApiResponse.error(400, "该用户有 " + userLogs.size() + " 条日志记录，无法删除。请先处理相关日志。");
+            }
+            
+            // 删除用户
+            userRepository.delete(user);
+            
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "删除用户失败: " + e.getMessage());
+        }
     }
 
     /**

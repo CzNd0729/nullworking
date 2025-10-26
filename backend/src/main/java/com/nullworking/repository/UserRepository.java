@@ -12,4 +12,5 @@ import com.nullworking.model.User;
 public interface UserRepository extends JpaRepository<User, Integer> {
 	User findByUserName(String userName);
     List<User> findByDepartmentDepartmentIdIn(Set<Integer> departmentIds);
+    List<User> findAll();
 }
