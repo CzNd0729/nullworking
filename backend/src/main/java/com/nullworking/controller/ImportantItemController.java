@@ -33,7 +33,7 @@ public class ImportantItemController {
     private ImportantItemService importantItemService;
 
     @Operation(summary = "添加重要事项", description = "从token获取用户ID，创建重要事项，返回code：200成功，400参数错误，401未授权，404用户不存在，500失败")
-    @PostMapping("/company")
+    @PostMapping("")
     public ApiResponse<String> addItem(
             HttpServletRequest request,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "重要事项信息",
@@ -49,7 +49,7 @@ public class ImportantItemController {
     }
 
     @Operation(summary = "调整重要事项显示顺序", description = "传入ItemId顺序更新display_order顺序，返回code：200成功，400参数错误，401未授权，403无权限，404用户不存在，500失败")
-    @PatchMapping("/company")
+    @PatchMapping("")
     public ApiResponse<String> adjustItemOrder(
             HttpServletRequest request,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "调整显示顺序请求",
