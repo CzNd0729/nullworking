@@ -5,8 +5,15 @@ import '../log_detail_page.dart';
 class DayView extends StatefulWidget {
   final List<Log> logs;
   final DateTime? initialDate;
+  // 新增：日期变更回调，用于通知父组件
+  final Function(DateTime) onDateChanged;
 
-  const DayView({super.key, required this.logs, this.initialDate});
+  const DayView({
+    super.key,
+    required this.logs,
+    this.initialDate,
+    required this.onDateChanged,
+  });
 
   @override
   State<DayView> createState() => _DayViewState();
@@ -20,7 +27,16 @@ class _DayViewState extends State<DayView> {
   void initState() {
     super.initState();
     _selectedDate = widget.initialDate ?? DateTime.now();
-  }
+    // 仅在初始日期与父组件传入的日期不一致时才触发回调（避免重复刷新）
+   WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (widget.initialDate != null && 
+        (widget.initialDate!.year != _selectedDate.year ||
+         widget.initialDate!.month != _selectedDate.month ||
+         widget.initialDate!.day != _selectedDate.day)) {
+      widget.onDateChanged(_selectedDate);
+    }
+  }); // 确保这个回调函数的括号闭合
+} // 确保 initState 方法的括号闭合
 
   @override
   void dispose() {
@@ -270,6 +286,8 @@ class _DayViewState extends State<DayView> {
     setState(() {
       _selectedDate = _selectedDate.subtract(const Duration(days: 7));
     });
+    // 通知父组件日期变更
+    widget.onDateChanged(_selectedDate);
   }
 
   // 切换到后一周
@@ -277,6 +295,8 @@ class _DayViewState extends State<DayView> {
     setState(() {
       _selectedDate = _selectedDate.add(const Duration(days: 7));
     });
+    // 通知父组件日期变更
+    widget.onDateChanged(_selectedDate);
   }
 
   // 构建日期选择器
@@ -355,6 +375,8 @@ class _DayViewState extends State<DayView> {
               return GestureDetector(
                 onTap: () {
                   setState(() => _selectedDate = date);
+                  // 通知父组件日期变更
+                  widget.onDateChanged(date);
                 },
                 child: Container(
                   width: 40,
