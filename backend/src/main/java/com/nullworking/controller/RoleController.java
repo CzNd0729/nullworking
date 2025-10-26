@@ -48,8 +48,9 @@ public class RoleController {
      * @return 响应结果
      */
     @Operation(summary = "更新角色", description = "更新角色信息包括权限分配，返回code：200成功，400参数错误，404角色不存在或权限不存在，500失败")
-    @PutMapping("")
+    @PutMapping("/{roleId}")
     public ApiResponse<String> updateRole(
+            @Parameter(description = "角色ID") @PathVariable Integer roleId,
             @Parameter(description = "角色更新信息") @RequestBody RoleUpdateRequest request) {
         return roleService.updateRole(request);
     }
@@ -60,9 +61,9 @@ public class RoleController {
      * @return 响应结果
      */
     @Operation(summary = "删除角色", description = "删除指定角色，如果角色下有关联用户则无法删除，返回code：200成功，400无法删除，404角色不存在，500失败")
-    @DeleteMapping("")
+    @DeleteMapping("/{roleId}")
     public ApiResponse<String> deleteRole(
-            @Parameter(description = "角色ID") @RequestParam Integer roleId) {
+            @Parameter(description = "角色ID") @PathVariable Integer roleId) {
         return roleService.deleteRole(roleId);
     }
 }

@@ -79,19 +79,18 @@ public class DepartmentService {
 
     /**
      * 列出指定部门的子部门
-     * @param parentDeptId 父部门ID，如果为null则列出根部门
+     * @param departmentId 部门ID
      * @return 包含子部门列表的响应
      */
-    public ApiResponse<Map<String, Object>> listSubDepts(Integer parentDeptId) {
+    public ApiResponse<Map<String, Object>> listSubDepts(Integer departmentId) {
         try {
             List<Department> departments;
             
-            if (parentDeptId == null) {
-                // 查询根部门（没有父部门的部门）
-                departments = departmentRepository.findByParentDepartment_departmentIdIsNull();
-            } else {
-                departments = departmentRepository.findByParentDepartment_departmentId(parentDeptId);
+            Department parentDepartment = departmentRepository.findById(departmentId).orElse(null);
+            if (parentDepartment == null) {
+                return ApiResponse.error(404, "部门不存在");
             }
+            departments = departmentRepository.findByParentDepartment_departmentId(departmentId);
 
             // 构建响应数据
             Map<String, Object> result = new HashMap<>();
@@ -158,13 +157,14 @@ public class DepartmentService {
 
     /**
      * 更新部门
+     * @param departmentId 部门ID
      * @param request 部门更新请求
      * @return 响应结果
      */
     @Transactional
-    public ApiResponse<String> updateDept(DepartmentUpdateRequest request) {
+    public ApiResponse<String> updateDept(Integer departmentId, DepartmentUpdateRequest request) {
         try {
-            Department department = departmentRepository.findById(request.getDeptId()).orElse(null);
+            Department department = departmentRepository.findById(departmentId).orElse(null);
             if (department == null) {
                 return ApiResponse.error(404, "部门不存在");
             }
@@ -174,7 +174,7 @@ public class DepartmentService {
                 // 检查部门名称是否与其他部门重复
                 List<Department> existingDepts = departmentRepository.findAll();
                 for (Department dept : existingDepts) {
-                    if (!dept.getDepartmentId().equals(request.getDeptId()) 
+                    if (!dept.getDepartmentId().equals(departmentId) 
                         && dept.getDepartmentName().equals(request.getDeptName())) {
                         return ApiResponse.error(400, "部门名称已存在");
                     }
@@ -189,7 +189,7 @@ public class DepartmentService {
             // 更新父部门
             if (request.getParentDept() != null) {
                 // 检查是否会产生循环引用
-                if (request.getParentDept().equals(request.getDeptId())) {
+                if (request.getParentDept().equals(departmentId)) {
                     return ApiResponse.error(400, "不能将部门设置为自己的父部门");
                 }
                 
