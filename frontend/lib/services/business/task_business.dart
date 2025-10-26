@@ -4,27 +4,33 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../models/task.dart';
 import 'package:http/http.dart' as http;
-import 'dart:developer';
 
 class TaskBusiness {
   final TaskApi _taskApi = TaskApi();
   final UserApi _userApi = UserApi();
   Future<List<Task>> getTodayUnfinishedTasks() async {
-  try {
-    // 假设后端接口为api/tasks/today/unfinished
-    final response = await _taskApi.getTodayUnfinishedTasks();
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> resp = jsonDecode(response.body);
-      if (resp['code'] == 200 && resp['data'] is List) {
-        return (resp['data'] as List).map((item) => Task.fromJson(item)).toList();
+    try {
+      final userTasks = await loadUserTasks();
+      if (userTasks != null) {
+        final allTasks = <Task>[];
+        allTasks.addAll(userTasks['createdTasks'] ?? []);
+        allTasks.addAll(userTasks['participatedTasks'] ?? []);
+
+        final todayUnfinishedTasks = allTasks.where((task) {
+          return task.taskStatus == "0";
+        }).toList();
+        // Sort tasks by deadline from nearest to furthest
+        todayUnfinishedTasks.sort((a, b) {
+          return a.deadline.compareTo(b.deadline);
+        });
+        return todayUnfinishedTasks;
       }
+      return <Task>[];
+    } catch (e) {
+      print('获取当天未完成任务异常: $e');
+      return <Task>[];
     }
-    return <Task>[];
-  } catch (e) {
-    debugPrint('获取当天未完成任务异常: $e');
-    return <Task>[];
   }
-}
 
   Future<Map<String, List<Task>>?> loadUserTasks() async {
     try {

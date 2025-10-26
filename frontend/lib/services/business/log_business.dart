@@ -194,18 +194,32 @@ class LogBusiness {
     }
   }
 
+  /// 获取当天所有日志（不考虑完成状态）
+  Future<List<Log>> getTodayLogs() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day, 0, 0, 0);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final logs = await listLogs(
+        startTime: startOfDay.toIso8601String(),
+        endTime: endOfDay.toIso8601String(),
+      );
+      return logs;
+    } catch (e) {
+      debugPrint('获取当天日志异常: $e');
+      return <Log>[];
+    }
+  }
+
   /// 获取特定条件下的任务列表
   Future<List<Task>> getExecutorTasksForLogSelection() async {
     try {
       final tasksResponse = await _taskApi.listExecutorTasks();
       if (tasksResponse != null) {
         List<Task> tasks = [];
-        if (tasksResponse.createdTasks != null) {
-          tasks.addAll(tasksResponse.createdTasks!);
-        }
-        if (tasksResponse.participatedTasks != null) {
-          tasks.addAll(tasksResponse.participatedTasks!);
-        }
+        tasks.addAll(tasksResponse.createdTasks);
+        tasks.addAll(tasksResponse.participatedTasks);
         return tasks;
       } else {
         debugPrint('获取任务列表失败: tasksResponse is null');
