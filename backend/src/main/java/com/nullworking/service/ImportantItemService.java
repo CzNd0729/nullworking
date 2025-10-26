@@ -15,6 +15,7 @@ import com.nullworking.model.ImportantItem;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.ItemCreateRequest;
 import com.nullworking.model.dto.ItemOrderAdjustRequest;
+import com.nullworking.model.dto.ItemUpdateRequest;
 import com.nullworking.repository.ImportantItemRepository;
 import com.nullworking.repository.UserRepository;
 
@@ -132,6 +133,62 @@ public class ImportantItemService {
         }
     }
 
+    public ApiResponse<String> updateItem(Integer userId, Integer itemId, ItemUpdateRequest request) {
+        try {
+            // 验证用户是否存在
+            User user = userRepository.findById(userId)
+                    .orElse(null);
+            if (user == null) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+
+            // 验证事项是否存在
+            ImportantItem item = importantItemRepository.findById(itemId)
+                    .orElse(null);
+            if (item == null) {
+                return ApiResponse.error(404, "事项不存在");
+            }
+
+            // 验证用户是否有权限修改该事项
+            if (!item.getUser().getUserId().equals(userId)) {
+                return ApiResponse.error(403, "无权修改其他用户的事项");
+            }
+
+            // 验证显示顺序
+            if (request.getDisplayOrder() != null) {
+                if (request.getDisplayOrder() < 1 || request.getDisplayOrder() > 10) {
+                    return ApiResponse.error(400, "显示顺序必须在1-10之间");
+                }
+
+                // 验证该用户是否已有相同的显示顺序（排除当前事项）
+                Byte displayOrder = request.getDisplayOrder().byteValue();
+                if (importantItemRepository.findByUserAndDisplayOrder(user, displayOrder)
+                        .filter(existingItem -> !existingItem.getItemId().equals(itemId))
+                        .isPresent()) {
+                    return ApiResponse.error(400, "该显示顺序已被使用，请选择其他顺序");
+                }
+            }
+
+            // 更新事项信息
+            if (request.getTitle() != null) {
+                item.setItemTitle(request.getTitle());
+            }
+            if (request.getContent() != null) {
+                item.setItemContent(request.getContent());
+            }
+            if (request.getDisplayOrder() != null) {
+                item.setDisplayOrder(request.getDisplayOrder().byteValue());
+            }
+            item.setUpdateTime(LocalDateTime.now());
+
+            importantItemRepository.save(item);
+
+            return ApiResponse.success("重要事项更新成功");
+        } catch (Exception e) {
+            return ApiResponse.error(500, "更新失败: " + e.getMessage());
+        }
+    }
+
     public ApiResponse<Map<String, Object>> getItems(Integer userId) {
         try {
             // 查询该用户的所有重要事项，按显示顺序排序
@@ -159,4 +216,36 @@ public class ImportantItemService {
             return ApiResponse.error(500, "查询失败: " + e.getMessage());
         }
     }
+
+    @Transactional
+    public ApiResponse<String> deleteItem(Integer userId, Integer itemId) {
+        try {
+            // 验证用户是否存在
+            User user = userRepository.findById(userId)
+                    .orElse(null);
+            if (user == null) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+
+            // 验证事项是否存在
+            ImportantItem item = importantItemRepository.findById(itemId)
+                    .orElse(null);
+            if (item == null) {
+                return ApiResponse.error(404, "事项不存在");
+            }
+
+            // 验证用户是否有权限删除该事项
+            if (!item.getUser().getUserId().equals(userId)) {
+                return ApiResponse.error(403, "无权删除其他用户的事项");
+            }
+
+            // 删除事项
+            importantItemRepository.delete(item);
+
+            return ApiResponse.success("重要事项删除成功");
+        } catch (Exception e) {
+            return ApiResponse.error(500, "删除失败: " + e.getMessage());
+        }
+    }
+    
 }

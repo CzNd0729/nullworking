@@ -5,15 +5,19 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.dto.ItemCreateRequest;
 import com.nullworking.model.dto.ItemOrderAdjustRequest;
+import com.nullworking.model.dto.ItemUpdateRequest;
 import com.nullworking.service.ImportantItemService;
 import com.nullworking.util.JwtUtil;
 
@@ -64,6 +68,23 @@ public class ImportantItemController {
         return importantItemService.adjustItemOrder(userId, itemOrderAdjustRequest);
     }
 
+    @Operation(summary = "更新重要事项", description = "更新指定ID的重要事项信息，返回code：200成功，400参数错误，401未授权，403无权限，404用户或事项不存在，500失败")
+    @PutMapping("/{itemId}")
+    public ApiResponse<String> updateItem(
+            HttpServletRequest request,
+            @PathVariable("itemId") Integer itemId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "更新事项信息",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ItemUpdateRequest.class))) @RequestBody ItemUpdateRequest itemUpdateRequest) {
+        
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权或Token无效");
+        }
+        
+        return importantItemService.updateItem(userId, itemId, itemUpdateRequest);
+    }
+
     @Operation(summary = "获取重要事项列表", description = "根据isCompany参数返回个人或公司十大事项，isCompany=1返回公司十大事项(UserID=0)，isCompany=0返回个人十大事项(通过token获取用户ID)，返回code：200成功，400参数错误，401未授权，404用户不存在，500失败")
     @GetMapping("")
     public ApiResponse<Map<String, Object>> getItems(
@@ -87,4 +108,19 @@ public class ImportantItemController {
             return importantItemService.getItems(userId);
         }
     }
+
+    @Operation(summary = "删除重要事项", description = "删除指定ID的重要事项，返回code：200成功，401未授权，403无权限，404用户或事项不存在，500失败")
+    @DeleteMapping("/{itemId}")
+    public ApiResponse<String> deleteItem(
+            HttpServletRequest request,
+            @PathVariable("itemId") Integer itemId) {
+        
+        Integer userId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "未授权或Token无效");
+        }
+        
+        return importantItemService.deleteItem(userId, itemId);
+    }
+        
 }
