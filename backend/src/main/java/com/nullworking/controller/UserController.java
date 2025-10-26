@@ -6,12 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nullworking.common.ApiResponse;
+import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
 import com.nullworking.service.UserService;
 import com.nullworking.util.JwtUtil;
@@ -60,6 +62,12 @@ public class UserController {
     @GetMapping("/listUsers")
     public ApiResponse<Map<String, Object>> listUsers() {
         return userService.listUsers();
+    }
+
+    @Operation(summary = "添加新用户", description = "创建新用户，包括用户名、密码、角色、部门、真实姓名、电话号码和邮箱")
+    @PostMapping("")
+    public ApiResponse<Void> addUser(@RequestBody UserCreateRequest request) {
+        return userService.addUser(request);
     }
 
     @Operation(summary = "更新用户信息", description = "更新指定用户的基本信息，包括角色、部门、用户名、真实姓名、电话号码和邮箱")

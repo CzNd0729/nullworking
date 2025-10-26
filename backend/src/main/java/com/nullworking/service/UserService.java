@@ -6,6 +6,7 @@ import com.nullworking.model.Log;
 import com.nullworking.model.Role;
 import com.nullworking.model.Task;
 import com.nullworking.model.User;
+import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
 import com.nullworking.repository.DepartmentRepository;
 import com.nullworking.repository.LogRepository;
@@ -15,8 +16,10 @@ import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 // import com.nullworking.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -111,6 +114,79 @@ public class UserService {
             return ApiResponse.success(data);
         } catch (Exception e) {
             return ApiResponse.error(500, "获取用户列表失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 添加新用户
+     * @param request 创建用户请求
+     * @return 创建结果
+     */
+    public ApiResponse<Void> addUser(UserCreateRequest request) {
+        try {
+            // 检查用户名是否已存在
+            if (userRepository.findByUserName(request.getUserName()) != null) {
+                return ApiResponse.error(409, "用户名已存在");
+            }
+            
+            // 校验必填字段
+            if (request.getRealName() == null || request.getRealName().trim().isEmpty()) {
+                return ApiResponse.error(400, "真实姓名为必填项");
+            }
+            
+            if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+                return ApiResponse.error(400, "密码为必填项");
+            }
+            
+            if (request.getPhone() == null || request.getPhone().trim().isEmpty()) {
+                return ApiResponse.error(400, "电话号码为必填项");
+            }
+            
+            // 验证角色是否存在
+            if (request.getRoleId() != null) {
+                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+                if (roleOptional.isEmpty()) {
+                    return ApiResponse.error(404, "角色不存在");
+                }
+            }
+            
+            // 验证部门是否存在
+            if (request.getDeptId() != null) {
+                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+                if (deptOptional.isEmpty()) {
+                    return ApiResponse.error(404, "部门不存在");
+                }
+            }
+            
+            // 密码加密
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+            String encodedPassword = encoder.encode(request.getPassword());
+            
+            // 创建用户
+            User user = new User();
+            user.setUserName(request.getUserName());
+            user.setPassword(encodedPassword);
+            user.setRealName(request.getRealName().trim());
+            user.setPhoneNumber(request.getPhone().trim());
+            user.setEmail(request.getEmail());
+            user.setCreationTime(LocalDateTime.now());
+            
+            // 设置角色
+            if (request.getRoleId() != null) {
+                user.setRole(roleRepository.findById(request.getRoleId()).get());
+            }
+            
+            // 设置部门
+            if (request.getDeptId() != null) {
+                user.setDepartment(departmentRepository.findById(request.getDeptId()).get());
+            }
+            
+            // 保存用户
+            userRepository.save(user);
+            
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "添加用户失败: " + e.getMessage());
         }
     }
 
