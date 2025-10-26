@@ -1,37 +1,57 @@
 import 'dart:convert';
 
 import 'package:nullworking/services/api/user_api.dart';
+import 'package:nullworking/services/business/log_business.dart';
+import 'package:nullworking/services/business/task_business.dart';
+import 'package:nullworking/models/log.dart';
+import 'package:nullworking/models/task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MindMapBusiness {
-  final UserApi _userApi = UserApi();
+  final LogBusiness _logBusiness = LogBusiness();
+  final TaskBusiness _taskBusiness = TaskBusiness();
+
+  // 新增：获取当天数据（日志+未完成任务）
+  Future<Map<String, dynamic>> fetchTodayData() async {
+    try {
+      // 并行请求当天日志和任务
+      final logsFuture = _logBusiness.getTodayLogs(); // 调用日志业务层的当天日志方法
+      final tasksFuture = _taskBusiness.getTodayUnfinishedTasks(); // 调用任务业务层的当天任务方法
+
+      final List<Log> todayLogs = await logsFuture;
+      final List<Task> todayTasks = await tasksFuture;
+
+      return {
+        'todayLogs': todayLogs,
+        'todayTasks': todayTasks,
+        'companyImportant': '公司重要事项数据（示例）', // 保留原有其他卡片的模拟数据
+        'personalImportant': '个人重要事项数据（示例）',
+      };
+    } catch (e) {
+      return {
+        'error': '加载失败：$e',
+      };
+    }
+  }
 
   /// 原有方法：获取导图页面用于展示的四个文本块（保留原样但更健壮）
   Future<Map<String, String>> fetchMindMapData() async {
     try {
-      final response = await _userApi.getHealth();
+      // 并行请求当天日志和任务
+      final logsFuture = _logBusiness.getTodayLogs();
+      final tasksFuture = _taskBusiness.getTodayUnfinishedTasks();
 
-      if (response.statusCode == 200) {
-        return {
-          'companyImportant': "公司重要事项数据",
-          'companyTask': "公司任务调度数据",
-          'personalImportant': "个人重要事项数据",
-          'personalLog': "个人日志数据",
-        };
-      } else {
-        return {
-          'companyImportant': '请求失败: ${response.statusCode}',
-          'companyTask': '请求失败: ${response.statusCode}',
-          'personalImportant': '请求失败: ${response.statusCode}',
-          'personalLog': '请求失败: ${response.statusCode}',
-        };
-      }
+      final List<Log> todayLogs = await logsFuture;
+      final List<Task> todayTasks = await tasksFuture;
+
+      return {
+        'companyImportant': '公司重要事项数据（示例）',
+        'personalImportant': '个人重要事项数据（示例）',
+      };
     } catch (e) {
       return {
-        'companyImportant': '发生错误: $e',
-        'companyTask': '发生错误: $e',
-        'personalImportant': '发生错误: $e',
-        'personalLog': '发生错误: $e',
+        'companyImportant': '加载失败',
+        'personalImportant': '加载失败',
       };
     }
   }

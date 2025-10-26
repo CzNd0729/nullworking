@@ -8,6 +8,29 @@ import 'package:http/http.dart' as http;
 class TaskBusiness {
   final TaskApi _taskApi = TaskApi();
   final UserApi _userApi = UserApi();
+  Future<List<Task>> getTodayUnfinishedTasks() async {
+    try {
+      final userTasks = await loadUserTasks();
+      if (userTasks != null) {
+        final allTasks = <Task>[];
+        allTasks.addAll(userTasks['createdTasks'] ?? []);
+        allTasks.addAll(userTasks['participatedTasks'] ?? []);
+
+        final todayUnfinishedTasks = allTasks.where((task) {
+          return task.taskStatus == "0";
+        }).toList();
+        // Sort tasks by deadline from nearest to furthest
+        todayUnfinishedTasks.sort((a, b) {
+          return a.deadline.compareTo(b.deadline);
+        });
+        return todayUnfinishedTasks;
+      }
+      return <Task>[];
+    } catch (e) {
+      print('获取当天未完成任务异常: $e');
+      return <Task>[];
+    }
+  }
 
   Future<Map<String, List<Task>>?> loadUserTasks() async {
     try {
