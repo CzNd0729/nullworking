@@ -1,3 +1,4 @@
+// mindmap_page.dart
 import 'package:flutter/material.dart';
 import 'package:nullworking/services/business/mindmap_business.dart';
 import 'package:nullworking/models/log.dart';
@@ -24,10 +25,9 @@ class _MindMapPageState extends State<MindMapPage> {
   @override
   void initState() {
     super.initState();
-    _fetchTodayData(); // 切换为获取真实数据的方法
+    _fetchTodayData();
   }
 
-  // 新增：获取当天日志和任务数据
   Future<void> _fetchTodayData() async {
     final data = await _mindMapBusiness.fetchTodayData();
     setState(() {
@@ -43,7 +43,6 @@ class _MindMapPageState extends State<MindMapPage> {
     });
   }
 
-  // 重构：通用卡片组件（支持列表数据展示）
   Widget _buildCard({
     required String title,
     required List<Widget> contentWidgets,
@@ -70,7 +69,7 @@ class _MindMapPageState extends State<MindMapPage> {
               ),
             ),
             const Divider(height: 20),
-            // 内容区域：如果有数据则展示列表，否则显示提示
+            // 内容区域：确保内容可以完整展示
             Expanded(
               child: contentWidgets.isEmpty
                   ? const Center(
@@ -84,12 +83,12 @@ class _MindMapPageState extends State<MindMapPage> {
                         children: contentWidgets,
                       ),
                   ),
-          ), // 确保Expanded的括号闭合
-        ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,49 +103,72 @@ class _MindMapPageState extends State<MindMapPage> {
           : _error != null
               ? Center(child: Text('加载失败：$_error'))
               : Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  // 减小整体内边距，让内容更贴近边缘
+                  padding: const EdgeInsets.all(8.0),
                   child: Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 20),
-                        child: Text(
-                          '项目导图',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      // 移除"项目导图"标题
                       Expanded(
-                        child: GridView.count(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.9,
+                        // 使用Column而不是GridView，让每个模块垂直排列并占满空间
+                        child: Column(
                           children: [
-                            // 公司重要事项（模拟数据）
-                            _buildCard(
-                              title: '公司重要事项',
-                              contentWidgets: [Text(_companyImportant)],
+                            // 第一行：公司重要事项和公司任务调度
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  // 公司重要事项
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: _buildCard(
+                                        title: '公司重要事项',
+                                        contentWidgets: [Text(_companyImportant)],
+                                      ),
+                                    ),
+                                  ),
+                                  // 公司任务调度
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: _buildCard(
+                                        title: '公司任务调度',
+                                        contentWidgets: _todayTasks
+                                            .map((task) => _buildTaskItem(task))
+                                            .toList(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            // 公司任务调度（展示当天未到截止日期的任务）
-                            _buildCard(
-                              title: '公司任务调度',
-                              contentWidgets: _todayTasks
-                                  .map((task) => _buildTaskItem(task))
-                                  .toList(),
-                            ),
-                            // 个人重要事项（模拟数据）
-                            _buildCard(
-                              title: '个人重要事项',
-                              contentWidgets: [Text(_personalImportant)],
-                            ),
-                            // 个人日志（展示当天的日志）
-                            _buildCard(
-                              title: '个人日志',
-                              contentWidgets: _todayLogs
-                                  .map((log) => _buildLogItem(log))
-                                  .toList(),
+                            // 第二行：个人重要事项和个人日志
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  // 个人重要事项
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: _buildCard(
+                                        title: '个人重要事项',
+                                        contentWidgets: [Text(_personalImportant)],
+                                      ),
+                                    ),
+                                  ),
+                                  // 个人日志
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: _buildCard(
+                                        title: '个人日志',
+                                        contentWidgets: _todayLogs
+                                            .map((log) => _buildLogItem(log))
+                                            .toList(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -157,7 +179,6 @@ class _MindMapPageState extends State<MindMapPage> {
     );
   }
 
-  // 新增：任务列表项组件
   Widget _buildTaskItem(Task task) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -183,29 +204,35 @@ class _MindMapPageState extends State<MindMapPage> {
     );
   }
 
-  // 新增：日志列表项组件
   Widget _buildLogItem(Log log) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            log.logTitle,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey[200]!))),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          log.logTitle,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '时间：${log.startTime} - ${log.endTime}',
+          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+        ),
+        // 新增：日志内容预览（可选，根据需求决定是否添加）
+        if (log.logContent.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(
-            '时间：${log.startTime} - ${log.endTime}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            log.logContent,
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
-      ),
-    );
-  }
-}
+      ],
+    ),
+  );
+}}

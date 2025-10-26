@@ -84,33 +84,40 @@ class LogBusiness {
     }
   }
 
-  /// 新增：获取日志列表
-  Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
-    try {
-      final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 200) {
-          List<Log> logs = [];
-          if (resp['data'] is Map && resp['data']['logs'] is List) {
-            for (var item in resp['data']['logs']) {
-              logs.add(Log.fromJson(item));
-            }
-          }
-          return logs;
-        } else {
-          debugPrint('获取日志列表失败: ${resp['message']}');
-          return <Log>[];
+  /// 新增：获取日志列表（补充兼容解析逻辑）
+Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
+  try {
+    final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> resp = jsonDecode(res.body);
+      debugPrint('导图-日志接口返回：$resp'); // 打印完整响应，确认格式
+      if (resp['code'] == 200) {
+        List<Log> logs = [];
+        // 兼容两种格式：resp['data']['logs']（日志页面格式）和 resp['data']（可能的导图接口格式）
+        List<dynamic> logList = [];
+        if (resp['data'] is Map && resp['data']['logs'] is List) {
+          logList = resp['data']['logs'];
+        } else if (resp['data'] is List) {
+          logList = resp['data'];
         }
+        // 解析日志（和日志页面一致）
+        for (var item in logList) {
+          logs.add(Log.fromJson(item));
+        }
+        return logs;
       } else {
-        debugPrint('获取日志列表网络错误: ${res.statusCode}');
+        debugPrint('获取日志列表失败: ${resp['message']}');
         return <Log>[];
       }
-    } catch (e) {
-      debugPrint('获取日志列表异常: $e');
+    } else {
+      debugPrint('获取日志列表网络错误: ${res.statusCode}，响应：${res.body}');
       return <Log>[];
     }
+  } catch (e) {
+    debugPrint('获取日志列表异常: $e');
+    return <Log>[];
   }
+}
 
   /// 新增：删除日志
   Future<Map<String, dynamic>> deleteLog(String logId) async {
@@ -194,23 +201,24 @@ class LogBusiness {
     }
   }
 
-  /// 获取当天所有日志（不考虑完成状态）
-  Future<List<Log>> getTodayLogs() async {
-    try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day, 0, 0, 0);
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  /// 获取当天所有日志（复用日志页面的成功逻辑）
+Future<List<Log>> getTodayLogs() async {
+  try {
+    final now = DateTime.now();
+    // 改为后端兼容的格式（日志页面能用，说明后端认这个格式）
+    final startStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final endStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-      final logs = await listLogs(
-        startTime: startOfDay.toIso8601String(),
-        endTime: endOfDay.toIso8601String(),
-      );
-      return logs;
-    } catch (e) {
-      debugPrint('获取当天日志异常: $e');
-      return <Log>[];
-    }
+    // 打印参数，确认和日志页面的请求参数一致
+    debugPrint('导图-查询当天日志参数：startTime=$startStr, endTime=$endStr');
+    final logs = await listLogs(startTime: startStr, endTime: endStr);
+    debugPrint('导图-获取到的日志数量：${logs.length}');
+    return logs;
+  } catch (e) {
+    debugPrint('导图-获取当天日志异常: $e');
+    return <Log>[];
   }
+}
 
   /// 获取特定条件下的任务列表
   Future<List<Task>> getExecutorTasksForLogSelection() async {
