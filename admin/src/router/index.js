@@ -91,6 +91,51 @@ export const constantRoutes = [
   },
 
   {
+    path: '/important-item',
+    component: Layout,
+    children: [
+      {
+        path: 'index',
+        name: 'ImportantItem',
+        component: () => import('@/views/table/drag-table'),
+        meta: { title: '重要事项', icon: 'example' } // 使用一个合适的图标，这里暂时用 'example'
+      }
+    ]
+  },
+
+  {
+    path: '/permission',
+    component: Layout,
+    redirect: '/permission/user',
+    name: 'Permission',
+    meta: {
+      title: '权限管理',
+      icon: 'lock', // 使用一个合适的图标
+      alwaysShow: true // 总是显示根菜单
+    },
+    children: [
+      {
+        path: 'user',
+        component: () => import('@/views/table/complex-table'),
+        name: 'UserManagement',
+        meta: { title: '用户管理', icon: 'user' }
+      },
+      {
+        path: 'department',
+        component: () => import('@/views/permission/department'),
+        name: 'DepartmentManagement',
+        meta: { title: '部门管理', icon: 'tree' } // 暂时用 'tree'
+      },
+      {
+        path: 'role',
+        component: () => import('@/views/permission/role'),
+        name: 'RoleManagement',
+        meta: { title: '角色管理', icon: 'lock' } // 暂时用 'lock'
+      }
+    ]
+  },
+
+  {
     path: '/nested',
     component: Layout,
     redirect: '/nested/menu1',
