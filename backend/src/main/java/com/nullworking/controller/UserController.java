@@ -41,12 +41,7 @@ public class UserController {
     @Operation(summary = "获取同级及下级部门用户", description = "从token解析用户ID，递归查询同级及下级部门中的其他用户，返回用户ID与用户真实姓名")
     @GetMapping("/getSubDeptUser")
     public ApiResponse<Map<String, Object>> getSubDeptUser(HttpServletRequest request) {
-        // 检查是否为管理员
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
-        if (currentUserId == null || currentUserId != 0) {
-            return ApiResponse.error(403, "权限不足，只有管理员可以查看部门用户");
-        }
-        
         try {
             return userService.getSubDeptUser(currentUserId);
         } catch (Exception e) {
@@ -55,7 +50,7 @@ public class UserController {
     }
 
     @Operation(summary = "获取所有用户列表", description = "获取系统中所有用户的基本信息，包括用户ID、真实姓名、角色名称和部门名称")
-    @GetMapping("/listUsers")
+    @GetMapping("")
     public ApiResponse<Map<String, Object>> listUsers(HttpServletRequest request) {
         // 检查是否为管理员
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
