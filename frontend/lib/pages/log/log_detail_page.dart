@@ -132,15 +132,21 @@ class _LogDetailPageState extends State<LogDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () => _editLog(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
-            onPressed: () => _confirmDeleteLog(context),
-          ),
-        ],
+    // 关键修改：已完成日志的编辑按钮禁用+灰色
+    IconButton(
+      icon: Icon(
+        Icons.edit,
+        // 未完成显示白色，已完成显示灰色
+        color: _logDetails?.logStatus == 0 ? Colors.white : Colors.grey[500],
+      ),
+      // 仅当日志未完成（logStatus == 0）时可点击
+      onPressed: _logDetails?.logStatus == 0 ? () => _editLog(context) : null,
+    ),
+    IconButton(
+      icon: const Icon(Icons.delete, color: Colors.redAccent),
+      onPressed: () => _confirmDeleteLog(context),
+    ),
+  ],
       ),
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
@@ -368,6 +374,16 @@ class _LogDetailPageState extends State<LogDetailPage> {
   }
 
   Future<void> _editLog(BuildContext context) async {
+    // 额外判断：如果日志已完成，直接提示并返回
+  if (_logDetails?.logStatus == 1) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('已完成的日志不可修改'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
     final updatedLog = await Navigator.push<Log?>(
       context,
       MaterialPageRoute(
