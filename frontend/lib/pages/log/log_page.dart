@@ -538,19 +538,28 @@ ListTile(
     Navigator.pop(context);
   },
 ),
-              ListTile(
-                leading: const Icon(
-                  Icons.calendar_today,
-                  color: Colors.white70,
-                ),
-                title: const Text('日视图', style: TextStyle(color: Colors.white)),
-                selected: _currentViewMode == ViewMode.day,
-                selectedColor: const Color(0xFF2CB7B3),
-                onTap: () {
-                  setState(() => _currentViewMode = ViewMode.day);
-                  Navigator.pop(context);
-                },
-              ),
+ListTile(
+  leading: const Icon(
+    Icons.calendar_today,
+    color: Colors.white70,
+  ),
+  title: const Text('日视图', style: TextStyle(color: Colors.white)),
+  selected: _currentViewMode == ViewMode.day,
+  selectedColor: const Color(0xFF2CB7B3),
+  onTap: () {
+    // 计算当天所在周的起始日（周日）
+    DateTime today = DateTime.now();
+    DateTime startOfWeek = today.subtract(Duration(days: today.weekday % 7));
+    setState(() {
+      _currentViewMode = ViewMode.day;
+      // 同步更新筛选日期为该周起始日
+      _startDate = startOfWeek;
+      _endDate = startOfWeek;
+    });
+    _loadLogs(); // 加载该周起始日的日志
+    Navigator.pop(context);
+  },
+),
             ],
           ),
         );
