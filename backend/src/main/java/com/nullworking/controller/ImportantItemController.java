@@ -38,7 +38,7 @@ public class ImportantItemController {
 
     @Operation(summary = "添加重要事项", description = "从token获取用户ID，创建重要事项，返回code：200成功，400参数错误，401未授权，404用户不存在，500失败")
     @PostMapping("")
-    public ApiResponse<String> addItem(
+    public ApiResponse<Integer> addItem(
             HttpServletRequest request,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "重要事项信息",
                     content = @Content(mediaType = "application/json",

@@ -13,4 +13,5 @@ import com.nullworking.model.User;
 public interface ImportantItemRepository extends JpaRepository<ImportantItem, Integer> {
     Optional<ImportantItem> findByUserAndDisplayOrder(User user, Byte displayOrder);
     List<ImportantItem> findByUser_UserIdOrderByDisplayOrder(Integer userId);
+    List<ImportantItem> findByUserAndDisplayOrderGreaterThan(User user, Byte displayOrder);
 }

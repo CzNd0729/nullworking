@@ -28,7 +28,7 @@ public class ImportantItemService {
     @Autowired
     private UserRepository userRepository;
 
-    public ApiResponse<String> addItem(Integer userId, ItemCreateRequest request) {
+    public ApiResponse<Integer> addItem(Integer userId, ItemCreateRequest request) {
         try {
             // 验证用户是否存在
             User user = userRepository.findById(userId)
@@ -58,7 +58,7 @@ public class ImportantItemService {
 
             importantItemRepository.save(item);
 
-            return ApiResponse.success("重要事项添加成功");
+            return ApiResponse.success(item.getItemId());
         } catch (Exception e) {
             return ApiResponse.error(500, "添加失败: " + e.getMessage());
         }
@@ -154,30 +154,12 @@ public class ImportantItemService {
                 return ApiResponse.error(403, "无权修改其他用户的事项");
             }
 
-            // 验证显示顺序
-            if (request.getDisplayOrder() != null) {
-                if (request.getDisplayOrder() < 1 || request.getDisplayOrder() > 10) {
-                    return ApiResponse.error(400, "显示顺序必须在1-10之间");
-                }
-
-                // 验证该用户是否已有相同的显示顺序（排除当前事项）
-                Byte displayOrder = request.getDisplayOrder().byteValue();
-                if (importantItemRepository.findByUserAndDisplayOrder(user, displayOrder)
-                        .filter(existingItem -> !existingItem.getItemId().equals(itemId))
-                        .isPresent()) {
-                    return ApiResponse.error(400, "该显示顺序已被使用，请选择其他顺序");
-                }
-            }
-
             // 更新事项信息
             if (request.getTitle() != null) {
                 item.setItemTitle(request.getTitle());
             }
             if (request.getContent() != null) {
                 item.setItemContent(request.getContent());
-            }
-            if (request.getDisplayOrder() != null) {
-                item.setDisplayOrder(request.getDisplayOrder().byteValue());
             }
             item.setUpdateTime(LocalDateTime.now());
 
@@ -239,8 +221,19 @@ public class ImportantItemService {
                 return ApiResponse.error(403, "无权删除其他用户的事项");
             }
 
+            // 保存要删除的item的displayOrder
+            Byte deletedOrder = item.getDisplayOrder();
+
             // 删除事项
             importantItemRepository.delete(item);
+
+            // 自动补位：将所有order大于被删除item的items的order减1
+            List<ImportantItem> itemsToAdjust = importantItemRepository.findByUserAndDisplayOrderGreaterThan(user, deletedOrder);
+            for (ImportantItem itemToAdjust : itemsToAdjust) {
+                itemToAdjust.setDisplayOrder((byte) (itemToAdjust.getDisplayOrder() - 1));
+                itemToAdjust.setUpdateTime(LocalDateTime.now());
+            }
+            importantItemRepository.saveAll(itemsToAdjust);
 
             return ApiResponse.success("重要事项删除成功");
         } catch (Exception e) {
