@@ -90,6 +90,20 @@ class BaseApi {
     return await http.put(url, headers: headers, body: jsonEncode(body));
   }
 
+  Future<http.Response> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? queryParams,
+    bool authenticated = true,
+  }) async {
+    var url = Uri.parse('$_baseUrl/$endpoint');
+    if (queryParams != null) {
+      url = url.replace(queryParameters: queryParams);
+    }
+    final headers = await _getHeaders(authenticated: authenticated);
+    return await http.patch(url, headers: headers, body: jsonEncode(body));
+  }
+
   Future<http.Response> delete(
     String endpoint, {
     Map<String, String>? queryParams,
