@@ -10,9 +10,8 @@ class ItemApi {
     final body = <String, dynamic>{
       'title': itemData['title'].toString(),
       'content': itemData['content'].toString(),
-      'display_order': itemData['display_order'],
+      'displayOrder': itemData['displayOrder'],
     };
-
     return await _baseApi.post(
       'api/items',
       body: body,
@@ -21,7 +20,7 @@ class ItemApi {
 
   Future<http.Response> adjustItemOrder(List<int> displayOrders) async {
     final body = <String, dynamic>{
-      'display_orders': displayOrders,
+      'displayOrders': displayOrders,
     };
 
     return await _baseApi.patch(
@@ -49,7 +48,7 @@ class ItemApi {
     );
   }
 
-  Future<ItemListResponse?> getItems({bool isCompany = false}) async {
+  Future<ItemListResponse?> getItems({String isCompany = "0"}) async {
     final response = await _baseApi.get('api/items?isCompany=$isCompany');
 
     if (response.statusCode == 200) {

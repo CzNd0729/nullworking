@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/business/mindmap_business.dart';
 import 'top10_detail_page.dart';
+import '../../models/item.dart';
 
 class CompanyTop10Page extends StatefulWidget {
   const CompanyTop10Page({super.key});
@@ -11,7 +12,7 @@ class CompanyTop10Page extends StatefulWidget {
 
 class _CompanyTop10PageState extends State<CompanyTop10Page> {
   final MindMapBusiness _business = MindMapBusiness();
-  List<Map<String, String>> _items = [];
+  List<Item> _items = [];
   bool _loading = true;
 
   @override
@@ -43,9 +44,9 @@ class _CompanyTop10PageState extends State<CompanyTop10Page> {
                 return Card(
                   child: ListTile(
                     leading: CircleAvatar(child: Text('${index + 1}')),
-                    title: Text(item['title'] ?? ''),
+                    title: Text(item.title ?? ''),
                     subtitle: Text(
-                      item['content'] ?? '',
+                      item.content ?? '',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -54,7 +55,7 @@ class _CompanyTop10PageState extends State<CompanyTop10Page> {
                         MaterialPageRoute(
                           builder: (_) => Top10DetailPage(
                             index: index + 1,
-                            item: Map<String, String>.from(item),
+                            item: item.toJson(),
                             readOnly: true,
                           ),
                         ),

@@ -196,7 +196,7 @@ public class ImportantItemService {
             List<ImportantItem> items = importantItemRepository.findByUser_UserIdOrderByDisplayOrder(userId);
 
             // 转换为响应Map
-            List<Map<String, Object>> events = items.stream()
+            List<Map<String, Object>> itemList = items.stream()
                     .map(item -> {
                         Map<String, Object> itemMap = new HashMap<>();
                         itemMap.put("itemId", item.getItemId());
@@ -209,7 +209,7 @@ public class ImportantItemService {
 
             // 构建响应数据
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("events", events);
+            responseData.put("items", itemList);
 
             return ApiResponse.success(responseData);
         } catch (Exception e) {
