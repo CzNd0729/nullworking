@@ -1,15 +1,17 @@
 import 'dart:convert';
 
 import 'package:nullworking/services/api/user_api.dart';
+import 'package:nullworking/services/api/item_api.dart';
 import 'package:nullworking/services/business/log_business.dart';
 import 'package:nullworking/services/business/task_business.dart';
 import 'package:nullworking/models/log.dart';
 import 'package:nullworking/models/task.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nullworking/models/item.dart';
 
 class MindMapBusiness {
   final LogBusiness _logBusiness = LogBusiness();
   final TaskBusiness _taskBusiness = TaskBusiness();
+  final ItemApi _itemApi = ItemApi();
 
   // 新增：获取当天数据（日志+未完成任务）
   Future<Map<String, dynamic>> fetchTodayData() async {
@@ -56,48 +58,21 @@ class MindMapBusiness {
     }
   }
 
-  /// 获取公司十大重要事项（mock 实现，后续可改为接口请求）
   /// 返回每项为 { 'title': ..., 'content': ... }
-  Future<List<Map<String, String>>> fetchCompanyTop10() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return List<Map<String, String>>.generate(10, (i) {
-      return {
-        'title': '公司重要事项 #${i + 1}',
-        'content': '这是公司重要事项 #${i + 1} 的详细描述。',
-      };
-    });
+  Future<List<Item>> fetchCompanyTop10() async {
+    final response = await _itemApi.getItems(isCompany: "1");
+    if (response != null && response.items.isNotEmpty) {
+      return response.items;
+    }
+    return [];
   }
 
   /// 获取个人十大重要事项（优先从本地缓存读取）
-  Future<List<Map<String, String>>> fetchPersonalTop10() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString('personal_top10');
-    if (saved != null && saved.isNotEmpty) {
-      try {
-        final List<dynamic> decoded = json.decode(saved);
-        return decoded.map<Map<String, String>>((e) {
-          if (e is Map) {
-            return Map<String, String>.from(
-              e.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')),
-            );
-          }
-          return {'title': e.toString(), 'content': ''};
-        }).toList();
-      } catch (_) {
-        // fallthrough to return default
-      }
+  Future<List<Item>> fetchPersonalTop10() async {
+    final response = await _itemApi.getItems(isCompany: "0");
+    if (response != null && response.items.isNotEmpty) {
+      return response.items;
     }
-
-    // 默认数据
-    await Future.delayed(const Duration(milliseconds: 200));
-    return List<Map<String, String>>.generate(10, (i) {
-      return {'title': '', 'content': ''};
-    });
-  }
-
-  /// 保存个人十大事项顺序到本地
-  Future<void> savePersonalTop10(List<Map<String, String>> items) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('personal_top10', json.encode(items));
+    return [];
   }
 }

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 class Top10DetailPage extends StatefulWidget {
   final int index;
-  final Map<String, String> item;
+  final Map<String, dynamic> item;
   final bool readOnly;
 
   const Top10DetailPage({
     super.key,
     required this.index,
     required this.item,
-    this.readOnly = true,
+    required this.readOnly,
   });
 
   @override
