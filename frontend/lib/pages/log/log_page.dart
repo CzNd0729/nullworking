@@ -196,7 +196,7 @@ class _LogPageState extends State<LogPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -318,23 +318,87 @@ class _LogPageState extends State<LogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('日志管理'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            _showViewModeMenu(context);
-          },
-        ),
-        actions: [
-          IconButton(
-            onPressed: _forceSearchUnfocus,
-            icon: const Icon(Icons.notifications),
-          ),
-        ],
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              title: const Text('日志管理'),
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  _showViewModeMenu(context);
+                },
+              ),
+              actions: [
+                IconButton(
+                  onPressed: _forceSearchUnfocus,
+                  icon: const Icon(Icons.notifications),
+                ),
+              ],
+              floating: true,
+              forceElevated: innerBoxIsScrolled,
+            ),
+            if (_currentViewMode == ViewMode.list)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    children: [
+                      TextField(
+                        focusNode: _searchFocusNode,
+                        controller: _searchController,
+                        onChanged: (value) => _applyFilters(),
+                        decoration: InputDecoration(
+                          hintText: '按标题或日志内容搜索',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
+                        onTapOutside: (event) => _forceSearchUnfocus(),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (value) => _forceSearchUnfocus(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            if (_currentViewMode == ViewMode.list)
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverFilterBarDelegate(
+                  child: Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: _buildFilterBar(),
+                    ),
+                  ),
+                ),
+              ),
+          ];
+        },
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+                ),
+              )
+            : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.0),
+                  child: Text('暂无日志', style: TextStyle(color: Colors.white54)),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildCurrentView(),
+              ),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF2CB7B3),
@@ -351,58 +415,6 @@ class _LogPageState extends State<LogPage> {
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 搜索框 - 只在列表视图显示
-            if (_currentViewMode == ViewMode.list) ...[
-              TextField(
-                focusNode: _searchFocusNode,
-                controller: _searchController,
-                onChanged: (value) => _applyFilters(),
-                decoration: InputDecoration(
-                  hintText: '按标题或日志内容搜索',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                onTapOutside: (event) => _forceSearchUnfocus(),
-                textInputAction: TextInputAction.done,
-                onSubmitted: (value) => _forceSearchUnfocus(),
-              ),
-              const SizedBox(height: 16),
-              _buildFilterBar(),
-              const SizedBox(height: 16),
-            ],
-
-            // 内容区域
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFF2CB7B3),
-                        ),
-                      ),
-                    )
-                  : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40.0),
-                        child: Text(
-                          '暂无日志',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                    )
-                  : _buildCurrentView(),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -414,20 +426,20 @@ class _LogPageState extends State<LogPage> {
           itemCount: _filteredLogs.length,
           itemBuilder: (context, index) => _buildLogCard(_filteredLogs[index]),
         );
-// log_page.dart 中 _buildCurrentView 方法的月视图部分
-case ViewMode.month:
-  return MonthView(
-    logs: _filteredLogs,
-    currentMonth: _currentMonth,
-    onMonthChanged: (newMonth) {
-      setState(() {
-        _currentMonth = newMonth;
-        // 切换月份时，同步更新筛选范围为新月份
-        _startDate = DateTime(newMonth.year, newMonth.month, 1);
-        _endDate = DateTime(newMonth.year, newMonth.month + 1, 0);
-      });
-      _loadLogs(); // 加载新月份的日志
-    },
+      // log_page.dart 中 _buildCurrentView 方法的月视图部分
+      case ViewMode.month:
+        return MonthView(
+          logs: _filteredLogs,
+          currentMonth: _currentMonth,
+          onMonthChanged: (newMonth) {
+            setState(() {
+              _currentMonth = newMonth;
+              // 切换月份时，同步更新筛选范围为新月份
+              _startDate = DateTime(newMonth.year, newMonth.month, 1);
+              _endDate = DateTime(newMonth.year, newMonth.month + 1, 0);
+            });
+            _loadLogs(); // 加载新月份的日志
+          },
           onDaySelected: (selectedDate) {
             setState(() {
               _currentViewMode = ViewMode.day;
@@ -440,22 +452,22 @@ case ViewMode.month:
       case ViewMode.week:
         return WeekView(logs: _filteredLogs);
       case ViewMode.day:
-      return DayView(
-        logs: _filteredLogs,
-        initialDate: _startDate ?? DateTime.now(),
-        // 新增：日期变更回调（关键）
-        onDateChanged: (newDate) {
-          setState(() {
-            // 同步更新筛选条件为新日期
-            _startDate = newDate;
-            _endDate = newDate;
-          });
-          // 重新加载该日期的日志
-          _loadLogs();
-        },
-      );
+        return DayView(
+          logs: _filteredLogs,
+          initialDate: _startDate ?? DateTime.now(),
+          // 新增：日期变更回调（关键）
+          onDateChanged: (newDate) {
+            setState(() {
+              // 同步更新筛选条件为新日期
+              _startDate = newDate;
+              _endDate = newDate;
+            });
+            // 重新加载该日期的日志
+            _loadLogs();
+          },
+        );
+    }
   }
-}
 
   // 显示视图模式选择菜单
   void _showViewModeMenu(BuildContext context) {
@@ -485,81 +497,104 @@ case ViewMode.month:
               ),
               const Divider(color: Colors.white24),
               // 修改_showViewModeMenu中的列表视图选择逻辑
-ListTile(
-  leading: const Icon(Icons.list, color: Colors.white70),
-  title: const Text('列表', style: TextStyle(color: Colors.white)),
-  selected: _currentViewMode == ViewMode.list,
-  selectedColor: const Color(0xFF2CB7B3),
-  onTap: () {
-    setState(() {
-      _currentViewMode = ViewMode.list;
-      // 切换到列表视图时，清除单天筛选（恢复为默认的时间范围）
-      if (_startDate != null && _endDate != null && 
-          _startDate!.isAtSameMomentAs(_endDate!)) {
-        _startDate = DateTime(_endDate!.year, _endDate!.month - 1, _endDate!.day);
-        _endDate = DateTime.now();
-      }
-    });
-    _loadLogs(); // 重新加载日志
-    Navigator.pop(context);
-  },
-),
+              ListTile(
+                leading: const Icon(Icons.list, color: Colors.white70),
+                title: const Text('列表', style: TextStyle(color: Colors.white)),
+                selected: _currentViewMode == ViewMode.list,
+                selectedColor: const Color(0xFF2CB7B3),
+                onTap: () {
+                  setState(() {
+                    _currentViewMode = ViewMode.list;
+                    // 切换到列表视图时，清除单天筛选（恢复为默认的时间范围）
+                    if (_startDate != null &&
+                        _endDate != null &&
+                        _startDate!.isAtSameMomentAs(_endDate!)) {
+                      _startDate = DateTime(
+                        _endDate!.year,
+                        _endDate!.month - 1,
+                        _endDate!.day,
+                      );
+                      _endDate = DateTime.now();
+                    }
+                  });
+                  _loadLogs(); // 重新加载日志
+                  Navigator.pop(context);
+                },
+              ),
               // log_page.dart 中 _showViewModeMenu 方法的列表项修改
-ListTile(
-  leading: const Icon(Icons.calendar_month, color: Colors.white70),
-  title: const Text('月视图', style: TextStyle(color: Colors.white)),
-  selected: _currentViewMode == ViewMode.month,
-  selectedColor: const Color(0xFF2CB7B3),
-  onTap: () {
-    setState(() {
-      _currentViewMode = ViewMode.month;
-      // 切换到月视图时，重置时间范围为当前月的完整范围
-      _startDate = DateTime(_currentMonth.year, _currentMonth.month, 1);
-      _endDate = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
-    });
-    _loadLogs(); // 重新加载当月日志
-    Navigator.pop(context);
-  },
-),
-ListTile(
-  leading: const Icon(Icons.calendar_view_week, color: Colors.white70),
-  title: const Text('周视图', style: TextStyle(color: Colors.white)),
-  selected: _currentViewMode == ViewMode.week,
-  selectedColor: const Color(0xFF2CB7B3),
-  onTap: () {
-    setState(() {
-      _currentViewMode = ViewMode.week;
-      // 切换到周视图时，重置时间范围为当前周的完整范围（周一至周日）
-      final now = DateTime.now();
-      _startDate = now.subtract(Duration(days: now.weekday - 1)); // 周一
-      _endDate = now.add(Duration(days: 7 - now.weekday)); // 周日
-    });
-    _loadLogs(); // 重新加载当周日志
-    Navigator.pop(context);
-  },
-),
-ListTile(
-  leading: const Icon(
-    Icons.calendar_today,
-    color: Colors.white70,
-  ),
-  title: const Text('日视图', style: TextStyle(color: Colors.white)),
-  selected: _currentViewMode == ViewMode.day,
-  selectedColor: const Color(0xFF2CB7B3),
-  onTap: () {
-    // 计算当天所在周的起始日（周日）
-    DateTime today = DateTime.now();
-    DateTime startOfWeek = today.subtract(Duration(days: today.weekday % 7));
-    setState(() {
-      _currentViewMode = ViewMode.day;
-      // 同步更新筛选日期为该周起始日
-      _startDate = startOfWeek;
-      _endDate = startOfWeek;
-    });
-    _loadLogs(); // 加载该周起始日的日志
-    Navigator.pop(context);
-  },
-),
+              ListTile(
+                leading: const Icon(
+                  Icons.calendar_month,
+                  color: Colors.white70,
+                ),
+                title: const Text('月视图', style: TextStyle(color: Colors.white)),
+                selected: _currentViewMode == ViewMode.month,
+                selectedColor: const Color(0xFF2CB7B3),
+                onTap: () {
+                  setState(() {
+                    _currentViewMode = ViewMode.month;
+                    // 切换到月视图时，重置时间范围为当前月的完整范围
+                    _startDate = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month,
+                      1,
+                    );
+                    _endDate = DateTime(
+                      _currentMonth.year,
+                      _currentMonth.month + 1,
+                      0,
+                    );
+                  });
+                  _loadLogs(); // 重新加载当月日志
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.calendar_view_week,
+                  color: Colors.white70,
+                ),
+                title: const Text('周视图', style: TextStyle(color: Colors.white)),
+                selected: _currentViewMode == ViewMode.week,
+                selectedColor: const Color(0xFF2CB7B3),
+                onTap: () {
+                  setState(() {
+                    _currentViewMode = ViewMode.week;
+                    // 切换到周视图时，重置时间范围为当前周的完整范围（周一至周日）
+                    final now = DateTime.now();
+                    _startDate = now.subtract(
+                      Duration(days: now.weekday - 1),
+                    ); // 周一
+                    _endDate = now.add(Duration(days: 7 - now.weekday)); // 周日
+                  });
+                  _loadLogs(); // 重新加载当周日志
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.calendar_today,
+                  color: Colors.white70,
+                ),
+                title: const Text('日视图', style: TextStyle(color: Colors.white)),
+                selected: _currentViewMode == ViewMode.day,
+                selectedColor: const Color(0xFF2CB7B3),
+                onTap: () {
+                  // 计算当天所在周的起始日（周日）
+                  DateTime today = DateTime.now();
+                  DateTime startOfWeek = today.subtract(
+                    Duration(days: today.weekday % 7),
+                  );
+                  setState(() {
+                    _currentViewMode = ViewMode.day;
+                    // 同步更新筛选日期为该周起始日
+                    _startDate = startOfWeek;
+                    _endDate = startOfWeek;
+                  });
+                  _loadLogs(); // 加载该周起始日的日志
+                  Navigator.pop(context);
+                },
+              ),
             ],
           ),
         );
@@ -658,5 +693,32 @@ ListTile(
         ),
       ),
     );
+  }
+}
+
+class _SliverFilterBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  _SliverFilterBarDelegate({required this.child, this.height = 150.0});
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverFilterBarDelegate oldDelegate) {
+    return true;
   }
 }
