@@ -13,21 +13,28 @@ class MindMapBusiness {
   final TaskBusiness _taskBusiness = TaskBusiness();
   final ItemApi _itemApi = ItemApi();
 
-  // 新增：获取当天数据（日志+未完成任务）
+  // 获取当天数据（日志+未完成任务+重要事项）
   Future<Map<String, dynamic>> fetchTodayData() async {
     try {
-      // 并行请求当天日志和任务
-      final logsFuture = _logBusiness.getTodayLogs(); // 调用日志业务层的当天日志方法
-      final tasksFuture = _taskBusiness.getTodayUnfinishedTasks(); // 调用任务业务层的当天任务方法
+      // 并行请求所有数据
+      final logsFuture = _logBusiness.getTodayLogs();
+      final tasksFuture = _taskBusiness.getTodayUnfinishedTasks();
+      final companyImportantFuture = fetchCompanyTop10();
+      final personalImportantFuture = fetchPersonalTop10();
 
-      final List<Log> todayLogs = await logsFuture;
-      final List<Task> todayTasks = await tasksFuture;
+      // 等待所有请求完成
+      final results = await Future.wait([
+        logsFuture,
+        tasksFuture,
+        companyImportantFuture,
+        personalImportantFuture,
+      ]);
 
       return {
-        'todayLogs': todayLogs,
-        'todayTasks': todayTasks,
-        'companyImportant': '公司重要事项数据（示例）', // 保留原有其他卡片的模拟数据
-        'personalImportant': '个人重要事项数据（示例）',
+        'todayLogs': results[0] as List<Log>,
+        'todayTasks': results[1] as List<Task>,
+        'companyImportant': results[2] as List<Item>,
+        'personalImportant': results[3] as List<Item>,
       };
     } catch (e) {
       return {
