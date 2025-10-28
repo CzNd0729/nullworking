@@ -256,7 +256,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                 style: TextStyle(
                                   color: index == selectedHour
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
@@ -302,7 +307,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                 style: TextStyle(
                                   color: index == selectedMinute
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
