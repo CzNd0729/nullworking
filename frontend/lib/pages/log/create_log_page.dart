@@ -37,10 +37,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.preSelectedTask != null) {
-      _selectedTask = widget.preSelectedTask;
-    } else if (widget.logToEdit != null) {
-      // 编辑模式下预填充表单
+    if (widget.logToEdit != null) {
+      // 编辑模式下预填充表单，不保留任务关联信息
       final log = widget.logToEdit!;
       _titleController.text = log.logTitle;
       _contentController.text = log.logContent;
@@ -93,6 +91,9 @@ class _CreateLogPageState extends State<CreateLogPage> {
   }
 
   Future<void> _openTaskSelection() async {
+    // 如果是编辑模式，直接返回
+    if (widget.logToEdit != null) return;
+
     FocusManager.instance.primaryFocus?.unfocus();
     final tasks = await _logBusiness.getExecutorTasksForLogSelection();
     final Task? chosen = await showModalBottomSheet<Task?>(
@@ -479,6 +480,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
+    // 仅在创建日志时检查任务关联
     if (widget.logToEdit == null && _selectedTask == null) {
       ScaffoldMessenger.of(
         context,
@@ -547,9 +549,11 @@ class _CreateLogPageState extends State<CreateLogPage> {
       // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
       final Log logToProcess = Log(
         logId: widget.logToEdit?.logId ?? '',
-        taskId: _selectedTask?.taskId != null
-            ? int.tryParse(_selectedTask!.taskId)
-            : null,
+        taskId: widget.logToEdit != null
+            ? widget.logToEdit!.taskId
+            : (_selectedTask?.taskId != null
+                  ? int.tryParse(_selectedTask!.taskId)
+                  : null),
         logTitle: title,
         logContent: content,
         logStatus: _isCompleted ? 1 : 0,
@@ -876,7 +880,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 ],
               ),
             ),
-            // 关联任务卡片
+            // 任务关联卡片
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -888,64 +892,113 @@ class _CreateLogPageState extends State<CreateLogPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '关联任务',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.assignment, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.logToEdit == null ? '关联任务' : '已关联任务',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
-                  Center(
-                    child: SizedBox(
-                      width: 200,
-                      child: ElevatedButton.icon(
-                        onPressed: _openTaskSelection,
-                        icon: const Icon(Icons.list),
-                        label: Text(
-                          _selectedTask == null
-                              ? '选择现有任务'
-                              : '已选择: ${_selectedTask!.taskTitle}',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000000),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                  if (widget.logToEdit != null &&
+                      widget.logToEdit!.taskId != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E1E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF2CB7B3),
+                          width: 1,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: SizedBox(
-                      width: 200,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.push<Task?>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CreateTaskPage(),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.task_alt,
+                            color: Color(0xFF2CB7B3),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.logToEdit!.taskTitle ??
+                                  '任务${widget.logToEdit!.taskId}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          );
-                          if (result != null) {
-                            setState(() {
-                              _selectedTask = result;
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('创建新任务'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000000),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                          ),
+                        ],
                       ),
+                    )
+                  else if (widget.logToEdit == null)
+                    Column(
+                      children: [
+                        Center(
+                          child: SizedBox(
+                            width: 200,
+                            child: ElevatedButton.icon(
+                              onPressed: _openTaskSelection,
+                              icon: const Icon(Icons.list),
+                              label: Text(
+                                _selectedTask == null
+                                    ? '选择现有任务'
+                                    : '已选择: ${_selectedTask!.taskTitle}',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF000000),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: SizedBox(
+                            width: 200,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.push<Task?>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const CreateTaskPage(),
+                                  ),
+                                );
+                                if (result != null) {
+                                  setState(() {
+                                    _selectedTask = result;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.add),
+                              label: const Text('创建新任务'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF000000),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
                 ],
               ),
             ),
-            // ... 其余部分保持不变
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
