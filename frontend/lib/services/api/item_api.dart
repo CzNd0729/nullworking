@@ -10,7 +10,6 @@ class ItemApi {
     final body = <String, dynamic>{
       'title': itemData['title'].toString(),
       'content': itemData['content'].toString(),
-      'displayOrder': itemData['displayOrder'],
     };
     return await _baseApi.post(
       'api/items',
@@ -33,7 +32,6 @@ class ItemApi {
     final body = <String, dynamic>{
       'title': itemData['title'].toString(),
       'content': itemData['content'].toString(),
-      'display_order': itemData['display_order'],
     };
 
     return await _baseApi.put(

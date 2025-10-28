@@ -12,6 +12,4 @@ public class ItemCreateRequest {
     @Schema(description = "事项内容", example = "产品经理于10-31前拟写并提交新品介绍")
     private String content;
 
-    @Schema(description = "显示顺序 (1-10)", example = "1")
-    private Integer displayOrder;
 }

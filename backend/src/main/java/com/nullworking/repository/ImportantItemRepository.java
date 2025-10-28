@@ -14,4 +14,5 @@ public interface ImportantItemRepository extends JpaRepository<ImportantItem, In
     Optional<ImportantItem> findByUserAndDisplayOrder(User user, Byte displayOrder);
     List<ImportantItem> findByUser_UserIdOrderByDisplayOrder(Integer userId);
     List<ImportantItem> findByUserAndDisplayOrderGreaterThan(User user, Byte displayOrder);
+    Integer countByUser(User user);
 }

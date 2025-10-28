@@ -38,13 +38,11 @@ public class ImportantItemService {
             }
 
             // 验证显示顺序
-            if (request.getDisplayOrder() == null || request.getDisplayOrder() < 1 || request.getDisplayOrder() > 10) {
-                return ApiResponse.error(400, "显示顺序必须在1-10之间");
-            }
-
-            // 验证该用户是否已有相同的显示顺序
-            if (importantItemRepository.findByUserAndDisplayOrder(user, request.getDisplayOrder().byteValue()).isPresent()) {
-                return ApiResponse.error(400, "该显示顺序已被使用，请选择其他顺序");
+            Byte displayOrder;
+            Integer itemCount = importantItemRepository.countByUser(user);
+            displayOrder = (byte) (itemCount + 1);
+            if (displayOrder > 10) {
+                return ApiResponse.error(400, "事项数量不能超过10个");
             }
 
             // 创建重要事项
@@ -52,7 +50,7 @@ public class ImportantItemService {
             item.setUser(user);
             item.setItemTitle(request.getTitle());
             item.setItemContent(request.getContent());
-            item.setDisplayOrder(request.getDisplayOrder().byteValue());
+            item.setDisplayOrder(displayOrder);
             item.setCreationTime(LocalDateTime.now());
             item.setUpdateTime(LocalDateTime.now());
 

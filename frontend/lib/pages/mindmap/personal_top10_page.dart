@@ -58,7 +58,7 @@ class _PersonalTop10PageState extends State<PersonalTop10Page> {
     for (int i = 0; i < _items.length; i++) {
       if (_items[i].itemId != 0) {
         newOrderItems.add(_items[i].copyWith(displayOrder: newOrderItems.length + 1)); // 假设 Item 有 copyWith 方法
-        displayOrders.add(newOrderItems.last.displayOrder);
+        displayOrders.add(newOrderItems.last.itemId);
       } else {
         newOrderItems.add(_items[i].copyWith(displayOrder: i + 1)); // 空事项也更新 displayOrder
       }
@@ -92,7 +92,6 @@ class _PersonalTop10PageState extends State<PersonalTop10Page> {
           final newItemData = {
             'title': newTitle,
             'content': newContent,
-            'displayOrder': current.displayOrder,
           };
           final response = await _itemApi.addItem(newItemData);
           if (response.statusCode == 200) {
@@ -119,7 +118,6 @@ class _PersonalTop10PageState extends State<PersonalTop10Page> {
           final updatedItemData = {
             'title': newTitle,
             'content': newContent,
-            'display_order': current.displayOrder,
           };
           await _itemApi.updateItem(current.itemId.toString(), updatedItemData);
           setState(() {
@@ -146,7 +144,7 @@ class _PersonalTop10PageState extends State<PersonalTop10Page> {
               for (int i = 0; i < currentItems.length; i++) {
                 if (currentItems[i].itemId != 0) {
                   newOrderItems.add(currentItems[i].copyWith(displayOrder: newOrderItems.length + 1));
-                  displayOrders.add(newOrderItems.last.displayOrder);
+                  displayOrders.add(newOrderItems.last.itemId);
                 } else {
                   newOrderItems.add(currentItems[i].copyWith(displayOrder: i + 1));
                 }
