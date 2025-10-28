@@ -78,4 +78,12 @@ public class LogFileService {
     public List<LogFile> getLogFilesByLogId(Integer logId) {
         return logFileRepository.findByLogId(logId);
     }
+
+    public void removeLogIdForFiles(Integer logId) {
+        List<LogFile> logFiles = logFileRepository.findByLogId(logId);
+        for (LogFile logFile : logFiles) {
+            logFile.setLogId(null);
+        }
+        logFileRepository.saveAll(logFiles);
+    }
 }
