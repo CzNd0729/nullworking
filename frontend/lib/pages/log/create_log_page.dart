@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/task.dart';
@@ -64,29 +65,37 @@ class _CreateLogPageState extends State<CreateLogPage> {
     if (fileIds.isEmpty) return;
 
     setState(() {
-      _isUploadingImages = true; // 暂时用这个状态来表示加载中
+      _isUploadingImages = true;
     });
 
     try {
       final List<Map<String, dynamic>> fetchedFiles = await _logBusiness
           .fetchLogFiles(fileIds);
-      for (var fileData in fetchedFiles) {
-        // 假设fileData包含一个url字段和fileId字段
-        // 这里我们需要下载图片并转换为File对象，或者直接使用网络图片URL
-        // 为了简化，我们假设直接存储一个placeholder或者一个能展示的File对象
-        // 实际应用中需要更复杂的逻辑来处理网络图片
-        _selectedImages.add({
-          'file': null, // 这里暂时为空，实际应该下载图片或使用网络图片组件
-          'fileId': fileData['fileId'], // 假设后端返回的fileId字段
-          'url': fileData['url'], // 假设后端返回的url字段
-        });
-      }
+      setState(() {
+        for (var fileData in fetchedFiles) {
+          if (fileData['fileBytes'] != null) {
+            _selectedImages.add({
+              'file': null,
+              'fileId': fileData['fileId'],
+              'fileBytes': fileData['fileBytes'],
+              'fileName': fileData['fileName'],
+            });
+          }
+        }
+      });
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载图片失败: ${e.toString()}')));
+      }
       debugPrint('加载日志图片失败: $e');
     } finally {
-      setState(() {
-        _isUploadingImages = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isUploadingImages = false;
+        });
+      }
     }
   }
 
@@ -437,7 +446,13 @@ class _CreateLogPageState extends State<CreateLogPage> {
   // 删除照片
   void _removeImage(int index) {
     setState(() {
-      _selectedImages.removeAt(index);
+      // 如果是已有的图片（有fileId），标记为已删除而不是直接移除
+      if (_selectedImages[index]['fileId'] != null) {
+        _selectedImages[index]['isDeleted'] = true;
+      } else {
+        // 如果是新上传的图片，直接移除
+        _selectedImages.removeAt(index);
+      }
     });
   }
 
@@ -542,7 +557,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
 
     try {
       final List<int> fileIdsToAttach = _selectedImages
-          .where((image) => image['fileId'] != null)
+          .where((image) => image['fileId'] != null && !image['isDeleted'])
           .map<int>((image) => image['fileId'] as int)
           .toList();
 
@@ -723,38 +738,21 @@ class _CreateLogPageState extends State<CreateLogPage> {
                         itemCount: _selectedImages.length,
                         itemBuilder: (context, index) {
                           final imageEntry = _selectedImages[index];
-                          final File? imageFile = imageEntry['file'];
-                          final String? imageUrl = imageEntry['url'];
+                          // 如果图片被标记为删除，则跳过显示
+                          if (imageEntry['isDeleted'] == true) {
+                            return const SizedBox.shrink();
+                          }
 
                           Widget imageWidget;
-                          if (imageFile != null) {
+                          if (imageEntry['file'] != null) {
                             imageWidget = Image.file(
-                              imageFile,
+                              imageEntry['file'] as File,
                               fit: BoxFit.cover,
                             );
-                          } else if (imageUrl != null) {
-                            imageWidget = Image.network(
-                              imageUrl,
+                          } else if (imageEntry['fileBytes'] != null) {
+                            imageWidget = Image.memory(
+                              imageEntry['fileBytes'] as Uint8List,
                               fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value:
-                                            loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                            : null,
-                                      ),
-                                    );
-                                  },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.error, color: Colors.red),
                             );
                           } else {
                             imageWidget = const Icon(Icons.broken_image);
