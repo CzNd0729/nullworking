@@ -557,11 +557,10 @@ class _CreateLogPageState extends State<CreateLogPage> {
 
     try {
       final List<int> fileIdsToAttach = _selectedImages
-          .where((image) => image['fileId'] != null && !image['isDeleted'])
+          .where((image) => image['fileId'] != null && image['isDeleted']!=null && !image['isDeleted'])
           .map<int>((image) => image['fileId'] as int)
-          .toList();
-
-      // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
+          .toList(); 
+          
       final Log logToProcess = Log(
         logId: widget.logToEdit?.logId ?? '',
         taskId: widget.logToEdit != null
