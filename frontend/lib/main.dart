@@ -6,6 +6,7 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/login/register_page.dart';
+import 'pages/splash_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,10 +39,11 @@ class MyApp extends StatelessWidget {
         ),
       ),
       routes: {
+        '/login': (context) => const LoginPage(),
         '/home': (context) => const MainPage(),
         '/register': (context) => const RegisterPage(),
       },
-      home: const LoginPage(),
+      home: const SplashPage(),
     );
   }
 }
@@ -54,7 +56,7 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  int _currentIndex = 0;
+  int _currentIndex = 2;
 
   final List<Widget> _pages = [
     const LogPage(),
