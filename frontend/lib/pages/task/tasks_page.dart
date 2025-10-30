@@ -194,7 +194,7 @@ class _TasksPageState extends State<TasksPage> {
 
     final taskTitle = task.taskTitle;
     final assignee = task.executorNames.join(', ');
-    final deadline = task.deadline.toString().substring(0, 10);
+    final deadline = task.deadline.toLocal().toString().substring(0, 16);
     final priority = 'P${task.taskPriority}';
     final progress = task.taskProgress / 100.0; // Assuming taskProgress is 0-100
 
@@ -263,9 +263,17 @@ class _TasksPageState extends State<TasksPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    Text('创建者: ${task.creatorName}'),
+                    const SizedBox(height: 4),
                     Text('负责人: $assignee'),
                     const SizedBox(height: 4),
-                    Text('截止日期: $deadline'),
+                    Text('截止时间: $deadline'),
+                    if (task.completionTime != null &&
+                        (task.taskStatus == '2' || task.taskStatus == '3')) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                          '完成时间: ${task.completionTime!.toLocal().toString().substring(0, 16)}'),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       '优先级: $priority',
