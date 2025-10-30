@@ -66,6 +66,8 @@ public class LogFileService {
     }
 
     public void updateLogIdForFiles(List<Integer> fileIds, Integer logId) {
+        // 先解除原先关联该logId的文件的关联
+        removeLogIdForFiles(logId);
         if (fileIds != null && !fileIds.isEmpty()) {
             List<LogFile> logFiles = logFileRepository.findAllById(fileIds);
             for (LogFile logFile : logFiles) {

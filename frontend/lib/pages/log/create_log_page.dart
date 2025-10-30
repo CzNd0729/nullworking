@@ -556,11 +556,13 @@ class _CreateLogPageState extends State<CreateLogPage> {
     setState(() => _isSubmitting = true);
 
     try {
+      // 收集所有未被删除的有效图片ID
       final List<int> fileIdsToAttach = _selectedImages
-          .where((image) => image['fileId'] != null && image['isDeleted']!=null && !image['isDeleted'])
+          .where((image) =>
+              image['fileId'] != null && image['isDeleted'] != true)
           .map<int>((image) => image['fileId'] as int)
-          .toList(); 
-          
+          .toList();
+
       final Log logToProcess = Log(
         logId: widget.logToEdit?.logId ?? '',
         taskId: widget.logToEdit != null
@@ -577,7 +579,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
         endTime:
             '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
         logDate: _plannedDate,
-        fileIds: fileIdsToAttach, // 图片仅在前端显示，不传文件ID到后端
+        fileIds: fileIdsToAttach, // 将图片ID列表附加到日志中
       );
 
       final bool isUpdate = widget.logToEdit != null;

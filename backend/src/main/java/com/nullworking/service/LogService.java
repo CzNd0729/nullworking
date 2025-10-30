@@ -167,10 +167,7 @@ public class LogService {
         // 处理文件关联
         if (request.getFileIds() != null) {
             logFileService.updateLogIdForFiles(request.getFileIds(), log.getLogId());
-        } else {
-            // 如果请求中没有提供 fileIds，则解除当前日志的所有文件关联
-            logFileService.removeLogIdForFiles(log.getLogId());
-        }
+        } 
         
         // 如果任务进度为100%且日志状态为已完成，更新任务状态
         if (request.getTaskProgress() != null && request.getLogStatus() != null &&
