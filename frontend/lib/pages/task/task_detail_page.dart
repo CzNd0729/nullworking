@@ -152,98 +152,92 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     return InkWell(
       onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => LogDetailPage(logId: log.logId)));
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => LogDetailPage(logId: log.logId)));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 32),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Column(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF1E1E1E), width: 1),
-                  ),
-                ),
-                if (!isTop)
-                  Container(
-                    height: 32,
-                    width: 1,
-                    child: CustomPaint(
-                      painter: DashedLinePainter(
-                        color: isDashedLine ? Colors.grey : Colors.green,
-                        isDashed: isDashedLine,
-                        isBottom: isBottom, // 传递 isBottom 参数
-                      ),
-                    ),
-                  ),
-                if (isTop && isDashedLine)
-                  Container(
-                    height: 20,
-                    width: 1,
-                    child: CustomPaint(
-                      painter: DashedLinePainter(
-                        color: Colors.grey,
-                        isDashed: true,
-                        isBottom: isBottom, // 传递 isBottom 参数
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
                 children: [
-                  Text(
-                    log.logTitle,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                      border:
+                          Border.all(color: const Color(0xFF1E1E1E), width: 1),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    log.logContent,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                  Expanded(
+                    child: Container(
+                      width: 1,
+                      child: CustomPaint(
+                        painter: DashedLinePainter(
+                          color: isDashedLine ? Colors.grey : Colors.green,
+                          isDashed: isDashedLine,
+                          isBottom: isBottom,
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    log.endTime,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
-                  ),
+                  )
                 ],
               ),
-            ),
-            // 进度值独立显示在右侧
-            if (log.taskProgress != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: log.logStatus == 1 ? Colors.green : Colors.grey,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${log.taskProgress!}%',
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      log.logTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      log.logContent,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      log.endTime,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-          ],
+              // 进度值独立显示在右侧
+              if (log.taskProgress != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: log.logStatus == 1 ? Colors.green : Colors.grey,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${log.taskProgress!}%',
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -514,16 +508,18 @@ class DashedLinePainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
-    final fixLength = 65.0;
-    if(isBottom){
+    if (isBottom) {
       return;
     }
+    // The margin of _buildTimelineItem is 32, so we extend the line by that amount.
+    final totalHeight = size.height + 32.0;
+
     if (isDashed) {
       const dashLength = 2.0;
       const gapLength = 4.0;
       double currentPosition = 0.0;
 
-      while (currentPosition < size.height + fixLength) {
+      while (currentPosition < totalHeight) {
         canvas.drawLine(
           Offset(0, currentPosition),
           Offset(0, currentPosition + dashLength),
@@ -532,12 +528,14 @@ class DashedLinePainter extends CustomPainter {
         currentPosition += dashLength + gapLength;
       }
     } else {
-      canvas.drawLine(Offset(0, 0), Offset(0, size.height+fixLength), paint);
+      canvas.drawLine(Offset(0, 0), Offset(0, totalHeight), paint);
     }
   }
 
   @override
   bool shouldRepaint(covariant DashedLinePainter oldDelegate) {
-    return color != oldDelegate.color || isDashed != oldDelegate.isDashed;
+    return color != oldDelegate.color ||
+        isDashed != oldDelegate.isDashed ||
+        isBottom != oldDelegate.isBottom;
   }
 }

@@ -13,7 +13,6 @@ class TaskBusiness {
       final userTasks = await loadUserTasks();
       if (userTasks != null) {
         final allTasks = <Task>[];
-        allTasks.addAll(userTasks['createdTasks'] ?? []);
         allTasks.addAll(userTasks['participatedTasks'] ?? []);
 
         final todayUnfinishedTasks = allTasks.where((task) {
