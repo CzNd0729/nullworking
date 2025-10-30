@@ -48,18 +48,18 @@ class _LogDetailPageState extends State<LogDetailPage> {
       } else {
         // Handle case where log is not found
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('日志详情加载失败！')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('日志详情加载失败！')));
           Navigator.of(context).pop();
         }
       }
     } catch (e) {
       debugPrint('加载日志详情异常: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载日志详情失败: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载日志详情失败: ${e.toString()}')));
         Navigator.of(context).pop();
       }
     } finally {
@@ -132,21 +132,34 @@ class _LogDetailPageState extends State<LogDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-    // 关键修改：已完成日志的编辑按钮禁用+灰色
-    IconButton(
-      icon: Icon(
-        Icons.edit,
-        // 未完成显示白色，已完成显示灰色
-        color: _logDetails?.logStatus == 0 ? Colors.white : Colors.grey[500],
-      ),
-      // 仅当日志未完成（logStatus == 0）时可点击
-      onPressed: _logDetails?.logStatus == 0 ? () => _editLog(context) : null,
-    ),
-    IconButton(
-      icon: const Icon(Icons.delete, color: Colors.redAccent),
-      onPressed: () => _confirmDeleteLog(context),
-    ),
-  ],
+          // 关键修改：已完成日志的编辑按钮禁用+灰色
+          IconButton(
+            icon: Icon(
+              Icons.edit,
+              // 未完成显示白色，已完成显示灰色
+              color: _logDetails?.logStatus == 0
+                  ? Colors.white
+                  : Colors.grey[500],
+            ),
+            // 仅当日志未完成（logStatus == 0）时可点击
+            onPressed: _logDetails?.logStatus == 0
+                ? () => _editLog(context)
+                : null,
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.delete,
+              // 未完成显示红色，已完成显示灰色
+              color: _logDetails?.logStatus == 0
+                  ? Colors.redAccent
+                  : Colors.grey[500],
+            ),
+            // 仅当日志未完成（logStatus == 0）时可点击
+            onPressed: _logDetails?.logStatus == 0
+                ? () => _confirmDeleteLog(context)
+                : null,
+          ),
+        ],
       ),
       backgroundColor: Colors.black,
       body: SingleChildScrollView(
@@ -203,29 +216,19 @@ class _LogDetailPageState extends State<LogDetailPage> {
                     DateFormat('yyyy年MM月dd日').format(log.logDate),
                   ),
                   const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.access_time,
-                    '开始时间',
-                    log.startTime,
-                  ),
+                  _buildInfoRow(Icons.access_time, '开始时间', log.startTime),
                   const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.access_time,
-                    '结束时间',
-                    log.endTime,
-                  ),
+                  _buildInfoRow(Icons.access_time, '结束时间', log.endTime),
                   const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.info_outline,
-                    '状态',
-                    statusText,
-                  ),
+                  _buildInfoRow(Icons.info_outline, '状态', statusText),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             // 新增的任务信息卡片
-            if (log.taskId != null || log.taskTitle != null || log.taskProgress != null)
+            if (log.taskId != null ||
+                log.taskTitle != null ||
+                log.taskProgress != null)
               GestureDetector(
                 child: Container(
                   width: double.infinity,
@@ -250,7 +253,7 @@ class _LogDetailPageState extends State<LogDetailPage> {
                         _buildInfoRow(
                           Icons.assignment,
                           '任务',
-                          log.taskTitle ?? log.taskId.toString(), 
+                          log.taskTitle ?? log.taskId.toString(),
                         ),
                       if (log.taskId != null) const SizedBox(height: 8),
                       if (log.taskProgress != null)
@@ -291,16 +294,23 @@ class _LogDetailPageState extends State<LogDetailPage> {
                         itemBuilder: (context, index) {
                           final fileData = _logFiles[index];
                           final fileBytes = fileData['fileBytes'] as Uint8List?;
-                          final fileName = fileData['fileName'] as String? ?? '未知文件';
+                          final fileName =
+                              fileData['fileName'] as String? ?? '未知文件';
 
                           Widget contentWidget;
                           if (fileBytes != null) {
-                            contentWidget = Image.memory(fileBytes, fit: BoxFit.cover);
+                            contentWidget = Image.memory(
+                              fileBytes,
+                              fit: BoxFit.cover,
+                            );
                           } else {
                             contentWidget = Center(
                               child: Text(
                                 fileName,
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
@@ -311,12 +321,14 @@ class _LogDetailPageState extends State<LogDetailPage> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: GestureDetector(
-                              onTap: () => _previewImage(fileBytes, fileName), // 调用预览功能
+                              onTap: () =>
+                                  _previewImage(fileBytes, fileName), // 调用预览功能
                               child: Container(
                                 width: 100,
                                 height: 100,
                                 decoration: BoxDecoration(
-                                  color: Colors.grey[800], // Placeholder background
+                                  color: Colors
+                                      .grey[800], // Placeholder background
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 clipBehavior: Clip.antiAlias,
@@ -338,9 +350,9 @@ class _LogDetailPageState extends State<LogDetailPage> {
 
   void _previewImage(Uint8List? imageBytes, String fileName) {
     if (imageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('无法预览文件')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法预览文件')));
       return;
     }
     showDialog(
@@ -355,7 +367,11 @@ class _LogDetailPageState extends State<LogDetailPage> {
                 imageBytes,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Icon(Icons.broken_image, color: Colors.white, size: 50),
+                  child: Icon(
+                    Icons.broken_image,
+                    color: Colors.white,
+                    size: 50,
+                  ),
                 ),
               ),
             ),
@@ -375,15 +391,15 @@ class _LogDetailPageState extends State<LogDetailPage> {
 
   Future<void> _editLog(BuildContext context) async {
     // 额外判断：如果日志已完成，直接提示并返回
-  if (_logDetails?.logStatus == 1) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('已完成的日志不可修改'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
-  }
+    if (_logDetails?.logStatus == 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已完成的日志不可修改'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     final updatedLog = await Navigator.push<Log?>(
       context,
       MaterialPageRoute(
@@ -404,15 +420,24 @@ class _LogDetailPageState extends State<LogDetailPage> {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E1E),
           title: const Text('确认删除', style: TextStyle(color: Colors.white)),
-          content: const Text('您确定要删除此日志吗？', style: TextStyle(color: Colors.white70)),
+          content: const Text(
+            '您确定要删除此日志吗？',
+            style: TextStyle(color: Colors.white70),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消', style: TextStyle(color: Colors.blueAccent)),
+              child: const Text(
+                '取消',
+                style: TextStyle(color: Colors.blueAccent),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除', style: TextStyle(color: Colors.redAccent)),
+              child: const Text(
+                '删除',
+                style: TextStyle(color: Colors.redAccent),
+              ),
             ),
           ],
         );
@@ -425,13 +450,12 @@ class _LogDetailPageState extends State<LogDetailPage> {
   }
 
   Future<void> _deleteLog() async {
-    final Map<String, dynamic> result = await _logBusiness.deleteLog(_logDetails!.logId);
+    final Map<String, dynamic> result = await _logBusiness.deleteLog(
+      _logDetails!.logId,
+    );
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('日志删除成功！'),
-          backgroundColor: Colors.green,
-        ),
+        const SnackBar(content: Text('日志删除成功！'), backgroundColor: Colors.green),
       );
       Navigator.of(context).pop(true); // 返回并告知前一个页面已删除
     } else {
