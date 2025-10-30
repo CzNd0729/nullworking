@@ -213,12 +213,26 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      log.endTime,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          log.endTime,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (log.userName != null && log.userName!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            log.userName!,
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),

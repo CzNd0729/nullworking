@@ -37,7 +37,6 @@ class LogBusiness {
     return fileIds;
   }
 
-  /// 选择图片（仅前端功能，不上传）
   Future<List<File>> pickImages() async {
     try {
       final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
@@ -90,7 +89,6 @@ Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
     final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
     if (res.statusCode == 200) {
       final Map<String, dynamic> resp = jsonDecode(res.body);
-      debugPrint('导图-日志接口返回：$resp'); // 打印完整响应，确认格式
       if (resp['code'] == 200) {
         List<Log> logs = [];
         // 兼容两种格式：resp['data']['logs']（日志页面格式）和 resp['data']（可能的导图接口格式）
@@ -205,14 +203,11 @@ Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
 Future<List<Log>> getTodayLogs() async {
   try {
     final now = DateTime.now();
-    // 改为后端兼容的格式（日志页面能用，说明后端认这个格式）
     final startStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final endStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     // 打印参数，确认和日志页面的请求参数一致
-    debugPrint('导图-查询当天日志参数：startTime=$startStr, endTime=$endStr');
     final logs = await listLogs(startTime: startStr, endTime: endStr);
-    debugPrint('导图-获取到的日志数量：${logs.length}');
     return logs;
   } catch (e) {
     debugPrint('导图-获取当天日志异常: $e');
