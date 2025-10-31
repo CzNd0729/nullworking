@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 导入 shared_preferences
 import '../../models/task.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart';
@@ -27,6 +29,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
   bool _isSubmitting = false;
   final LogBusiness _logBusiness = LogBusiness();
   Task? _selectedTask;
+  String? _currentUserId;
+  String? _currentUserName;
 
   // 照片相关变量
   final List<Map<String, dynamic>> _selectedImages =
@@ -37,10 +41,15 @@ class _CreateLogPageState extends State<CreateLogPage> {
   @override
   void initState() {
     super.initState();
+    // 如果有预选任务，设置为选中任务
     if (widget.preSelectedTask != null) {
       _selectedTask = widget.preSelectedTask;
-    } else if (widget.logToEdit != null) {
-      // 编辑模式下预填充表单
+    }
+    // 加载用户ID和名称
+    _loadCurrentUser();
+
+    if (widget.logToEdit != null) {
+      // 编辑模式下预填充表单，不保留任务关联信息
       final log = widget.logToEdit!;
       _titleController.text = log.logTitle;
       _contentController.text = log.logContent;
@@ -62,37 +71,56 @@ class _CreateLogPageState extends State<CreateLogPage> {
     }
   }
 
+  Future<void> _loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getString('userId');
+      _currentUserName = prefs.getString('userName');
+    });
+  }
+
   Future<void> _loadLogImages(List<int> fileIds) async {
     if (fileIds.isEmpty) return;
 
     setState(() {
-      _isUploadingImages = true; // 暂时用这个状态来表示加载中
+      _isUploadingImages = true;
     });
 
     try {
       final List<Map<String, dynamic>> fetchedFiles = await _logBusiness
           .fetchLogFiles(fileIds);
-      for (var fileData in fetchedFiles) {
-        // 假设fileData包含一个url字段和fileId字段
-        // 这里我们需要下载图片并转换为File对象，或者直接使用网络图片URL
-        // 为了简化，我们假设直接存储一个placeholder或者一个能展示的File对象
-        // 实际应用中需要更复杂的逻辑来处理网络图片
-        _selectedImages.add({
-          'file': null, // 这里暂时为空，实际应该下载图片或使用网络图片组件
-          'fileId': fileData['fileId'], // 假设后端返回的fileId字段
-          'url': fileData['url'], // 假设后端返回的url字段
-        });
-      }
+      setState(() {
+        for (var fileData in fetchedFiles) {
+          if (fileData['fileBytes'] != null) {
+            _selectedImages.add({
+              'file': null,
+              'fileId': fileData['fileId'],
+              'fileBytes': fileData['fileBytes'],
+              'fileName': fileData['fileName'],
+            });
+          }
+        }
+      });
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('加载图片失败: ${e.toString()}')));
+      }
       debugPrint('加载日志图片失败: $e');
     } finally {
-      setState(() {
-        _isUploadingImages = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isUploadingImages = false;
+        });
+      }
     }
   }
 
   Future<void> _openTaskSelection() async {
+    // 如果是编辑模式，直接返回
+    if (widget.logToEdit != null) return;
+
     FocusManager.instance.primaryFocus?.unfocus();
     final tasks = await _logBusiness.getExecutorTasksForLogSelection();
     final Task? chosen = await showModalBottomSheet<Task?>(
@@ -256,7 +284,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                 style: TextStyle(
                                   color: index == selectedHour
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
@@ -302,7 +335,12 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                 style: TextStyle(
                                   color: index == selectedMinute
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
@@ -426,7 +464,13 @@ class _CreateLogPageState extends State<CreateLogPage> {
   // 删除照片
   void _removeImage(int index) {
     setState(() {
-      _selectedImages.removeAt(index);
+      // 如果是已有的图片（有fileId），标记为已删除而不是直接移除
+      if (_selectedImages[index]['fileId'] != null) {
+        _selectedImages[index]['isDeleted'] = true;
+      } else {
+        // 如果是新上传的图片，直接移除
+        _selectedImages.removeAt(index);
+      }
     });
   }
 
@@ -469,6 +513,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
+    // 仅在创建日志时检查任务关联
     if (widget.logToEdit == null && _selectedTask == null) {
       ScaffoldMessenger.of(
         context,
@@ -485,7 +530,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
             backgroundColor: const Color(0xFF232325),
             title: const Text('注意', style: TextStyle(color: Colors.white)),
             content: const Text(
-              '注意到进度为100%，此时提交日志会关闭任务，是否提交？',
+              '当前日志进度为100%，提交日志系统将删除关联此任务且未完成的日志，是否提交？',
               style: TextStyle(color: Colors.white70),
             ),
             actions: <Widget>[
@@ -529,17 +574,21 @@ class _CreateLogPageState extends State<CreateLogPage> {
     setState(() => _isSubmitting = true);
 
     try {
+      // 收集所有未被删除的有效图片ID
       final List<int> fileIdsToAttach = _selectedImages
-          .where((image) => image['fileId'] != null)
+          .where(
+            (image) => image['fileId'] != null && image['isDeleted'] != true,
+          )
           .map<int>((image) => image['fileId'] as int)
           .toList();
 
-      // 构建Log对象 - 图片仅在前端显示，不上传到fileIds
       final Log logToProcess = Log(
         logId: widget.logToEdit?.logId ?? '',
-        taskId: _selectedTask?.taskId != null
-            ? int.tryParse(_selectedTask!.taskId)
-            : null,
+        taskId: widget.logToEdit != null
+            ? widget.logToEdit!.taskId
+            : (_selectedTask?.taskId != null
+                  ? int.tryParse(_selectedTask!.taskId)
+                  : null),
         logTitle: title,
         logContent: content,
         logStatus: _isCompleted ? 1 : 0,
@@ -549,7 +598,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
         endTime:
             '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
         logDate: _plannedDate,
-        fileIds: fileIdsToAttach, // 图片仅在前端显示，不传文件ID到后端
+        fileIds: fileIdsToAttach, // 将图片ID列表附加到日志中
       );
 
       final bool isUpdate = widget.logToEdit != null;
@@ -563,7 +612,27 @@ class _CreateLogPageState extends State<CreateLogPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
           );
-          Navigator.of(context).pop();
+          // 如果是新建日志且成功，返回新创建的日志对象
+          if (!isUpdate && result['data'] != null) {
+            final newLog = Log(
+              logId: result['data'].toString(), // 确保 logId 是 String 类型
+              taskId: logToProcess.taskId,
+              taskTitle: _selectedTask?.taskTitle, // 添加 taskTitle
+              logTitle: logToProcess.logTitle,
+              logContent: logToProcess.logContent,
+              logStatus: logToProcess.logStatus,
+              taskProgress: logToProcess.taskProgress,
+              startTime: logToProcess.startTime,
+              endTime: logToProcess.endTime,
+              logDate: logToProcess.logDate,
+              userId: int.tryParse(_currentUserId ?? ''), // 从 shared_preferences 获取并转换为 int
+              userName: _currentUserName, // 从 shared_preferences 获取
+              fileIds: logToProcess.fileIds,
+            );
+            Navigator.of(context).pop(newLog); // 返回新创建的日志对象
+          } else {
+            Navigator.of(context).pop();
+          }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -709,38 +778,21 @@ class _CreateLogPageState extends State<CreateLogPage> {
                         itemCount: _selectedImages.length,
                         itemBuilder: (context, index) {
                           final imageEntry = _selectedImages[index];
-                          final File? imageFile = imageEntry['file'];
-                          final String? imageUrl = imageEntry['url'];
+                          // 如果图片被标记为删除，则跳过显示
+                          if (imageEntry['isDeleted'] == true) {
+                            return const SizedBox.shrink();
+                          }
 
                           Widget imageWidget;
-                          if (imageFile != null) {
+                          if (imageEntry['file'] != null) {
                             imageWidget = Image.file(
-                              imageFile,
+                              imageEntry['file'] as File,
                               fit: BoxFit.cover,
                             );
-                          } else if (imageUrl != null) {
-                            imageWidget = Image.network(
-                              imageUrl,
+                          } else if (imageEntry['fileBytes'] != null) {
+                            imageWidget = Image.memory(
+                              imageEntry['fileBytes'] as Uint8List,
                               fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value:
-                                            loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                            : null,
-                                      ),
-                                    );
-                                  },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.error, color: Colors.red),
                             );
                           } else {
                             imageWidget = const Icon(Icons.broken_image);
@@ -866,7 +918,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                 ],
               ),
             ),
-            // 关联任务卡片
+            // 任务关联卡片
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -878,64 +930,117 @@ class _CreateLogPageState extends State<CreateLogPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '关联任务',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.assignment, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.logToEdit == null ? '关联任务' : '已关联任务',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
-                  Center(
-                    child: SizedBox(
-                      width: 200,
-                      child: ElevatedButton.icon(
-                        onPressed: _openTaskSelection,
-                        icon: const Icon(Icons.list),
-                        label: Text(
-                          _selectedTask == null
-                              ? '选择现有任务'
-                              : '已选择: ${_selectedTask!.taskTitle}',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000000),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                  if (widget.logToEdit != null &&
+                      widget.logToEdit!.taskId != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E1E),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF2CB7B3),
+                          width: 1,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: SizedBox(
-                      width: 200,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.push<Task?>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const CreateTaskPage(),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.task_alt,
+                            color: Color(0xFF2CB7B3),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.logToEdit!.taskTitle ??
+                                  '任务${widget.logToEdit!.taskId}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          );
-                          if (result != null) {
-                            setState(() {
-                              _selectedTask = result;
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('创建新任务'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF000000),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                          ),
+                        ],
                       ),
+                    )
+                  else if (widget.logToEdit == null)
+                    Column(
+                      children: [
+                        Center(
+                          child: SizedBox(
+                            width: 200,
+                            child: ElevatedButton.icon(
+                              onPressed: widget.preSelectedTask != null
+                                  ? null
+                                  : _openTaskSelection,
+                              icon: const Icon(Icons.list),
+                              label: Text(
+                                _selectedTask == null
+                                    ? '选择现有任务'
+                                    : '已选择: ${_selectedTask!.taskTitle}',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF000000),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (widget.preSelectedTask == null) ...[
+                          const SizedBox(height: 12),
+                          Center(
+                            child: SizedBox(
+                              width: 200,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  final result = await Navigator.push<Task?>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const CreateTaskPage(),
+                                    ),
+                                  );
+                                  if (result != null) {
+                                    setState(() {
+                                      _selectedTask = result;
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.add),
+                                label: const Text('创建新任务'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF000000),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
                 ],
               ),
             ),
-            // ... 其余部分保持不变
             const SizedBox(height: 12),
             Container(
               width: double.infinity,

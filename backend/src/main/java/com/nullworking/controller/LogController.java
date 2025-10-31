@@ -52,14 +52,14 @@ public class LogController {
             content = @Content(mediaType = "application/json",
             schema = @Schema(implementation = ApiResponse.class)))
     @PostMapping("")
-    public ResponseEntity<ApiResponse<Void>> createLog(
+    public ResponseEntity<ApiResponse<Integer>> createLog(
             @Parameter(description = "日志创建请求体") @RequestBody LogCreateRequest request,
             HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
             return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
         }
-        ApiResponse<Void> response = logService.createLog(request, userId);
+        ApiResponse<Integer> response = logService.createLog(request, userId);
         if (response.getCode() == 200) {
             return ResponseEntity.ok(response);
         } else if (response.getCode() == 404) {

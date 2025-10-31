@@ -8,6 +8,28 @@ import 'package:http/http.dart' as http;
 class TaskBusiness {
   final TaskApi _taskApi = TaskApi();
   final UserApi _userApi = UserApi();
+  Future<List<Task>> getTodayUnfinishedTasks() async {
+    try {
+      final userTasks = await loadUserTasks();
+      if (userTasks != null) {
+        final allTasks = <Task>[];
+        allTasks.addAll(userTasks['participatedTasks'] ?? []);
+
+        final todayUnfinishedTasks = allTasks.where((task) {
+          return task.taskStatus == "0";
+        }).toList();
+        // Sort tasks by deadline from nearest to furthest
+        todayUnfinishedTasks.sort((a, b) {
+          return a.deadline.compareTo(b.deadline);
+        });
+        return todayUnfinishedTasks;
+      }
+      return <Task>[];
+    } catch (e) {
+      print('获取当天未完成任务异常: $e');
+      return <Task>[];
+    }
+  }
 
   Future<Map<String, List<Task>>?> loadUserTasks() async {
     try {
@@ -44,6 +66,7 @@ class TaskBusiness {
     required String content,
     required int priority,
     required List<String> executorIds,
+    required List<String> executorNames,
     required DateTime deadline,
     String? taskId,
   }) async {
@@ -83,8 +106,10 @@ class TaskBusiness {
             taskStatus: "0",
             creationTime: DateTime.now(),
             deadline: deadline,
-            executorNames: _mapUserIdsToNames(executorIds),
+            executorNames: executorNames,
             isParticipated: false, // 新发布的任务，isParticipated 设为 false
+            taskProgress: 0,
+            completionTime: null,
           );
         } else {
           print('任务发布/更新失败: ${responseBody['message'] ?? '未知错误'}');
@@ -98,12 +123,16 @@ class TaskBusiness {
     return null;
   }
 
-  List<String> _mapUserIdsToNames(List<String> userIds) {
-    if (userIds.contains(getCurrentUserId())) {
-      return ["我"];
-    }
-    return userIds.map((id) => "用户_$id").toList();
-  }
+  // Future<List<String>> _mapUserIdsToNames(List<String> userIds) async {
+  //   // 这是一个mock实现，实际应用中应该从用户服务获取
+  //   await Future.delayed(const Duration(milliseconds: 300)); // 模拟网络延迟
+  //   final allMembers = await fetchTeamMembers();
+  //   final names = allMembers
+  //       .where((member) => userIds.contains(member['userId']))
+  //       .map((member) => member['name']!)
+  //       .toList();
+  //   return names;
+  // }
 
   Future<List<Map<String, dynamic>>> fetchTeamMembers() async {
     try {

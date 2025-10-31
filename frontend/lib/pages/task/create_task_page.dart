@@ -156,7 +156,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       builder: (BuildContext context) {
         int selectedHour = _selectedTime?.hour ?? TimeOfDay.now().hour;
         int selectedMinute = _selectedTime?.minute ?? TimeOfDay.now().minute;
-        String? errorMessage;
 
         return Dialog(
           backgroundColor: const Color(0xFF232325),
@@ -204,7 +203,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 style: TextStyle(
                                   color: index == selectedHour
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
@@ -245,7 +249,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 style: TextStyle(
                                   color: index == selectedMinute
                                       ? Colors.white
-                                      : Colors.white60,
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ),
                                   fontSize: 24,
                                 ),
                               ),
@@ -604,6 +613,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         executorIds: _selectedAssignees
             .map((e) => e['userId'].toString())
             .toList(),
+        executorNames: _selectedAssignees
+            .map((e) => e['realName'].toString())
+            .toList(),
         deadline: deadlineDateTime,
         taskId: widget.taskToEdit?.taskId,
       );
@@ -617,7 +629,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           );
           _resetFormState();
-          Navigator.pop(context, true); // 修改为返回 true
+          Navigator.pop(context, resultTask); // 修改为返回 true
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

@@ -25,6 +25,11 @@ import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import com.nullworking.model.Log;
+import com.nullworking.repository.LogRepository;
+
 @Service
 public class TaskService {
 
@@ -37,11 +42,11 @@ public class TaskService {
     @Autowired
     private UserRepository userRepository;
 
-    // @Autowired
-    // private JwtUtil jwtUtil;
-
     @Autowired
     private LogService logService;
+    
+    @Autowired
+    private LogRepository logRepository;
 
     // 所有的业务逻辑将在这里实现
 
@@ -204,7 +209,24 @@ public class TaskService {
                 relation.setTask(savedTask);
                 relation.setExecutor(executor);
                 taskExecutorRelationRepository.save(relation);
+                
+                // 为每个执行者自动创建日志
+                Log log = new Log();
+                log.setUser(executor);
+                log.setTask(savedTask);
+                log.setLogTitle("接收任务");
+                log.setLogContent("接收到\"" + savedTask.getTaskTitle() + "\"任务");
+                log.setLogStatus(1); // 1表示已完成
+                log.setTaskProgress(0); // 进度为0%
+                log.setLogDate(LocalDate.now());
+                log.setStartTime(LocalTime.now());
+                log.setEndTime(LocalTime.now());
+                log.setCreationTime(LocalDateTime.now());
+                log.setUpdateTime(LocalDateTime.now());
+                
+                logRepository.save(log);
             }
+            
             Map<String, Object> data = new HashMap<>();
             data.put("taskId", savedTask.getTaskId());
             return ApiResponse.success(data);

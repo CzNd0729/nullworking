@@ -10,6 +10,8 @@ class Log {
   final String endTime;
   final DateTime logDate;
   final List<int>? fileIds;
+  final int? userId;
+  final String? userName;
 
   Log({
     required this.logId,
@@ -23,6 +25,8 @@ class Log {
     required this.endTime,
     required this.logDate,
     this.fileIds,
+    this.userId,
+    this.userName,
   });
 
   Map<String, dynamic> toJson() {
@@ -71,6 +75,9 @@ class Log {
               (json['fileIds'] as List).map((e) => int.parse(e.toString())),
             )
           : null,
+      userId:
+          json['userId'] != null ? int.tryParse(json['userId'].toString()) : null,
+      userName: json['userName']?.toString(),
     );
   }
 }

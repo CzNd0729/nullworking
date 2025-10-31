@@ -72,7 +72,7 @@ public class LogService {
     }
 
     @Transactional
-    public ApiResponse<Void> createLog(LogCreateRequest request, Integer userId) {
+    public ApiResponse<Integer> createLog(LogCreateRequest request, Integer userId) {
         List<Integer> fileIds=request.getFileIds();
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
@@ -119,7 +119,7 @@ public class LogService {
             logRepository.deleteByTaskTaskIdAndLogStatus(request.getTaskId(), 0); // 0 for pending
         }
 
-        return ApiResponse.success();
+        return ApiResponse.success(log.getLogId());
     }
 
     @Transactional
@@ -167,7 +167,7 @@ public class LogService {
         // 处理文件关联
         if (request.getFileIds() != null) {
             logFileService.updateLogIdForFiles(request.getFileIds(), log.getLogId());
-        }
+        } 
         
         // 如果任务进度为100%且日志状态为已完成，更新任务状态
         if (request.getTaskProgress() != null && request.getLogStatus() != null &&
@@ -266,34 +266,46 @@ public class LogService {
     }
 
     public ApiResponse<Map<String, Object>> logDetails(Integer logId, Integer userId) {
-        // 查找日志并验证所有权
-        Optional<Log> logOptional = logRepository.findByLogIdAndUserUserId(logId, userId);
+        // 先按ID查找日志
+        Optional<Log> logOptional = logRepository.findById(logId);
         if (logOptional.isEmpty()) {
-            return ApiResponse.error(404, "日志未找到或无权限访问");
+            return ApiResponse.error(404, "日志未找到");
         }
-        
+
         Log log = logOptional.get();
-        
+
+        // 鉴权：允许日志创建者、任务创建者、或任务执行者查看
+        Task task = log.getTask();
+        Integer taskId = task.getTaskId();
+        boolean isLogCreator = log.getUser() != null && log.getUser().getUserId().equals(userId);
+        boolean isTaskCreator = task.getCreator() != null && task.getCreator().getUserId().equals(userId);
+        boolean isTaskExecutor = taskExecutorRelationRepository.existsByTask_TaskIdAndExecutor_UserId(taskId, userId);
+        if (!isLogCreator && !isTaskCreator && !isTaskExecutor) {
+            return ApiResponse.error(403, "无权限查看该日志");
+        }
+
         // 获取关联的文件ID列表
         List<LogFile> logFiles = logFileService.getLogFilesByLogId(logId);
         List<Integer> fileIds = logFiles.stream()
                 .map(LogFile::getFileId)
                 .collect(Collectors.toList());
-        
+
         // 构建返回数据
         Map<String, Object> data = new HashMap<>();
-        data.put("taskId", log.getTask().getTaskId());
+        data.put("taskId", taskId);
         data.put("logId", log.getLogId());
         data.put("logTitle", log.getLogTitle());
         data.put("logContent", log.getLogContent());
         data.put("logStatus", log.getLogStatus());
-        data.put("taskTitle", log.getTask().getTaskTitle());
+        data.put("taskTitle", task.getTaskTitle());
         data.put("taskProgress", log.getTaskProgress());
         data.put("startTime", log.getStartTime().toString());
         data.put("endTime", log.getEndTime().toString());
         data.put("logDate", log.getLogDate().toString());
         data.put("fileIds", fileIds);
-        
+        data.put("userName",log.getUser().getRealName());
+        data.put("userId",log.getUser().getUserId());
+
         return ApiResponse.success(data);
     }
 }

@@ -6,6 +6,7 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/login/register_page.dart';
+import 'pages/splash_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,10 +39,11 @@ class MyApp extends StatelessWidget {
         ),
       ),
       routes: {
+        '/login': (context) => const LoginPage(),
         '/home': (context) => const MainPage(),
         '/register': (context) => const RegisterPage(),
       },
-      home: const LoginPage(),
+      home: const SplashPage(),
     );
   }
 }
@@ -54,7 +56,7 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  int _currentIndex = 0;
+  int _currentIndex = 2;
 
   final List<Widget> _pages = [
     const LogPage(),
@@ -77,8 +79,8 @@ class _MainPageState extends State<MainPage> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
+            icon: Icon(Icons.description_outlined),
+            activeIcon: Icon(Icons.description),
             label: '日志',
           ),
           BottomNavigationBarItem(
@@ -87,8 +89,8 @@ class _MainPageState extends State<MainPage> {
             label: '任务',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_tree_outlined),
-            activeIcon: Icon(Icons.account_tree),
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
             label: '导图',
           ),
           BottomNavigationBarItem(

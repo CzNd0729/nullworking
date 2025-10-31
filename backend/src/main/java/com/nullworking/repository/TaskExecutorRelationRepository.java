@@ -30,4 +30,6 @@ public interface TaskExecutorRelationRepository extends JpaRepository<TaskExecut
 	List<Integer> findAllExecutorIdsByTaskId(@Param("taskId") Integer taskId);
 
 	boolean existsByTask_TaskIdAndExecutor_UserId(Integer taskId, Integer userId);
+
+	boolean existsByExecutor_UserId(Integer userId);
 }

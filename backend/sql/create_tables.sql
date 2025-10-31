@@ -94,7 +94,7 @@ CREATE TABLE `important_item` (
   `Update_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`Item_ID`),
   KEY `fk_item_user` (`User_ID`),
-  KEY `idx_item_order` (`Display_Order`),
+  UNIQUE KEY `idx_user_display_order` (`User_ID`, `Display_Order`),
   CONSTRAINT `fk_item_user` FOREIGN KEY (`User_ID`) REFERENCES `user` (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='重要事项表';
 

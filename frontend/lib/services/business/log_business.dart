@@ -37,7 +37,6 @@ class LogBusiness {
     return fileIds;
   }
 
-  /// 选择图片（仅前端功能，不上传）
   Future<List<File>> pickImages() async {
     try {
       final List<XFile>? selectedFiles = await _imagePicker.pickMultiImage(
@@ -84,33 +83,39 @@ class LogBusiness {
     }
   }
 
-  /// 新增：获取日志列表
-  Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
-    try {
-      final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> resp = jsonDecode(res.body);
-        if (resp['code'] == 200) {
-          List<Log> logs = [];
-          if (resp['data'] is Map && resp['data']['logs'] is List) {
-            for (var item in resp['data']['logs']) {
-              logs.add(Log.fromJson(item));
-            }
-          }
-          return logs;
-        } else {
-          debugPrint('获取日志列表失败: ${resp['message']}');
-          return <Log>[];
+  /// 新增：获取日志列表（补充兼容解析逻辑）
+Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
+  try {
+    final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
+    if (res.statusCode == 200) {
+      final Map<String, dynamic> resp = jsonDecode(res.body);
+      if (resp['code'] == 200) {
+        List<Log> logs = [];
+        // 兼容两种格式：resp['data']['logs']（日志页面格式）和 resp['data']（可能的导图接口格式）
+        List<dynamic> logList = [];
+        if (resp['data'] is Map && resp['data']['logs'] is List) {
+          logList = resp['data']['logs'];
+        } else if (resp['data'] is List) {
+          logList = resp['data'];
         }
+        // 解析日志（和日志页面一致）
+        for (var item in logList) {
+          logs.add(Log.fromJson(item));
+        }
+        return logs;
       } else {
-        debugPrint('获取日志列表网络错误: ${res.statusCode}');
+        debugPrint('获取日志列表失败: ${resp['message']}');
         return <Log>[];
       }
-    } catch (e) {
-      debugPrint('获取日志列表异常: $e');
+    } else {
+      debugPrint('获取日志列表网络错误: ${res.statusCode}，响应：${res.body}');
       return <Log>[];
     }
+  } catch (e) {
+    debugPrint('获取日志列表异常: $e');
+    return <Log>[];
   }
+}
 
   /// 新增：删除日志
   Future<Map<String, dynamic>> deleteLog(String logId) async {
@@ -194,18 +199,30 @@ class LogBusiness {
     }
   }
 
+  /// 获取当天所有日志（复用日志页面的成功逻辑）
+Future<List<Log>> getTodayLogs() async {
+  try {
+    final now = DateTime.now();
+    final startStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final endStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    // 打印参数，确认和日志页面的请求参数一致
+    final logs = await listLogs(startTime: startStr, endTime: endStr);
+    return logs;
+  } catch (e) {
+    debugPrint('导图-获取当天日志异常: $e');
+    return <Log>[];
+  }
+}
+
   /// 获取特定条件下的任务列表
   Future<List<Task>> getExecutorTasksForLogSelection() async {
     try {
       final tasksResponse = await _taskApi.listExecutorTasks();
       if (tasksResponse != null) {
         List<Task> tasks = [];
-        if (tasksResponse.createdTasks != null) {
-          tasks.addAll(tasksResponse.createdTasks!);
-        }
-        if (tasksResponse.participatedTasks != null) {
-          tasks.addAll(tasksResponse.participatedTasks!);
-        }
+        tasks.addAll(tasksResponse.createdTasks);
+        tasks.addAll(tasksResponse.participatedTasks);
         return tasks;
       } else {
         debugPrint('获取任务列表失败: tasksResponse is null');
