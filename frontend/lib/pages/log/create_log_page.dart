@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 导入 shared_preferences
 import '../../models/task.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart';
@@ -28,6 +29,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
   bool _isSubmitting = false;
   final LogBusiness _logBusiness = LogBusiness();
   Task? _selectedTask;
+  String? _currentUserId;
+  String? _currentUserName;
 
   // 照片相关变量
   final List<Map<String, dynamic>> _selectedImages =
@@ -42,6 +45,9 @@ class _CreateLogPageState extends State<CreateLogPage> {
     if (widget.preSelectedTask != null) {
       _selectedTask = widget.preSelectedTask;
     }
+    // 加载用户ID和名称
+    _loadCurrentUser();
+
     if (widget.logToEdit != null) {
       // 编辑模式下预填充表单，不保留任务关联信息
       final log = widget.logToEdit!;
@@ -63,6 +69,14 @@ class _CreateLogPageState extends State<CreateLogPage> {
       // 加载日志图片
       _loadLogImages(log.fileIds ?? []);
     }
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getString('userId');
+      _currentUserName = prefs.getString('userName');
+    });
   }
 
   Future<void> _loadLogImages(List<int> fileIds) async {
@@ -598,7 +612,27 @@ class _CreateLogPageState extends State<CreateLogPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(isUpdate ? '日志更新成功！' : '日志创建成功！')),
           );
-          Navigator.of(context).pop();
+          // 如果是新建日志且成功，返回新创建的日志对象
+          if (!isUpdate && result['data'] != null) {
+            final newLog = Log(
+              logId: result['data'].toString(), // 确保 logId 是 String 类型
+              taskId: logToProcess.taskId,
+              taskTitle: _selectedTask?.taskTitle, // 添加 taskTitle
+              logTitle: logToProcess.logTitle,
+              logContent: logToProcess.logContent,
+              logStatus: logToProcess.logStatus,
+              taskProgress: logToProcess.taskProgress,
+              startTime: logToProcess.startTime,
+              endTime: logToProcess.endTime,
+              logDate: logToProcess.logDate,
+              userId: int.tryParse(_currentUserId ?? ''), // 从 shared_preferences 获取并转换为 int
+              userName: _currentUserName, // 从 shared_preferences 获取
+              fileIds: logToProcess.fileIds,
+            );
+            Navigator.of(context).pop(newLog); // 返回新创建的日志对象
+          } else {
+            Navigator.of(context).pop();
+          }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -401,8 +401,8 @@ class _LogPageState extends State<LogPage> {
             MaterialPageRoute(builder: (_) => const CreateLogPage()),
           );
           if (newLog != null) {
-            setState(() => _allLogs.insert(0, newLog));
-            _applyFilters();
+            setState(() => _allLogs.insert(0, newLog)); // 直接插入新日志
+            _applyFilters(); // 应用筛选以更新显示
           }
         },
         child: const Icon(Icons.add, color: Colors.white),
