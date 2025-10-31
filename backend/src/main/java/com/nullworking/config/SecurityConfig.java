@@ -1,5 +1,7 @@
 package com.nullworking.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -66,6 +68,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.addAllowedOrigin("http://localhost:8081"); // 允许你的前端域名
+        configuration.addAllowedOrigin("http://58.87.76.10:8081");
         configuration.addAllowedHeader("*"); // 允许所有请求头
         configuration.addAllowedMethod("*"); // 允许所有HTTP方法，包括OPTIONS
         configuration.setAllowCredentials(true); // 允许发送认证信息，如cookies

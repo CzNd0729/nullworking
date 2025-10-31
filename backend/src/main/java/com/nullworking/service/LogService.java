@@ -72,7 +72,7 @@ public class LogService {
     }
 
     @Transactional
-    public ApiResponse<Void> createLog(LogCreateRequest request, Integer userId) {
+    public ApiResponse<Integer> createLog(LogCreateRequest request, Integer userId) {
         List<Integer> fileIds=request.getFileIds();
         Optional<User> userOptional = userRepository.findById(userId);
         if (userOptional.isEmpty()) {
@@ -119,7 +119,7 @@ public class LogService {
             logRepository.deleteByTaskTaskIdAndLogStatus(request.getTaskId(), 0); // 0 for pending
         }
 
-        return ApiResponse.success();
+        return ApiResponse.success(log.getLogId());
     }
 
     @Transactional
