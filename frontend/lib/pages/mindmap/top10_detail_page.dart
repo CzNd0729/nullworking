@@ -42,6 +42,10 @@ class _Top10DetailPageState extends State<Top10DetailPage> {
     Navigator.of(context).pop(updated);
   }
 
+  void _onDelete() {
+    Navigator.of(context).pop({'deleted': true});
+  }
+
   @override
   Widget build(BuildContext context) {
     final isReadOnly = widget.readOnly;
@@ -52,6 +56,8 @@ class _Top10DetailPageState extends State<Top10DetailPage> {
         actions: [
           if (!isReadOnly)
             IconButton(icon: const Icon(Icons.save), onPressed: _onSave),
+          if (!isReadOnly)
+            IconButton(icon: const Icon(Icons.delete), onPressed: _onDelete),
         ],
       ),
       body: Padding(

@@ -66,6 +66,7 @@ class TaskBusiness {
     required String content,
     required int priority,
     required List<String> executorIds,
+    required List<String> executorNames,
     required DateTime deadline,
     String? taskId,
   }) async {
@@ -105,8 +106,10 @@ class TaskBusiness {
             taskStatus: "0",
             creationTime: DateTime.now(),
             deadline: deadline,
-            executorNames: _mapUserIdsToNames(executorIds),
+            executorNames: executorNames,
             isParticipated: false, // 新发布的任务，isParticipated 设为 false
+            taskProgress: 0,
+            completionTime: null,
           );
         } else {
           print('任务发布/更新失败: ${responseBody['message'] ?? '未知错误'}');
@@ -120,12 +123,16 @@ class TaskBusiness {
     return null;
   }
 
-  List<String> _mapUserIdsToNames(List<String> userIds) {
-    if (userIds.contains(getCurrentUserId())) {
-      return ["我"];
-    }
-    return userIds.map((id) => "用户_$id").toList();
-  }
+  // Future<List<String>> _mapUserIdsToNames(List<String> userIds) async {
+  //   // 这是一个mock实现，实际应用中应该从用户服务获取
+  //   await Future.delayed(const Duration(milliseconds: 300)); // 模拟网络延迟
+  //   final allMembers = await fetchTeamMembers();
+  //   final names = allMembers
+  //       .where((member) => userIds.contains(member['userId']))
+  //       .map((member) => member['name']!)
+  //       .toList();
+  //   return names;
+  // }
 
   Future<List<Map<String, dynamic>>> fetchTeamMembers() async {
     try {

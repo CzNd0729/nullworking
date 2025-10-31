@@ -156,7 +156,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       builder: (BuildContext context) {
         int selectedHour = _selectedTime?.hour ?? TimeOfDay.now().hour;
         int selectedMinute = _selectedTime?.minute ?? TimeOfDay.now().minute;
-        String? errorMessage;
 
         return Dialog(
           backgroundColor: const Color(0xFF232325),
@@ -613,6 +612,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         priority: int.parse(_selectedPriority.substring(1)),
         executorIds: _selectedAssignees
             .map((e) => e['userId'].toString())
+            .toList(),
+        executorNames: _selectedAssignees
+            .map((e) => e['realName'].toString())
             .toList(),
         deadline: deadlineDateTime,
         taskId: widget.taskToEdit?.taskId,

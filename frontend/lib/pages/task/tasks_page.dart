@@ -73,9 +73,7 @@ class _TasksPageState extends State<TasksPage> {
   void _addTask(Task newTask) {
     setState(() {
       _assignedTasks.add(newTask);
-      _myTasks.add(newTask);
-      _searchController.clear();
-      _selectedStatusFilters.clear();
+      _selectedStatusFilters = {'0', '1'};
     });
   }
 

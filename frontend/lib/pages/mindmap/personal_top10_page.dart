@@ -111,49 +111,44 @@ class _PersonalTop10PageState extends State<PersonalTop10Page> {
     );
 
     if (result != null) {
-      final String newTitle = result['title']?.trim() ?? '';
-      final String newContent = result['content']?.trim() ?? '';
+      bool needsReload = false;
 
-      if (current.itemId == 0) {
-        // 如果是空事项
-        if (newTitle.isNotEmpty || newContent.isNotEmpty) {
-          // 如果有内容，则视为新建
-          final newItemData = {'title': newTitle, 'content': newContent};
-          final response = await _itemApi.addItem(newItemData);
-          if (response.statusCode == 200) {
-            final responseBody = jsonDecode(response.body);
-            if (responseBody['code'] == 200 && responseBody['data'] != null) {
-              final createdItem = Item.fromJson(responseBody['data']);
-              setState(() {
-                _items[index] = createdItem;
-              });
+      // 处理来自 Top10DetailPage 的删除操作
+      if (result['deleted'] == true) {
+        if (current.itemId != 0) { // 仅当是真实事项时才执行删除
+          await _itemApi.deleteItem(current.itemId.toString());
+          needsReload = true;
+        }
+      } else {
+        final String newTitle = result['title']?.trim() ?? '';
+        final String newContent = result['content']?.trim() ?? '';
+
+        if (current.itemId == 0) {
+          // 如果是空事项（添加新事项的占位符）
+          if (newTitle.isNotEmpty || newContent.isNotEmpty) {
+            // 如果有内容，则视为新建
+            final newItemData = {'title': newTitle, 'content': newContent};
+            final response = await _itemApi.addItem(newItemData);
+            if (response.statusCode == 200) {
+              final responseBody = jsonDecode(response.body);
+              if (responseBody['code'] == 200 && responseBody['data'] != null) {
+                needsReload = true;
+              }
             }
           }
-        } // 否则空事项未被编辑，不进行任何操作
-      } else {
-        // 如果是真实事项
-        if (newTitle.isEmpty && newContent.isEmpty) {
-          // 如果被清空，则视为删除
-          await _itemApi.deleteItem(current.itemId.toString());
-          setState(() {
-            _items[index] = Item(
-              itemId: 0,
-              displayOrder: current.displayOrder,
-              title: '',
-              content: '',
-            );
-          });
-        } else if (newTitle != current.title || newContent != current.content) {
-          // 如果有改动，则视为更新
-          final updatedItemData = {'title': newTitle, 'content': newContent};
-          await _itemApi.updateItem(current.itemId.toString(), updatedItemData);
-          setState(() {
-            _items[index] = current.copyWith(
-              title: newTitle,
-              content: newContent,
-            );
-          });
+        } else {
+          // 如果是真实事项（更新）
+          if (newTitle != current.title || newContent != current.content) {
+            // 如果有改动，则视为更新
+            final updatedItemData = {'title': newTitle, 'content': newContent};
+            await _itemApi.updateItem(current.itemId.toString(), updatedItemData);
+            needsReload = true;
+          }
         }
+      }
+
+      if (needsReload) {
+        await _load();
       }
     }
   }
