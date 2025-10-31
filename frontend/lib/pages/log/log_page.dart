@@ -212,16 +212,6 @@ class _LogPageState extends State<LogPage> {
                   color: Colors.white,
                 ),
               ),
-              if (_startDate != null ||
-                  _endDate != null ||
-                  _searchController.text.isNotEmpty)
-                GestureDetector(
-                  onTap: _clearFilters,
-                  child: const Text(
-                    '清除筛选',
-                    style: TextStyle(color: Colors.orange),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -318,87 +308,89 @@ class _LogPageState extends State<LogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-          return <Widget>[
-            SliverAppBar(
-              title: const Text('日志管理'),
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              elevation: 0,
-              centerTitle: true,
-              leading: IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  _showViewModeMenu(context);
-                },
-              ),
-              actions: [
-                IconButton(
-                  onPressed: _forceSearchUnfocus,
-                  icon: const Icon(Icons.notifications),
+      body: SafeArea(
+        child: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                title: const Text('日志管理'),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                elevation: 0,
+                centerTitle: true,
+                leading: IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    _showViewModeMenu(context);
+                  },
                 ),
-              ],
-              floating: true,
-              forceElevated: innerBoxIsScrolled,
-            ),
-            if (_currentViewMode == ViewMode.list)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      TextField(
-                        focusNode: _searchFocusNode,
-                        controller: _searchController,
-                        onChanged: (value) => _applyFilters(),
-                        decoration: InputDecoration(
-                          hintText: '按标题或日志内容搜索',
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                        onTapOutside: (event) => _forceSearchUnfocus(),
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (value) => _forceSearchUnfocus(),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                actions: [
+                  IconButton(
+                    onPressed: _forceSearchUnfocus,
+                    icon: const Icon(Icons.notifications),
                   ),
-                ),
+                ],
+                floating: true,
+                forceElevated: innerBoxIsScrolled,
               ),
-            if (_currentViewMode == ViewMode.list)
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SliverFilterBarDelegate(
-                  child: Container(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: _buildFilterBar(),
+              if (_currentViewMode == ViewMode.list)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      children: [
+                        TextField(
+                          focusNode: _searchFocusNode,
+                          controller: _searchController,
+                          onChanged: (value) => _applyFilters(),
+                          decoration: InputDecoration(
+                            hintText: '按标题或日志内容搜索',
+                            prefixIcon: const Icon(Icons.search),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          onTapOutside: (event) => _forceSearchUnfocus(),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (value) => _forceSearchUnfocus(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),
-              ),
-          ];
-        },
-        body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+              if (_currentViewMode == ViewMode.list)
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverFilterBarDelegate(
+                    child: Container(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: _buildFilterBar(),
+                      ),
+                    ),
+                  ),
                 ),
-              )
-            : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40.0),
-                  child: Text('暂无日志', style: TextStyle(color: Colors.white54)),
+            ];
+          },
+          body: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+                  ),
+                )
+              : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40.0),
+                    child: Text('暂无日志', style: TextStyle(color: Colors.white54)),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: _buildCurrentView(),
                 ),
-              )
-            : Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _buildCurrentView(),
-              ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF2CB7B3),

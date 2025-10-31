@@ -323,112 +323,142 @@ class _TasksPageState extends State<TasksPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('任务列表'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              _forceSearchUnfocus();
-            },
-            icon: const Icon(Icons.notifications),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              focusNode: _searchFocusNode,
-              controller: _searchController,
-              onChanged: (value) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: '按标题或任务内容搜索',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+      body: SafeArea(
+        child: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                title: const Text('任务列表'),
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                elevation: 0,
+                actions: [
+                  IconButton(
+                    onPressed: () {
+                      _forceSearchUnfocus();
+                    },
+                    icon: const Icon(Icons.notifications),
+                  ),
+                ],
+                floating: true,
+                pinned: false,
+                snap: true,
+                forceElevated: innerBoxIsScrolled,
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+                  child: TextField(
+                    focusNode: _searchFocusNode,
+                    controller: _searchController,
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: '按标题或任务内容搜索',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    onTapOutside: (event) {
+                      _forceSearchUnfocus();
+                    },
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (value) {
+                      _forceSearchUnfocus();
+                    },
+                  ),
                 ),
               ),
-              onTapOutside: (event) {
-                _forceSearchUnfocus();
-              },
-              textInputAction: TextInputAction.done,
-              onSubmitted: (value) {
-                _forceSearchUnfocus();
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildFilterBar(),
-            const SizedBox(height: 16),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ExpansionTile(
-                    onExpansionChanged: (expanded) {
-                      _forceSearchUnfocus();
-                    },
-                    initiallyExpanded: true,
-                    title: const Text(
-                      '派发任务',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverFilterBarDelegate(
+                  child: Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: _buildFilterBar(),
                     ),
-                    children: () {
-                      final filteredTasks = _filterTasks(_assignedTasks);
-                      return filteredTasks.isEmpty
-                          ? [
-                              Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Text(
-                                  _assignedTasks.isEmpty
-                                      ? '暂无派发的任务'
-                                      : '没有符合筛选条件的派发任务',
-                                  style: const TextStyle(color: Colors.white54),
-                                ),
-                              ),
-                            ]
-                          : filteredTasks
-                                .map((task) => _buildTaskCard(task, isAssignedTask: true))
-                                .toList();
-                    }(),
                   ),
-            const SizedBox(height: 16),
-            _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : ExpansionTile(
-                    onExpansionChanged: (expanded) {
-                      _forceSearchUnfocus();
-                    },
-                    initiallyExpanded: true,
-                    title: const Text(
-                      '我的任务',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  height: 110.0,
+                ),
+              ),
+            ];
+          },
+          body: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    ExpansionTile(
+                      onExpansionChanged: (expanded) {
+                        _forceSearchUnfocus();
+                      },
+                      initiallyExpanded: true,
+                      title: const Text(
+                        '派发任务',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    children: () {
-                      final filteredTasks = _filterTasks(_myTasks);
-                      return filteredTasks.isEmpty
-                          ? [
-                              Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Text(
-                                  _myTasks.isEmpty ? '暂无我的任务' : '没有符合筛选条件的我的任务',
-                                  style: const TextStyle(color: Colors.white54),
+                      children: () {
+                        final filteredTasks = _filterTasks(_assignedTasks);
+                        return filteredTasks.isEmpty
+                            ? [
+                                Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Text(
+                                    _assignedTasks.isEmpty
+                                        ? '暂无派发的任务'
+                                        : '没有符合筛选条件的派发任务',
+                                    style: const TextStyle(color: Colors.white54),
+                                  ),
                                 ),
-                              ),
-                            ]
-                          : filteredTasks
-                                .map((task) => _buildTaskCard(task, isAssignedTask: false))
+                              ]
+                            : filteredTasks
+                                .map((task) =>
+                                    _buildTaskCard(task, isAssignedTask: true))
                                 .toList();
-                    }(),
-                  ),
-          ],
+                      }(),
+                    ),
+                    const SizedBox(height: 16),
+                    ExpansionTile(
+                      onExpansionChanged: (expanded) {
+                        _forceSearchUnfocus();
+                      },
+                      initiallyExpanded: true,
+                      title: const Text(
+                        '我的任务',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      children: () {
+                        final filteredTasks = _filterTasks(_myTasks);
+                        return filteredTasks.isEmpty
+                            ? [
+                                Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Text(
+                                    _myTasks.isEmpty
+                                        ? '暂无我的任务'
+                                        : '没有符合筛选条件的我的任务',
+                                    style: const TextStyle(color: Colors.white54),
+                                  ),
+                                ),
+                              ]
+                            : filteredTasks
+                                .map((task) =>
+                                    _buildTaskCard(task, isAssignedTask: false))
+                                .toList();
+                      }(),
+                    ),
+                  ],
+                ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -445,5 +475,32 @@ class _TasksPageState extends State<TasksPage> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+}
+
+class _SliverFilterBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  _SliverFilterBarDelegate({required this.child, this.height = 120.0});
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_SliverFilterBarDelegate oldDelegate) {
+    return true;
   }
 }

@@ -79,8 +79,8 @@ class _MainPageState extends State<MainPage> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
+            icon: Icon(Icons.description_outlined),
+            activeIcon: Icon(Icons.description),
             label: '日志',
           ),
           BottomNavigationBarItem(
@@ -89,8 +89,8 @@ class _MainPageState extends State<MainPage> {
             label: '任务',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_tree_outlined),
-            activeIcon: Icon(Icons.account_tree),
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
             label: '导图',
           ),
           BottomNavigationBarItem(
