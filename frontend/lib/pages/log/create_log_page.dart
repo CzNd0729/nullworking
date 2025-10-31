@@ -516,7 +516,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
             backgroundColor: const Color(0xFF232325),
             title: const Text('注意', style: TextStyle(color: Colors.white)),
             content: const Text(
-              '注意到进度为100%，此时提交日志会关闭任务，是否提交？',
+              '当前日志进度为100%，提交日志系统将删除关联此任务且未完成的日志，是否提交？',
               style: TextStyle(color: Colors.white70),
             ),
             actions: <Widget>[
@@ -960,7 +960,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                               label: Text(
                                 _selectedTask == null
                                     ? '选择现有任务'
-                                    : '已选择: ${_selectedTask!.taskTitle}${widget.preSelectedTask != null ? " (锁定)" : ""}',
+                                    : '已选择: ${_selectedTask!.taskTitle}',
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF000000),
