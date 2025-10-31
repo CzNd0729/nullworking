@@ -303,6 +303,8 @@ public class LogService {
         data.put("endTime", log.getEndTime().toString());
         data.put("logDate", log.getLogDate().toString());
         data.put("fileIds", fileIds);
+        data.put("userName",log.getUser().getRealName());
+        data.put("userId",log.getUser().getUserId());
 
         return ApiResponse.success(data);
     }

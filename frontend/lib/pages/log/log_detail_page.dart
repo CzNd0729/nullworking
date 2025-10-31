@@ -7,6 +7,7 @@ import 'create_log_page.dart'; // 导入CreateLogPage
 import 'dart:typed_data'; // 导入Uint8List，用于图片显示
 import 'package:nullworking/pages/task/task_detail_page.dart';
 import 'package:nullworking/models/task.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LogDetailPage extends StatefulWidget {
   final String logId;
@@ -23,11 +24,23 @@ class _LogDetailPageState extends State<LogDetailPage> {
   Log? _logDetails;
   List<Map<String, dynamic>> _logFiles = [];
   bool _isLoading = true;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _fetchLogData();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userIdString = prefs.getString('userId');
+    if (userIdString != null) {
+      setState(() {
+        _currentUserId = int.tryParse(userIdString);
+      });
+    }
   }
 
   Future<void> _fetchLogData() async {
@@ -137,12 +150,14 @@ class _LogDetailPageState extends State<LogDetailPage> {
             icon: Icon(
               Icons.edit,
               // 未完成显示白色，已完成显示灰色
-              color: _logDetails?.logStatus == 0
+              color: _logDetails?.logStatus == 0 &&
+                      _logDetails?.userId == _currentUserId
                   ? Colors.white
                   : Colors.grey[500],
             ),
             // 仅当日志未完成（logStatus == 0）时可点击
-            onPressed: _logDetails?.logStatus == 0
+            onPressed: _logDetails?.logStatus == 0 &&
+                    _logDetails?.userId == _currentUserId
                 ? () => _editLog(context)
                 : null,
           ),
@@ -150,12 +165,14 @@ class _LogDetailPageState extends State<LogDetailPage> {
             icon: Icon(
               Icons.delete,
               // 未完成显示红色，已完成显示灰色
-              color: _logDetails?.logStatus == 0
+              color: _logDetails?.logStatus == 0 &&
+                      _logDetails?.userId == _currentUserId
                   ? Colors.redAccent
                   : Colors.grey[500],
             ),
             // 仅当日志未完成（logStatus == 0）时可点击
-            onPressed: _logDetails?.logStatus == 0
+            onPressed: _logDetails?.logStatus == 0 &&
+                    _logDetails?.userId == _currentUserId
                 ? () => _confirmDeleteLog(context)
                 : null,
           ),
@@ -216,6 +233,14 @@ class _LogDetailPageState extends State<LogDetailPage> {
                     DateFormat('yyyy年MM月dd日').format(log.logDate),
                   ),
                   const SizedBox(height: 8),
+                  if (log.userName != null && log.userName!.isNotEmpty) ...[
+                    _buildInfoRow(
+                      Icons.person_outline,
+                      '创建者',
+                      log.userName!,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   _buildInfoRow(Icons.access_time, '开始时间', log.startTime),
                   const SizedBox(height: 8),
                   _buildInfoRow(Icons.access_time, '结束时间', log.endTime),
