@@ -141,7 +141,7 @@ public class AIService {
             List<Map<String, Object>> userList = users.stream().map(user -> {
                 Map<String, Object> userMap = new HashMap<>();
                 userMap.put("userId", user.getUserId());
-                userMap.put("userName", user.getUserName());
+                userMap.put("userName", user.getRealName());
                 return userMap;
             }).collect(Collectors.toList());
 
