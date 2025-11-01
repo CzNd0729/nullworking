@@ -10,13 +10,12 @@ class TaskBusiness {
   final UserApi _userApi = UserApi();
   Future<List<Task>> getTodayUnfinishedTasks() async {
     try {
-      final userTasks = await loadUserTasks();
-      if (userTasks != null) {
-        final allTasks = <Task>[];
-        allTasks.addAll(userTasks['participatedTasks'] ?? []);
+      final taskListResponse = await _taskApi.listTasks(taskStatus:null, participantType: 'executor');
+      if (taskListResponse != null) {
+        final allTasks = taskListResponse.participatedTasks;
 
         final todayUnfinishedTasks = allTasks.where((task) {
-          return task.taskStatus == "0";
+          return task.taskStatus == "0"||task.taskStatus == "1";
         }).toList();
         // Sort tasks by deadline from nearest to furthest
         todayUnfinishedTasks.sort((a, b) {
@@ -26,14 +25,14 @@ class TaskBusiness {
       }
       return <Task>[];
     } catch (e) {
-      print('获取当天未完成任务异常: $e');
+      print('Error getting today unfinished tasks: $e');
       return <Task>[];
     }
   }
 
   Future<Map<String, List<Task>>?> loadUserTasks() async {
     try {
-      final response = await _taskApi.listUserTasks();
+      final response = await _taskApi.listTasks();
       if (response != null) {
         return {
           'createdTasks': response.createdTasks,

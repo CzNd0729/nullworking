@@ -23,9 +23,20 @@ class TaskApi {
     );
   }
 
-  Future<TaskListResponse?> listUserTasks() async {
-    final response = await _baseApi.get('api/tasks');
+  Future<TaskListResponse?> listTasks({String? taskStatus, String? participantType}) async {
+    String queryParams = '';
+    if (taskStatus != null) {
+      queryParams += 'taskStatus=$taskStatus';
+    }
+    if (participantType != null) {
+      if (queryParams.isNotEmpty) {
+        queryParams += '&';
+      }
+      queryParams += 'participantType=$participantType';
+    }
 
+    final response = await _baseApi.get('api/tasks${queryParams.isNotEmpty ? '?' + queryParams : ''}');
+    
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body['code'] == 200 && body['data'] != null) {
@@ -34,6 +45,18 @@ class TaskApi {
     }
     return null;
   }
+
+  // Future<TaskListResponse?> listUserTasks() async {
+  //   final response = await _baseApi.get('api/tasks');
+
+  //   if (response.statusCode == 200) {
+  //     final body = jsonDecode(response.body);
+  //     if (body['code'] == 200 && body['data'] != null) {
+  //       return TaskListResponse.fromJson(body['data']);
+  //     }
+  //   }
+  //   return null;
+  // }
 
   Future<http.Response> updateTask(Map<String, dynamic> taskData) async {
     final taskId = taskData['taskId'].toString();
@@ -64,15 +87,15 @@ class TaskApi {
     return await _baseApi.get('api/tasks/$taskId');
   }
 
-  Future<TaskListResponse?> listExecutorTasks({String taskStatus = '0', String participantType = 'executor'}) async {
-    final response = await _baseApi.get('api/tasks?taskStatus=$taskStatus&participantType=$participantType');
+  // Future<TaskListResponse?> listExecutorTasks({String taskStatus = '0', String participantType = 'executor'}) async {
+  //   final response = await _baseApi.get('api/tasks?taskStatus=$taskStatus&participantType=$participantType');
     
-    if (response.statusCode == 200) {
-      final body = jsonDecode(response.body);
-      if (body['code'] == 200 && body['data'] != null) {
-        return TaskListResponse.fromJson(body['data']);
-      }
-    }
-    return null;
-  }
+  //   if (response.statusCode == 200) {
+  //     final body = jsonDecode(response.body);
+  //     if (body['code'] == 200 && body['data'] != null) {
+  //       return TaskListResponse.fromJson(body['data']);
+  //     }
+  //   }
+  //   return null;
+  // }
 }
