@@ -102,10 +102,8 @@ CREATE TABLE `important_item` (
 CREATE TABLE `ai_analysis_result` (
   `Result_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `User_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（分析结果所属用户）',
-  `Keyword_Imformation` TEXT NOT NULL COMMENT '关键词信息（JSON格式存储）',
-  `Trend_Analysis` TEXT NOT NULL COMMENT '趋势分析内容（JSON格式存储）',
-  `Task_List` TEXT NOT NULL COMMENT '推荐任务清单（JSON格式存储）',
-  `Constructive_Suggestions` TEXT NOT NULL COMMENT 'AI生成的建设性意见',
+  `Prompt` MEDIUMTEXT NOT NULL COMMENT 'AI分析的提示词（JSON格式存储）',
+  `Content` MEDIUMTEXT NOT NULL COMMENT 'AI分析结果内容（JSON格式存储）',
   `Analysis_Date` DATE NOT NULL COMMENT '分析结果生成日期',
   PRIMARY KEY (`Result_ID`),
   KEY `fk_analysis_user` (`User_ID`),

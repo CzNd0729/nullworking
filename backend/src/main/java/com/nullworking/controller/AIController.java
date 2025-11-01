@@ -3,6 +3,7 @@ package com.nullworking.controller;
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.dto.AIChatRequest;
 import com.nullworking.model.dto.AIChatResponse;
+import com.nullworking.model.dto.AIAnalysisRequest;
 import com.nullworking.service.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,17 @@ public class AIController {
         } catch (Exception e) {
             e.printStackTrace();
             return ApiResponse.error(500,"AI聊天失败: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/analysis")
+    public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request) {
+        try {
+            Integer resultId = aiService.startAIAnalysis(request);
+            return ApiResponse.success(resultId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error(500, "AI分析启动失败: " + e.getMessage());
         }
     }
 

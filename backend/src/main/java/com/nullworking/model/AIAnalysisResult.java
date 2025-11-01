@@ -17,20 +17,12 @@ public class AIAnalysisResult {
     private User user;
 
     @Lob
-    @Column(name = "Keyword_Imformation", nullable = false)
-    private String keywordInformation;
+    @Column(name = "Prompt", nullable = false, columnDefinition = "MEDIUMTEXT")
+    private String prompt;
 
     @Lob
-    @Column(name = "Trend_Analysis", nullable = false)
-    private String trendAnalysis;
-
-    @Lob
-    @Column(name = "Task_List", nullable = false)
-    private String taskList;
-
-    @Lob
-    @Column(name = "Constructive_Suggestions", nullable = false)
-    private String constructiveSuggestions;
+    @Column(name = "Content", nullable = false, columnDefinition = "MEDIUMTEXT")
+    private String content;
 
     @Column(name = "Analysis_Date", nullable = false)
     private LocalDate analysisDate;
@@ -52,36 +44,20 @@ public class AIAnalysisResult {
         this.user = user;
     }
 
-    public String getKeywordInformation() {
-        return keywordInformation;
+    public String getPrompt() {
+        return prompt;
     }
 
-    public void setKeywordInformation(String keywordInformation) {
-        this.keywordInformation = keywordInformation;
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
     }
 
-    public String getTrendAnalysis() {
-        return trendAnalysis;
+    public String getContent() {
+        return content;
     }
 
-    public void setTrendAnalysis(String trendAnalysis) {
-        this.trendAnalysis = trendAnalysis;
-    }
-
-    public String getTaskList() {
-        return taskList;
-    }
-
-    public void setTaskList(String taskList) {
-        this.taskList = taskList;
-    }
-
-    public String getConstructiveSuggestions() {
-        return constructiveSuggestions;
-    }
-
-    public void setConstructiveSuggestions(String constructiveSuggestions) {
-        this.constructiveSuggestions = constructiveSuggestions;
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public LocalDate getAnalysisDate() {
