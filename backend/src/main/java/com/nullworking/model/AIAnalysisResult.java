@@ -1,7 +1,7 @@
 package com.nullworking.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AI_Analysis_Result")
@@ -24,8 +24,8 @@ public class AIAnalysisResult {
     @Column(name = "Content", nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
-    @Column(name = "Analysis_Date", nullable = false)
-    private LocalDate analysisDate;
+    @Column(name = "Analysis_Time", nullable = false)
+    private LocalDateTime analysisTime;
 
     // Getters and Setters
     public Integer getResultId() {
@@ -60,11 +60,11 @@ public class AIAnalysisResult {
         this.content = content;
     }
 
-    public LocalDate getAnalysisDate() {
-        return analysisDate;
+    public LocalDateTime getAnalysisTime() {
+        return analysisTime;
     }
 
-    public void setAnalysisDate(LocalDate analysisDate) {
-        this.analysisDate = analysisDate;
+    public void setAnalysisTime(LocalDateTime analysisTime) {
+        this.analysisTime = analysisTime;
     }
 }

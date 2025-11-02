@@ -122,4 +122,13 @@ public class Task {
     public void setCompletionTime(LocalDateTime completionTime) {
         this.completionTime = completionTime;
     }
+
+    // Custom getters for AIAnalysisService compatibility
+    public LocalDateTime getStartTime() {
+        return creationTime;
+    }
+
+    public LocalDateTime getEndTime() {
+        return deadline;
+    }
 }
