@@ -27,6 +27,33 @@ export const constantRoutes = [
       }
     ]
   },
+  {
+    path: '/permission',
+    component: () => import('@/layout'),
+    redirect: '/permission/role',
+    name: 'Permission',
+    meta: { title: '权限管理', icon: 'lock' },
+    children: [
+      {
+        path: 'role',
+        component: () => import('@/views/permission/role.vue'),
+        name: 'RoleManagement',
+        meta: { title: '角色管理' }
+      },
+      {
+        path: 'department',
+        component: () => import('@/views/permission/department.vue'),
+        name: 'DepartmentManagement',
+        meta: { title: '部门管理' }
+      },
+      {
+        path: 'user',
+        component: () => import('@/views/permission/user.vue'),
+        name: 'UserManagement',
+        meta: { title: '用户管理' }
+      }
+    ]
+  },
   // 404 page must be placed at the end !!!
   { path: '*', redirect: '/404', hidden: true }
 ]
