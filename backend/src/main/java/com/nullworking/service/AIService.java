@@ -22,6 +22,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -252,18 +253,14 @@ public class AIService {
         }
     }
 
-    public String getAIAnalysisResult(Integer resultId) {
+    public Map<String, Object> getAIAnalysisResult(Integer resultId) {
         String content = aiAnalysisResultRepository.findById(resultId)
                 .orElseThrow(() -> new RuntimeException("AI分析结果未找到，ID: " + resultId))
                 .getContent();
-
         try {
-            // 尝试将内容解析为JSON并格式化
-            Object json = objectMapper.readValue(content, Object.class);
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+            return objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
-            // 如果解析失败，说明不是JSON，直接返回原始内容
-            return content;
+            throw new RuntimeException("AI分析结果JSON解析失败，ID: " + resultId, e);
         }
     }
 

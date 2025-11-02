@@ -13,6 +13,7 @@ import javax.annotation.PreDestroy;
 import java.util.List;
 import com.nullworking.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -50,9 +51,9 @@ public class AIController {
     }
 
     @GetMapping("/analysis/{resultId}")
-    public ApiResponse<String> getAIAnalysisResult(@PathVariable Integer resultId) {
+    public ApiResponse<Map<String, Object>> getAIAnalysisResult(@PathVariable Integer resultId) {
         try {
-            String result = aiService.getAIAnalysisResult(resultId);
+            Map<String, Object> result = aiService.getAIAnalysisResult(resultId);
             return ApiResponse.success(result);
         } catch (Exception e) {
             e.printStackTrace();
