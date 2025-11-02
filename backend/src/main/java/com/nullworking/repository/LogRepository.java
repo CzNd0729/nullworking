@@ -25,4 +25,5 @@ public interface LogRepository extends JpaRepository<Log, Integer> {
 
     List<Log> findByUserUserId(Integer userId);
     List<Log> findByUserUserIdInAndLogDateBetween(List<Integer> userIds, LocalDate startDate, LocalDate endDate);
+    List<Log> findByTaskTaskId(Integer taskId);
 }

@@ -104,10 +104,10 @@ CREATE TABLE `ai_analysis_result` (
   `User_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（分析结果所属用户）',
   `Prompt` MEDIUMTEXT NOT NULL COMMENT 'AI分析的提示词（JSON格式存储）',
   `Content` MEDIUMTEXT NOT NULL COMMENT 'AI分析结果内容（JSON格式存储）',
-  `Analysis_Date` DATE NOT NULL COMMENT '分析结果生成日期',
+  `Analysis_Time` DATETIME NOT NULL COMMENT '分析结果生成时间',
   PRIMARY KEY (`Result_ID`),
   KEY `fk_analysis_user` (`User_ID`),
-  KEY `idx_analysis_date` (`Analysis_Date`),
+  KEY `idx_analysis_time` (`Analysis_Time`),
   CONSTRAINT `fk_analysis_user` FOREIGN KEY (`User_ID`) REFERENCES `user` (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI分析结果表';
 
