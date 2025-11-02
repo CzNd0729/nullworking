@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 class AIAnalysisResultPage extends StatelessWidget {
   AIAnalysisResultPage({super.key});
 
-  // 静态JSON数据（包含图表数据）
   final Map<String, dynamic> mockData = {
     "code": 200,
     "message": "success",
@@ -42,6 +41,7 @@ class AIAnalysisResultPage extends StatelessWidget {
           "percentage": 18.75
         }
       ],
+      "summary": "邹匀翻本周主要负责日志管理模块开发（task86）和前端联调验证（task88）两大任务。日志管理模块任务中，他完成了需求分析、数据库设计、核心API开发、权限集成等关键环节，进度达100%；前端联调任务完成了环境确认、数据验证、交互优化等工作，进度同样达100%。整体工作效率较高，覆盖从需求到开发的全流程，但存在日志状态与任务进度不一致的问题，部分已完成工作未及时更新日志状态，且收尾工作（如测试、部署）尚未闭环。建议后续优化日志记录规范性，合理安排收尾工作优先级，提升任务交付效率。",
       "frontend_chart_data": {
         "category_chart": {
           "x_axis": ["2025-10-27", "2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-01", "2025-11-02", "2025-11-03"],
@@ -52,7 +52,6 @@ class AIAnalysisResultPage extends StatelessWidget {
     }
   };
 
-  // severity英文转中文
   String _mapSeverityToChinese(String severity) {
     switch (severity) {
       case 'high': return '高';
@@ -64,10 +63,10 @@ class AIAnalysisResultPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 提取数据
     final List<dynamic> suggestions = mockData['data']['constructive_suggestions'];
     final List<dynamic> keywords = mockData['data']['keyword_statistics'];
     final Map<String, dynamic> chartData = mockData['data']['frontend_chart_data']['category_chart'];
+    final String summary = mockData['data']['summary']; // 提取概述内容
 
     return Scaffold(
       appBar: AppBar(
@@ -85,7 +84,7 @@ class AIAnalysisResultPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 建设性建议（调整为第一个展示）
+              // 1. 建设性建议
               const Text(
                 '建设性建议',
                 style: TextStyle(
@@ -148,7 +147,7 @@ class AIAnalysisResultPage extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // 2. 关键词统计（调整为第二个展示）
+              // 2. 关键词统计
               const Text(
                 '关键词统计',
                 style: TextStyle(
@@ -190,7 +189,7 @@ class AIAnalysisResultPage extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              // 3. 柱状图（调整为最后展示）
+              // 3. 柱状图
               const Text(
                 '每日进度增量',
                 style: TextStyle(
@@ -209,7 +208,26 @@ class AIAnalysisResultPage extends StatelessWidget {
                     groupsSpace: 12,
                     maxY: 50,
                     barTouchData: BarTouchData(enabled: true),
+                    gridData: FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
                     titlesData: FlTitlesData(
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 40, // 足够宽度避免换行
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              '${value.toInt()}%',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
@@ -225,22 +243,7 @@ class AIAnalysisResultPage extends StatelessWidget {
                           },
                         ),
                       ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            return Text(
-                              '${value.toInt()}%',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
                     ),
-                    borderData: FlBorderData(show: false),
                     barGroups: [
                       for (int i = 0; i < chartData['data'].length; i++)
                         BarChartGroupData(
@@ -268,7 +271,34 @@ class AIAnalysisResultPage extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
+
+              const SizedBox(height: 32),
+
+              // 4. 概述（新增部分，放在图表下方）
+              const Text(
+                '概述',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                color: Colors.grey[800],
+child: Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Text(
+      summary,
+      style: const TextStyle(
+        fontSize: 15,
+        color: Colors.white70,
+        height: 1.5, // 行高优化，提升可读性
+                  ),
+                  textAlign: TextAlign.justify, // 两端对齐
+                ),
+              ),
+          )],
           ),
         ),
       ),
