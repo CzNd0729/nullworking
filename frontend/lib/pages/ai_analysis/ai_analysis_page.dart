@@ -26,10 +26,15 @@ class AIAnalysisPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 选择日志按钮 -> 弹出选择框
+            // 新建分析按钮
             InkWell(
               onTap: () {
-                _showChooseModeDialog(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const AIAnalysisDetailPage(mode: 'time', params: {}),
+                  ),
+                );
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -48,7 +53,7 @@ class AIAnalysisPage extends StatelessWidget {
                       child: const Icon(Icons.note_add_outlined),
                     ),
                     const SizedBox(width: 16),
-                    const Text('选择需要分析的日志', style: TextStyle(fontSize: 16)),
+                    const Text('新建AI分析', style: TextStyle(fontSize: 16)),
                     const Spacer(),
                     const Icon(Icons.chevron_right),
                   ],
@@ -93,201 +98,6 @@ class AIAnalysisPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _showChooseModeDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return SimpleDialog(
-          title: const Text('选择分析方式'),
-          children: [
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showTimeAnalysisDialog(context);
-              },
-              child: const Text('按时间分析'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showTaskAnalysisDialog(context);
-              },
-              child: const Text('按任务分析'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showTimeAnalysisDialog(BuildContext context) async {
-    DateTime? startDate;
-    DateTime? endDate;
-    String selectedPerson = '全部';
-    final people = ['全部', '张三', '李四', '王五'];
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('按时间分析'),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) setState(() => startDate = picked);
-                      },
-                      child: Text(
-                        startDate == null
-                            ? '选择起始时间'
-                            : '起始：${startDate!.toLocal().toString().split(' ')[0]}',
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: startDate ?? DateTime.now(),
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) setState(() => endDate = picked);
-                      },
-                      child: Text(
-                        endDate == null
-                            ? '选择截止时间'
-                            : '截止：${endDate!.toLocal().toString().split(' ')[0]}',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text('选择人员'),
-                    DropdownButton<String>(
-                      value: selectedPerson,
-                      items: people
-                          .map(
-                            (p) => DropdownMenuItem(value: p, child: Text(p)),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => selectedPerson = v ?? '全部'),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 确认并跳转
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AIAnalysisDetailPage(
-                          mode: 'time',
-                          params: {
-                            'start': startDate?.toIso8601String(),
-                            'end': endDate?.toIso8601String(),
-                            'person': selectedPerson,
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('确认'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showTaskAnalysisDialog(BuildContext context) async {
-    // 示例任务列表
-    final tasks = [
-      {'id': 't1', 'title': '发布社交媒体报告'},
-      {'id': 't2', 'title': '市场调研'},
-      {'id': 't3', 'title': '用户反馈整理'},
-    ];
-    String? selectedTaskId;
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('按任务分析'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: tasks.length,
-                  itemBuilder: (context, index) {
-                    final t = tasks[index];
-                    return RadioListTile<String>(
-                      title: Text(t['title']!),
-                      value: t['id']!,
-                      groupValue: selectedTaskId,
-                      onChanged: (v) => setState(() => selectedTaskId = v),
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('取消'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    if (selectedTaskId == null) {
-                      // 如果未选择，提示并不关闭
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(const SnackBar(content: Text('请选择一个任务')));
-                      return;
-                    }
-                    final task = tasks.firstWhere(
-                      (t) => t['id'] == selectedTaskId,
-                    );
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => AIAnalysisDetailPage(
-                          mode: 'task',
-                          params: {
-                            'taskId': task['id'],
-                            'title': task['title'],
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text('确认'),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 
