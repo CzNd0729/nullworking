@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.nullworking.model.AIAnalysisResult;
+import java.util.List;
 
 @Repository
 public interface AIAnalysisResultRepository extends JpaRepository<AIAnalysisResult, Integer> {
+    List<AIAnalysisResult> findByUser_UserId(Integer userId);
 }

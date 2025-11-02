@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 import com.nullworking.model.Log;
 import com.nullworking.model.Task;
+import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
 
 @Service
 public class AIService {
@@ -250,9 +252,24 @@ public class AIService {
         }
     }
 
-    public void shutdown() {
-        if (arkService != null) {
-            arkService.shutdownExecutor();
+    public String getAIAnalysisResult(Integer resultId) {
+        String content = aiAnalysisResultRepository.findById(resultId)
+                .orElseThrow(() -> new RuntimeException("AI分析结果未找到，ID: " + resultId))
+                .getContent();
+
+        try {
+            // 尝试将内容解析为JSON并格式化
+            Object json = objectMapper.readValue(content, Object.class);
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
+        } catch (JsonProcessingException e) {
+            // 如果解析失败，说明不是JSON，直接返回原始内容
+            return content;
         }
+    }
+
+    public List<AIAnalysisResultSummaryDTO> listAIAnalysisResults(Integer userId) {
+        return aiAnalysisResultRepository.findByUser_UserId(userId).stream()
+                .map(result -> new AIAnalysisResultSummaryDTO(result.getResultId(),result.getAnalysisTime(),result.getPrompt()))
+                .collect(Collectors.toList());
     }
 }
