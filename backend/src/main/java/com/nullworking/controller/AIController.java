@@ -33,9 +33,9 @@ public class AIController {
     }
 
     @PostMapping("/analysis")
-    public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request) {
+    public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request, @RequestParam Integer mode) {
         try {
-            Integer resultId = aiService.startAIAnalysis(request);
+            Integer resultId = aiService.startAIAnalysis(request, mode);
             return ApiResponse.success(resultId);
         } catch (Exception e) {
             e.printStackTrace();
