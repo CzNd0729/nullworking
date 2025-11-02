@@ -60,8 +60,16 @@
         <el-form-item label="描述" prop="deptDescription">
           <el-input v-model="temp.deptDescription" type="textarea" :rows="3" placeholder="请输入部门描述" />
         </el-form-item>
-        <el-form-item label="父部门ID" prop="parentDept">
-          <el-input-number v-model="temp.parentDept" :min="0" placeholder="请输入父部门ID，留空为根部门" />
+        <el-form-item label="父部门" prop="parentDept">
+          <el-select v-model="temp.parentDept" placeholder="请选择父部门，留空为根部门" clearable style="width: 100%">
+            <el-option
+              v-for="dept in departmentsList"
+              :key="dept.departmentId || dept.deptId"
+              :label="dept.deptName || dept.departmentName"
+              :value="dept.departmentId || dept.deptId"
+              :disabled="dialogStatus === 'update' && dept.departmentId === temp.departmentId"
+            />
+          </el-select>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -92,6 +100,7 @@ export default {
         deptDescription: '',
         parentDept: null
       },
+      departmentsList: [],
       dialogFormVisible: false,
       dialogStatus: '',
       textMap: {
@@ -103,7 +112,9 @@ export default {
       }
     }
   },
-  created() {
+  async created() {
+    // Load departments for dropdown first
+    await this.loadAllDepartments()
     this.getList()
   },
   methods: {
@@ -139,20 +150,89 @@ export default {
           }
         }
         
-        // Try common root department IDs (0, 1, 2, etc.) to find where departments start
-        // We'll try up to ID 10, which should cover most cases
-        for (let rootId = 0; rootId <= 10; rootId++) {
+        // Strategy 1: Try common root department IDs first (0-20)
+        for (let rootId = 0; rootId <= 20; rootId++) {
           try {
             await fetchDepartments(rootId)
-            // Once we find departments, we can stop trying higher IDs
-            // (assuming departments are created sequentially)
-            if (allDepts.length > 0) {
-              // Found departments, but continue to check if there are more root departments
-              // Actually, let's just continue to make sure we get all
-            }
           } catch (error) {
-            // Skip if this department doesn't exist
             continue
+          }
+        }
+        
+        // Strategy 2: Also try fetching from all departments we've already found
+        // This helps catch newly created sub-departments
+        const newlyFoundIds = Array.from(visitedDeptIds)
+        for (const knownId of newlyFoundIds) {
+          try {
+            await fetchDepartments(knownId)
+          } catch (error) {
+            // Skip if error
+          }
+        }
+        
+        // Strategy 3: Use the departmentsList (from loadAllDepartments) as starting points
+        // This includes all departments we know about, including newly created ones in dropdown
+        if (this.departmentsList && this.departmentsList.length > 0) {
+          for (const knownDept of this.departmentsList) {
+            const knownId = knownDept.departmentId || knownDept.deptId
+            if (knownId && !visitedDeptIds.has(knownId)) {
+              try {
+                await fetchDepartments(knownId)
+              } catch (error) {
+                // Skip if error
+              }
+            }
+            // Also try the parent department ID from known departments
+            const parentId = knownDept.parentDept || knownDept.parentId
+            if (parentId && !visitedDeptIds.has(parentId)) {
+              try {
+                await fetchDepartments(parentId)
+              } catch (error) {
+                // Skip if error
+              }
+            }
+          }
+        }
+        
+        // Strategy 3b: If we have existing departments in the list, also try their IDs
+        // This helps find departments that might have been missed
+        if (this.list && this.list.length > 0) {
+          for (const existingDept of this.list) {
+            const existingId = existingDept.departmentId || existingDept.deptId
+            if (existingId && !visitedDeptIds.has(existingId)) {
+              try {
+                await fetchDepartments(existingId)
+              } catch (error) {
+                // Skip if error
+              }
+            }
+            // Also try the parent department ID
+            const parentId = existingDept.parentDept || existingDept.parentId
+            if (parentId && !visitedDeptIds.has(parentId)) {
+              try {
+                await fetchDepartments(parentId)
+              } catch (error) {
+                // Skip if error
+              }
+            }
+          }
+        }
+        
+        // Strategy 4: Expand search range if we found departments with high IDs
+        if (allDepts.length > 0) {
+          const deptIds = allDepts.map(d => (d.deptId || d.departmentId || 0)).filter(id => id > 0)
+          if (deptIds.length > 0) {
+            const maxId = Math.max(...deptIds)
+            // Try a few more IDs beyond the maximum we found (up to 50 more)
+            for (let tryId = maxId + 1; tryId <= maxId + 50; tryId++) {
+              if (!visitedDeptIds.has(tryId)) {
+                try {
+                  await fetchDepartments(tryId)
+                } catch (error) {
+                  // Skip if error
+                }
+              }
+            }
           }
         }
         
@@ -163,6 +243,16 @@ export default {
           deptDescription: dept.deptDescription || dept.description,
           parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
         }))
+        
+        // Remove duplicates based on departmentId
+        const uniqueMap = new Map()
+        this.list.forEach(dept => {
+          const id = dept.departmentId
+          if (!uniqueMap.has(id)) {
+            uniqueMap.set(id, dept)
+          }
+        })
+        this.list = Array.from(uniqueMap.values())
         
         // Sort departments by departmentId in ascending order
         this.list.sort((a, b) => {
@@ -176,6 +266,56 @@ export default {
         console.error("Error loading departments:", error)
         this.list = []
         this.listLoading = false
+      }
+    },
+    async loadAllDepartments() {
+      try {
+        // Load all departments for the dropdown
+        let allDepts = []
+        const visitedDeptIds = new Set()
+        
+        const fetchDepartments = async (deptId) => {
+          if (visitedDeptIds.has(deptId)) {
+            return
+          }
+          visitedDeptIds.add(deptId)
+          
+          try {
+            const response = await listSubDepts(deptId)
+            if (response.data && response.data.depts) {
+              const subDepts = response.data.depts
+              allDepts = allDepts.concat(subDepts)
+              
+              for (const subDept of subDepts) {
+                const subDeptId = subDept.deptId || subDept.departmentId
+                if (subDeptId && !visitedDeptIds.has(subDeptId)) {
+                  await fetchDepartments(subDeptId)
+                }
+              }
+            }
+          } catch (error) {
+            // Skip if department doesn't exist
+          }
+        }
+        
+        // Try common root department IDs
+        for (let rootId = 0; rootId <= 10; rootId++) {
+          try {
+            await fetchDepartments(rootId)
+          } catch (error) {
+            continue
+          }
+        }
+        
+        this.departmentsList = allDepts.map(dept => ({
+          departmentId: dept.deptId || dept.departmentId,
+          deptName: dept.deptName || dept.departmentName,
+          deptDescription: dept.deptDescription || dept.description,
+          parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
+        }))
+      } catch (error) {
+        console.error('Failed to load departments for dropdown:', error)
+        this.departmentsList = []
       }
     },
     resetTemp() {
@@ -200,10 +340,33 @@ export default {
           // Remove departmentId from temp before creating a new department
           const tempData = Object.assign({}, this.temp)
           delete tempData.departmentId
-          createDept(tempData).then(() => {
+          createDept(tempData).then(async (response) => {
             this.dialogFormVisible = false
             this.$message.success('添加部门成功')
-            this.getList() // Refresh the list to show the newly created department with its ID
+            // Force refresh by clearing the list first, then reloading
+            this.list = []
+            
+            // Refresh the departments list for dropdown first
+            await this.loadAllDepartments()
+            
+            // If we know the parent department ID, try fetching from it first to get the new department
+            const parentId = tempData.parentDept
+            if (parentId !== null && parentId !== undefined) {
+              // Try to fetch sub-departments from parent to get the newly created one
+              try {
+                const response = await listSubDepts(parentId)
+                if (response.data && response.data.depts) {
+                  // Found new department, now get full list
+                  this.getList()
+                  return
+                }
+              } catch (error) {
+                // Continue to full refresh
+              }
+            }
+            
+            // Full refresh of the list
+            this.getList()
           }).catch(error => {
             console.error("Error creating department:", error)
             this.$message.error(error.response?.data?.message || '添加部门失败')
