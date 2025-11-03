@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 import com.nullworking.model.Log;
 import com.nullworking.model.Task;
 import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
+import com.nullworking.common.ApiResponse;
 
 @Service
 public class AIService {
@@ -47,6 +49,10 @@ public class AIService {
     private final TaskRepository taskRepository;
     private final String systemPrompt;
     private final ObjectMapper objectMapper;
+
+    @Lazy
+    @Autowired
+    private AIService self;
 
     @Autowired
     public AIService(
@@ -101,7 +107,30 @@ public class AIService {
         return response.toString();
     }
 
-    public Integer startAIAnalysis(AIAnalysisRequest request, Integer mode) {
+    public ApiResponse<Integer> startAIAnalysis(AIAnalysisRequest request, Integer mode) {
+        // 1. 数据完整性检查
+        if (mode == null) {
+            return ApiResponse.error(400, "分析模式 (mode) 不能为空。");
+        }
+
+        if (mode == 0) { // 用户+时间模式
+            if (request.getUserIds() == null || request.getUserIds().isEmpty()) {
+                return ApiResponse.error(400, "在用户+时间模式下，用户ID列表 (userIds) 不能为空。");
+            }
+            if (request.getStartDate() == null || request.getStartDate().isEmpty()) {
+                return ApiResponse.error(400, "在用户+时间模式下，开始日期 (startDate) 不能为空。");
+            }
+            if (request.getEndDate() == null || request.getEndDate().isEmpty()) {
+                return ApiResponse.error(400, "在用户+时间模式下，结束日期 (endDate) 不能为空。");
+            }
+        } else if (mode == 1) { // 仅任务模式
+            if (request.getTaskId() == null) {
+                return ApiResponse.error(400, "在任务模式下，任务ID (taskId) 不能为空。");
+            }
+        } else {
+            return ApiResponse.error(400, "不支持的分析模式: " + mode + "。支持的模式为0 (用户+时间) 或1 (仅任务)。");
+        }
+
         AIAnalysisResult analysisResult = new AIAnalysisResult();
         
         // 从SecurityContextHolder中获取当前用户的ID
@@ -121,9 +150,9 @@ public class AIService {
         aiAnalysisResultRepository.save(analysisResult);
 
         // 异步执行AI分析
-        performAIAnalysis(analysisResult.getResultId(), request, mode);
+        self.performAIAnalysis(analysisResult.getResultId(), request, mode);
 
-        return analysisResult.getResultId();
+        return ApiResponse.success(analysisResult.getResultId());
     }
 
     @Async
@@ -165,8 +194,18 @@ public class AIService {
                 List<Map<String, Object>> logList = logs.stream().map(log -> {
                     Map<String, Object> logMap = new HashMap<>();
                     logMap.put("logId", log.getLogId());
-                    logMap.put("taskId", log.getTask().getTaskId());
-                    logMap.put("userId", log.getUser().getUserId());
+                    Task logTask = log.getTask();
+                    if (logTask != null) {
+                        logMap.put("taskId", logTask.getTaskId());
+                    } else {
+                        logMap.put("taskId", null);
+                    }
+                    User logUser = log.getUser();
+                    if (logUser != null) {
+                        logMap.put("userId", logUser.getUserId());
+                    } else {
+                        logMap.put("userId", null);
+                    }
                     logMap.put("logTitle", log.getLogTitle());
                     logMap.put("logContent", log.getLogContent());
                     logMap.put("logStatus", log.getLogStatus());
@@ -193,6 +232,7 @@ public class AIService {
                 // 从日志中提取唯一用户
                 List<User> users = logs.stream()
                         .map(Log::getUser)
+                        .filter(java.util.Objects::nonNull) // 过滤掉可能的null用户
                         .distinct()
                         .collect(Collectors.toList());
 
@@ -218,8 +258,18 @@ public class AIService {
                 List<Map<String, Object>> logList = logs.stream().map(log -> {
                     Map<String, Object> logMap = new HashMap<>();
                     logMap.put("logId", log.getLogId());
-                    logMap.put("taskId", log.getTask().getTaskId());
-                    logMap.put("userId", log.getUser().getUserId());
+                    Task logTask = log.getTask();
+                    if (logTask != null) {
+                        logMap.put("taskId", logTask.getTaskId());
+                    } else {
+                        logMap.put("taskId", null);
+                    }
+                    User logUser = log.getUser();
+                    if (logUser != null) {
+                        logMap.put("userId", logUser.getUserId());
+                    } else {
+                        logMap.put("userId", null);
+                    }
                     logMap.put("logTitle", log.getLogTitle());
                     logMap.put("logContent", log.getLogContent());
                     logMap.put("logStatus", log.getLogStatus());
@@ -254,9 +304,12 @@ public class AIService {
     }
 
     public Map<String, Object> getAIAnalysisResult(Integer resultId) {
-        String content = aiAnalysisResultRepository.findById(resultId)
-                .orElseThrow(() -> new RuntimeException("AI分析结果未找到，ID: " + resultId))
-                .getContent();
+        AIAnalysisResult analysisResult = aiAnalysisResultRepository.findById(resultId)
+                .orElseThrow(() -> new RuntimeException("AI分析结果未找到，ID: " + resultId));
+        String content = analysisResult.getContent();
+        if (content == null) {
+            throw new RuntimeException("AI分析结果内容为空，ID: " + resultId);
+        }
         try {
             return objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException e) {
@@ -266,7 +319,13 @@ public class AIService {
 
     public List<AIAnalysisResultSummaryDTO> listAIAnalysisResults(Integer userId) {
         return aiAnalysisResultRepository.findByUser_UserId(userId).stream()
-                .map(result -> new AIAnalysisResultSummaryDTO(result.getResultId(),result.getAnalysisTime(),result.getPrompt()))
+                .map(result -> {
+                    String prompt = result.getPrompt();
+                    if (prompt == null) {
+                        prompt = ""; // 或者其他默认值
+                    }
+                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), prompt);
+                })
                 .collect(Collectors.toList());
     }
 }

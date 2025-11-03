@@ -9,7 +9,6 @@ import com.nullworking.service.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.PreDestroy;
 import java.util.List;
 import com.nullworking.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,13 +40,8 @@ public class AIController {
 
     @PostMapping("/analysis")
     public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request, @RequestParam Integer mode) {
-        try {
-            Integer resultId = aiService.startAIAnalysis(request, mode);
-            return ApiResponse.success(resultId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ApiResponse.error(500, "AI分析启动失败: " + e.getMessage());
-        }
+        // try-catch 块不再需要，因为服务层已经返回ApiResponse
+        return aiService.startAIAnalysis(request, mode);
     }
 
     @GetMapping("/analysis/{resultId}")
