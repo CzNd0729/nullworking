@@ -92,23 +92,97 @@ public class DepartmentService {
             }
             departments = departmentRepository.findByParentDepartment_departmentId(departmentId);
 
-            // 构建响应数据
+            // 构建“扁平但按层级深度优先排序”的返回，保持前端键名不变（depts）
             Map<String, Object> result = new HashMap<>();
-            List<Map<String, Object>> deptList = departments.stream()
-                    .map(dept -> {
-                        Map<String, Object> deptInfo = new HashMap<>();
-                        deptInfo.put("deptId", dept.getDepartmentId());
-                        deptInfo.put("deptName", dept.getDepartmentName());
-                        deptInfo.put("deptDescription", dept.getDepartmentDescription());
-                        return deptInfo;
-                    })
-                    .collect(Collectors.toList());
-            
-            result.put("depts", deptList);
+            List<Map<String, Object>> ordered = new ArrayList<>();
+            for (Department child : departments) {
+                buildFlatDeptOrder(child, 0, ordered);
+            }
+            result.put("depts", ordered);
             return ApiResponse.success(result);
         } catch (Exception e) {
             return ApiResponse.error(500, "获取子部门列表失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 将部门树拍平成深度优先顺序的列表，保持兼容字段
+     */
+    private void buildFlatDeptOrder(Department dept, int level, List<Map<String, Object>> acc) {
+        Map<String, Object> node = new HashMap<>();
+        node.put("deptId", dept.getDepartmentId());
+        node.put("deptName", dept.getDepartmentName());
+        node.put("deptDescription", dept.getDepartmentDescription());
+        node.put("level", level); // 可供前端可选使用做缩进；不影响兼容
+        acc.add(node);
+
+        if (dept.getSubDepartments() != null && !dept.getSubDepartments().isEmpty()) {
+            // 可按名称排序，保证稳定输出
+            List<Department> children = new ArrayList<>(dept.getSubDepartments());
+            children.sort(Comparator.comparing(Department::getDepartmentName, Comparator.nullsLast(String::compareTo)));
+            for (Department child : children) {
+                buildFlatDeptOrder(child, level + 1, acc);
+            }
+        }
+    }
+
+    /**
+     * 构建整棵部门树（从所有根部门开始）
+     */
+    public ApiResponse<Map<String, Object>> getDeptTree() {
+        try {
+            List<Department> roots = departmentRepository.findByParentDepartment_departmentIdIsNull();
+
+            List<Map<String, Object>> tree = new ArrayList<>();
+            for (Department root : roots) {
+                tree.add(buildDeptNode(root));
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("tree", tree);
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取部门树失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 构建某个部门为根的子树
+     */
+    public ApiResponse<Map<String, Object>> getDeptSubTree(Integer departmentId) {
+        try {
+            Department root = departmentRepository.findById(departmentId).orElse(null);
+            if (root == null) {
+                return ApiResponse.error(404, "部门不存在");
+            }
+
+            Map<String, Object> node = buildDeptNode(root);
+            Map<String, Object> result = new HashMap<>();
+            // 与 getDeptTree 返回结构保持一致，使用列表承载
+            result.put("tree", Collections.singletonList(node));
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取部门子树失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 递归构建节点
+     */
+    private Map<String, Object> buildDeptNode(Department dept) {
+        Map<String, Object> node = new HashMap<>();
+        node.put("deptId", dept.getDepartmentId());
+        node.put("deptName", dept.getDepartmentName());
+        node.put("deptDescription", dept.getDepartmentDescription());
+
+        List<Map<String, Object>> children = new ArrayList<>();
+        if (dept.getSubDepartments() != null && !dept.getSubDepartments().isEmpty()) {
+            for (Department child : dept.getSubDepartments()) {
+                children.add(buildDeptNode(child));
+            }
+        }
+        node.put("children", children);
+        return node;
     }
 
     /**

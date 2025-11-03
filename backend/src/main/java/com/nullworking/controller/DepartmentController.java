@@ -62,6 +62,34 @@ public class DepartmentController {
     }
 
     /**
+     * 获取整棵部门树（根部门及其所有子部门）
+     */
+    @Operation(summary = "获取部门树", description = "返回所有根部门及其子部门的树形结构")
+    @GetMapping("/tree")
+    public ApiResponse<Map<String, Object>> getDeptTree(HttpServletRequest request) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (currentUserId == null || currentUserId != 0) {
+            return ApiResponse.error(403, "只有管理员可以查看部门结构");
+        }
+        return departmentService.getDeptTree();
+    }
+
+    /**
+     * 获取某个部门为根的子树
+     */
+    @Operation(summary = "获取部门子树", description = "返回指定部门及其所有子部门的树形结构")
+    @GetMapping("/{departmentId}/tree")
+    public ApiResponse<Map<String, Object>> getDeptSubTree(
+            @Parameter(description = "部门ID") @PathVariable Integer departmentId,
+            HttpServletRequest request) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (currentUserId == null || currentUserId != 0) {
+            return ApiResponse.error(403, "只有管理员可以查看部门结构");
+        }
+        return departmentService.getDeptSubTree(departmentId);
+    }
+
+    /**
      * 创建部门
      * @param request 部门创建请求
      * @return 响应结果

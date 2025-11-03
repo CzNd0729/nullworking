@@ -14,6 +14,20 @@ export function listSubDepts(departmentId) {
   })
 }
 
+export function getDeptTree() {
+  return request({
+    url: '/api/departments/tree',
+    method: 'get'
+  })
+}
+
+export function getDeptSubTree(departmentId) {
+  return request({
+    url: `/api/departments/${departmentId}/tree`,
+    method: 'get'
+  })
+}
+
 export function createDept(data) {
   return request({
     url: '/api/departments',

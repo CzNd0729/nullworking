@@ -20,14 +20,22 @@
       highlight-current-row
       style="width: 100%;"
     >
+      <el-table-column label="" align="center" width="40">
+        <template slot-scope="{row}">
+          <span v-if="hasChildren[row.departmentId]" class="expand-toggle" @click="toggleRow(row)">
+            <i :class="expanded[row.departmentId] ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
+          </span>
+          <span v-else style="display:inline-block;width:14px;"></span>
+        </template>
+      </el-table-column>
       <el-table-column label="ID" prop="departmentId" align="center" width="80">
         <template slot-scope="{row}">
           <span>{{ row.departmentId }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="部门名称" prop="deptName" align="center">
+      <el-table-column label="部门名称" prop="deptName" align="left">
         <template slot-scope="{row}">
-          <span>{{ row.deptName || row.departmentName }}</span>
+          <span :style="{ paddingLeft: (row.level ? row.level * 16 : 0) + 'px' }">{{ row.deptName || row.departmentName }}</span>
         </template>
       </el-table-column>
       <el-table-column label="描述" prop="deptDescription" align="center">
@@ -35,11 +43,14 @@
           <span>{{ row.deptDescription || row.description }}</span>
         </template>
       </el-table-column>
+      <!-- 父部门ID可隐藏；若需要显示，可取消注释 -->
+      <!--
       <el-table-column label="父部门ID" prop="parentDept" align="center">
         <template slot-scope="{row}">
           <span>{{ row.parentDept !== null && row.parentDept !== undefined ? row.parentDept : (row.parentId || '') }}</span>
         </template>
       </el-table-column>
+      -->
       <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
           <el-button type="primary" size="mini" @click="handleUpdate(row)">
@@ -85,14 +96,17 @@
 </template>
 
 <script>
-import { listSubDepts, createDept, updateDept, deleteDept } from '@/api/department'
+import { listSubDepts, createDept, updateDept, deleteDept, getDeptTree } from '@/api/department'
 
 export default {
   name: 'DepartmentManagement',
   data() {
     return {
       tableKey: 0,
-      list: null,
+      list: null, // 可见行
+      allRows: [], // 全量扁平（深度优先）
+      expanded: {}, // { [id]: boolean }
+      hasChildren: {}, // { [id]: boolean }
       listLoading: true,
       temp: {
         departmentId: undefined,
@@ -121,152 +135,80 @@ export default {
     async getList() {
       this.listLoading = true
       try {
-        let allDepts = []
-        const visitedDeptIds = new Set()
-        
-        // Recursive function to fetch all departments starting from a root department
-        const fetchDepartments = async (deptId) => {
-          if (visitedDeptIds.has(deptId)) {
-            return
+        // 使用后端树接口，然后拍平成深度优先顺序的列表，并记录父子关系
+        const resp = await getDeptTree()
+        const trees = (resp && resp.data && resp.data.tree) ? resp.data.tree : []
+
+        const flat = []
+        const childrenMap = {}
+        const dfs = (node, level, parentId) => {
+          const row = {
+            departmentId: node.deptId,
+            deptName: node.deptName,
+            deptDescription: node.deptDescription,
+            parentDept: parentId || null,
+            level: level
           }
-          visitedDeptIds.add(deptId)
-          
-          try {
-            const response = await listSubDepts(deptId)
-            if (response.data && response.data.depts) {
-              const subDepts = response.data.depts
-              allDepts = allDepts.concat(subDepts)
-              
-              // Recursively fetch sub-departments
-              for (const subDept of subDepts) {
-                const subDeptId = subDept.deptId || subDept.departmentId
-                if (subDeptId && !visitedDeptIds.has(subDeptId)) {
-                  await fetchDepartments(subDeptId)
-                }
-              }
-            }
-          } catch (error) {
-            // Department doesn't exist, skip silently
+          flat.push(row)
+          if (parentId) {
+            if (!childrenMap[parentId]) childrenMap[parentId] = []
+            childrenMap[parentId].push(row.departmentId)
+          }
+          const children = node.children || []
+          for (const child of children) {
+            dfs(child, level + 1, row.departmentId)
           }
         }
-        
-        // Strategy 1: Try common root department IDs first (0-20)
-        for (let rootId = 0; rootId <= 20; rootId++) {
-          try {
-            await fetchDepartments(rootId)
-          } catch (error) {
-            continue
-          }
+        for (const root of trees) {
+          dfs(root, 0, null)
         }
-        
-        // Strategy 2: Also try fetching from all departments we've already found
-        // This helps catch newly created sub-departments
-        const newlyFoundIds = Array.from(visitedDeptIds)
-        for (const knownId of newlyFoundIds) {
-          try {
-            await fetchDepartments(knownId)
-          } catch (error) {
-            // Skip if error
-          }
-        }
-        
-        // Strategy 3: Use the departmentsList (from loadAllDepartments) as starting points
-        // This includes all departments we know about, including newly created ones in dropdown
-        if (this.departmentsList && this.departmentsList.length > 0) {
-          for (const knownDept of this.departmentsList) {
-            const knownId = knownDept.departmentId || knownDept.deptId
-            if (knownId && !visitedDeptIds.has(knownId)) {
-              try {
-                await fetchDepartments(knownId)
-              } catch (error) {
-                // Skip if error
-              }
-            }
-            // Also try the parent department ID from known departments
-            const parentId = knownDept.parentDept || knownDept.parentId
-            if (parentId && !visitedDeptIds.has(parentId)) {
-              try {
-                await fetchDepartments(parentId)
-              } catch (error) {
-                // Skip if error
-              }
-            }
-          }
-        }
-        
-        // Strategy 3b: If we have existing departments in the list, also try their IDs
-        // This helps find departments that might have been missed
-        if (this.list && this.list.length > 0) {
-          for (const existingDept of this.list) {
-            const existingId = existingDept.departmentId || existingDept.deptId
-            if (existingId && !visitedDeptIds.has(existingId)) {
-              try {
-                await fetchDepartments(existingId)
-              } catch (error) {
-                // Skip if error
-              }
-            }
-            // Also try the parent department ID
-            const parentId = existingDept.parentDept || existingDept.parentId
-            if (parentId && !visitedDeptIds.has(parentId)) {
-              try {
-                await fetchDepartments(parentId)
-              } catch (error) {
-                // Skip if error
-              }
-            }
-          }
-        }
-        
-        // Strategy 4: Expand search range if we found departments with high IDs
-        if (allDepts.length > 0) {
-          const deptIds = allDepts.map(d => (d.deptId || d.departmentId || 0)).filter(id => id > 0)
-          if (deptIds.length > 0) {
-            const maxId = Math.max(...deptIds)
-            // Try a few more IDs beyond the maximum we found (up to 50 more)
-            for (let tryId = maxId + 1; tryId <= maxId + 50; tryId++) {
-              if (!visitedDeptIds.has(tryId)) {
-                try {
-                  await fetchDepartments(tryId)
-                } catch (error) {
-                  // Skip if error
-                }
-              }
-            }
-          }
-        }
-        
-        // Normalize field names for display
-        this.list = allDepts.map(dept => ({
-          departmentId: dept.deptId || dept.departmentId,
-          deptName: dept.deptName || dept.departmentName,
-          deptDescription: dept.deptDescription || dept.description,
-          parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
-        }))
-        
-        // Remove duplicates based on departmentId
-        const uniqueMap = new Map()
-        this.list.forEach(dept => {
-          const id = dept.departmentId
-          if (!uniqueMap.has(id)) {
-            uniqueMap.set(id, dept)
-          }
+
+        // 计算 hasChildren
+        const hasChildren = {}
+        Object.keys(childrenMap).forEach(pid => {
+          hasChildren[pid] = childrenMap[pid] && childrenMap[pid].length > 0
         })
-        this.list = Array.from(uniqueMap.values())
-        
-        // Sort departments by departmentId in ascending order
-        this.list.sort((a, b) => {
-          const idA = a.departmentId || 0
-          const idB = b.departmentId || 0
-          return idA - idB
-        })
-        
+
+        this.allRows = flat
+        this.hasChildren = hasChildren
+
+        // 默认全部折叠（只显示根节点）
+        this.expanded = {}
+        this.rebuildVisibleList()
         this.listLoading = false
       } catch (error) {
         console.error("Error loading departments:", error)
         this.list = []
         this.listLoading = false
       }
+    },
+    toggleRow(row) {
+      const id = row.departmentId
+      this.$set(this.expanded, id, !this.expanded[id])
+      this.rebuildVisibleList()
+    },
+    rebuildVisibleList() {
+      // 按 allRows 的顺序筛选：根节点总是可见；其子节点仅当所有祖先都 expanded 才可见
+      const visible = []
+      const expanded = this.expanded
+      const parentMap = {}
+      this.allRows.forEach(r => { parentMap[r.departmentId] = r.parentDept || null })
+
+      const isVisible = (row) => {
+        let pid = row.parentDept
+        while (pid) {
+          if (!expanded[pid]) return false
+          pid = parentMap[pid]
+        }
+        return true
+      }
+
+      for (const row of this.allRows) {
+        if (isVisible(row)) {
+          visible.push(row)
+        }
+      }
+      this.list = visible
     },
     async loadAllDepartments() {
       try {
