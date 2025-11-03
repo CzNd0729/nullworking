@@ -116,9 +116,21 @@ class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
                                       context: context,
                                       initialDate: _startDate ?? DateTime.now(),
                                       firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
+                                      lastDate: _endDate ?? DateTime(2100),
                                     );
                                     if (picked != null) {
+                                      if (_endDate != null &&
+                                          picked.isAfter(_endDate!)) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('起始日期不能晚于截止日期'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        return;
+                                      }
                                       setState(() => _startDate = picked);
                                     }
                                   },
@@ -135,11 +147,25 @@ class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
                                   onPressed: () async {
                                     final picked = await showDatePicker(
                                       context: context,
-                                      initialDate: _endDate ?? DateTime.now(),
-                                      firstDate: DateTime(2000),
+                                      initialDate:
+                                          _endDate ??
+                                          (_startDate ?? DateTime.now()),
+                                      firstDate: _startDate ?? DateTime(2000),
                                       lastDate: DateTime(2100),
                                     );
                                     if (picked != null) {
+                                      if (_startDate != null &&
+                                          picked.isBefore(_startDate!)) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('截止日期不能早于起始日期'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                        return;
+                                      }
                                       setState(() => _endDate = picked);
                                     }
                                   },
@@ -153,23 +179,25 @@ class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _selectedPerson,
-                            decoration: const InputDecoration(
-                              labelText: '选择人员',
-                              border: OutlineInputBorder(),
+                          OutlinedButton(
+                            onPressed: () => _selectPerson(context),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
                             ),
-                            items: _people.map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedPerson = val);
-                              }
-                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _selectedPerson,
+                                  style: TextStyle(
+                                    color: _selectedPerson == '全部'
+                                        ? Colors.white54
+                                        : Colors.white,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_drop_down),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -222,6 +250,114 @@ class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _selectPerson(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: SizedBox(
+                    width: 40,
+                    height: 4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.all(Radius.circular(2)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '选择人员',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: _people.length,
+                    itemBuilder: (context, index) {
+                      final person = _people[index];
+                      final isSelected = person == _selectedPerson;
+
+                      return Card(
+                        color: isSelected
+                            ? const Color(0xFF00D9A3).withOpacity(0.3)
+                            : const Color(0xFF2A2A2A),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setState(() => _selectedPerson = person);
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: const Color(0xFF00D9A3),
+                                  child: Text(
+                                    person[0],
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    person,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Icon(
+                                    Icons.check,
+                                    color: Color(0xFF00D9A3),
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
