@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/api")
 public class AIController {
 
     private final AIService aiService;

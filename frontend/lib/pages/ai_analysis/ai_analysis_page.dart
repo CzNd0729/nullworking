@@ -1,8 +1,39 @@
 import 'package:flutter/material.dart';
-import 'ai_analysis_detail_page.dart';
+import 'package:intl/intl.dart';
+import 'package:nullworking/models/ai_analysis_result.dart';
+import 'package:nullworking/services/business/ai_analysis_business.dart';
+import 'create_analysis_request.dart';
 
-class AIAnalysisPage extends StatelessWidget {
+class AIAnalysisPage extends StatefulWidget {
   const AIAnalysisPage({super.key});
+
+  @override
+  State<AIAnalysisPage> createState() => _AIAnalysisPageState();
+}
+
+class _AIAnalysisPageState extends State<AIAnalysisPage> {
+  final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
+  List<AiAnalysisResult>? _analysisList;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalysisHistory();
+  }
+
+  Future<void> _loadAnalysisHistory() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final result = await _aiAnalysisBusiness.getResultList();
+    if (mounted) {
+      setState(() {
+        _analysisList = result;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +63,7 @@ class AIAnalysisPage extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
-                        const AIAnalysisDetailPage(mode: 'time', params: {}),
+                        const CreateAnalysisRequestPage(mode: 'time', params: {}),
                   ),
                 );
               },
@@ -69,31 +100,19 @@ class AIAnalysisPage extends StatelessWidget {
             const SizedBox(height: 16),
             // 历史分析列表
             Expanded(
-              child: ListView(
-                children: [
-                  _buildAnalysisItem(
-                    icon: Icons.trending_up,
-                    title: '社交媒体趋势分析 - 2023',
-                    time: '2023年10月26日 14:30',
-                    status: '完成',
-                    statusColor: Colors.blue,
-                  ),
-                  _buildAnalysisItem(
-                    icon: Icons.bar_chart,
-                    title: '市场情绪洞察',
-                    time: '2023年10月25日 09:15',
-                    status: '处理中',
-                    statusColor: Colors.cyan,
-                  ),
-                  _buildAnalysisItem(
-                    icon: Icons.sentiment_satisfied_alt,
-                    title: '用户反馈情感分析',
-                    time: '2023年10月24日 18:00',
-                    status: '完成',
-                    statusColor: Colors.blue,
-                  ),
-                ],
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _analysisList == null || _analysisList!.isEmpty
+                      ? const Center(child: Text('没有历史分析记录'))
+                      : RefreshIndicator(
+                          onRefresh: _loadAnalysisHistory,
+                          child: ListView.builder(
+                            itemCount: _analysisList!.length,
+                            itemBuilder: (context, index) {
+                              return _buildAnalysisItem(_analysisList![index]);
+                            },
+                          ),
+                        ),
             ),
           ],
         ),
@@ -101,13 +120,27 @@ class AIAnalysisPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAnalysisItem({
-    required IconData icon,
-    required String title,
-    required String time,
-    required String status,
-    required Color statusColor,
-  }) {
+  Widget _buildAnalysisItem(AiAnalysisResult analysisResult) {
+    String statusText;
+    Color statusColor;
+    switch (analysisResult.status) {
+      case 0:
+        statusText = '处理中';
+        statusColor = Colors.cyan;
+        break;
+      case 1:
+        statusText = '完成';
+        statusColor = Colors.blue;
+        break;
+      case 2:
+        statusText = '失败';
+        statusColor = Colors.red;
+        break;
+      default:
+        statusText = '未知';
+        statusColor = Colors.grey;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -120,25 +153,27 @@ class AIAnalysisPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.white70),
+              const Icon(Icons.history, color: Colors.white70),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  title,
+                  analysisResult.prompt,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  status,
+                  statusText,
                   style: TextStyle(color: statusColor, fontSize: 12),
                 ),
               ),
@@ -149,12 +184,21 @@ class AIAnalysisPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                time,
+                DateFormat('yyyy年MM月dd日 HH:mm')
+                    .format(analysisResult.analysisTime),
                 style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
               TextButton(
                 onPressed: () {
-                  // TODO: 查看详情
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => CreateAnalysisRequestPage(
+                        resultId: analysisResult.resultId,
+                        mode: 'view',
+                        params: const {},
+                      ),
+                    ),
+                  );
                 },
                 child: const Text('查看详情'),
               ),

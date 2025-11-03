@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
-class AIAnalysisDetailPage extends StatefulWidget {
+class CreateAnalysisRequestPage extends StatefulWidget {
   final String mode;
   final Map<String, dynamic> params;
+  final String? resultId;
 
-  const AIAnalysisDetailPage({
+  const CreateAnalysisRequestPage({
     super.key,
     required this.mode,
     required this.params,
+    this.resultId,
   });
 
   @override
-  State<AIAnalysisDetailPage> createState() => _AIAnalysisDetailPageState();
+  State<CreateAnalysisRequestPage> createState() =>
+      _CreateAnalysisRequestPageState();
 }
 
-class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
+class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   final TextEditingController _promptController = TextEditingController();
   bool _loading = false;
   String _analysisMode = 'time';
@@ -147,8 +150,7 @@ class _AIAnalysisDetailPageState extends State<AIAnalysisDetailPage> {
                                   onPressed: () async {
                                     final picked = await showDatePicker(
                                       context: context,
-                                      initialDate:
-                                          _endDate ??
+                                      initialDate: _endDate ??
                                           (_startDate ?? DateTime.now()),
                                       firstDate: _startDate ?? DateTime(2000),
                                       lastDate: DateTime(2100),
