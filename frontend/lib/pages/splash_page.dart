@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:nullworking/services/api/auth_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -9,6 +10,8 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
@@ -21,7 +24,20 @@ class _SplashPageState extends State<SplashPage> {
 
     if (mounted) {
       if (userId != null && userId.isNotEmpty) {
-        Navigator.of(context).pushReplacementNamed('/home');
+        final statusCode = await _authService.checkHealth();
+        if (statusCode == 403) {
+          await _authService.logout();
+          Navigator.of(context).pushReplacementNamed(
+            '/login',
+            arguments: {'message': '登录信息已过期'},
+          );
+        } else if (statusCode == 200) {
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          // Handle other error codes by logging out and going to login
+          await _authService.logout();
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
       } else {
         Navigator.of(context).pushReplacementNamed('/login');
       }
