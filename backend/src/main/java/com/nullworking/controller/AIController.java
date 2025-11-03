@@ -39,9 +39,13 @@ public class AIController {
     }
 
     @PostMapping("/analysis")
-    public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request, @RequestParam Integer mode) {
+    public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request, @RequestParam Integer mode, HttpServletRequest httpRequest) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未授权");
+        }
         // try-catch 块不再需要，因为服务层已经返回ApiResponse
-        return aiService.startAIAnalysis(request, mode);
+        return aiService.startAIAnalysis(request, mode, currentUserId);
     }
 
     @GetMapping("/analysis/{resultId}")

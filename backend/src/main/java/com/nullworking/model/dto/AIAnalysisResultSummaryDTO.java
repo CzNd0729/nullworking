@@ -6,11 +6,21 @@ public class AIAnalysisResultSummaryDTO {
     private Integer resultId;
     private LocalDateTime analysisTime;
     private String prompt;
+    private Integer status;
+    private Integer mode;
 
     public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, String prompt) {
         this.resultId = resultId;
         this.analysisTime = analysisTime;
         this.prompt = prompt;
+    }
+
+    public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, String prompt, Integer status, Integer mode) {
+        this.resultId = resultId;
+        this.analysisTime = analysisTime;
+        this.prompt = prompt;
+        this.status = status;
+        this.mode = mode;
     }
 
     public LocalDateTime getAnalysisTime() {
@@ -35,5 +45,21 @@ public class AIAnalysisResultSummaryDTO {
 
     public void setResultId(Integer resultId) {
         this.resultId = resultId;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    public Integer getMode() {
+        return mode;
+    }
+
+    public void setMode(Integer mode) {
+        this.mode = mode;
     }
 }

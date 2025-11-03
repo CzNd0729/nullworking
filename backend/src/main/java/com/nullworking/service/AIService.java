@@ -14,8 +14,6 @@ import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskRepository;
 import okhttp3.ConnectionPool;
 import okhttp3.Dispatcher;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -107,7 +105,7 @@ public class AIService {
         return response.toString();
     }
 
-    public ApiResponse<Integer> startAIAnalysis(AIAnalysisRequest request, Integer mode) {
+    public ApiResponse<Integer> startAIAnalysis(AIAnalysisRequest request, Integer mode, Integer userId) {
         // 1. 数据完整性检查
         if (mode == null) {
             return ApiResponse.error(400, "分析模式 (mode) 不能为空。");
@@ -133,11 +131,14 @@ public class AIService {
 
         AIAnalysisResult analysisResult = new AIAnalysisResult();
         
-        // 从SecurityContextHolder中获取当前用户的ID
-        String username = ((UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getUsername();
-        User currentUser = userRepository.findByUserName(username);
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found for ID: " + userId));
         analysisResult.setUser(currentUser);
         analysisResult.setAnalysisTime(LocalDateTime.now());
+        // 设置初始状态为0（分析中）
+        analysisResult.setStatus(0); 
+        // 设置分析模式
+        analysisResult.setMode(mode);
         // 将整个request对象转换为JSON字符串并存储到prompt字段
         try {
             String requestJson = objectMapper.writeValueAsString(request);
@@ -324,6 +325,7 @@ public class AIService {
             analysisResult.setContent("Error: " + e.getMessage());
             e.printStackTrace();
         } finally {
+            analysisResult.setStatus(1); // 分析完成，无论成功失败都标记为完成
             aiAnalysisResultRepository.save(analysisResult);
         }
     }
@@ -349,7 +351,7 @@ public class AIService {
                     if (prompt == null) {
                         prompt = ""; // 或者其他默认值
                     }
-                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), prompt);
+                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), prompt, result.getStatus(), result.getMode());
                 })
                 .collect(Collectors.toList());
     }
