@@ -216,9 +216,30 @@ public class AIService {
                     return logMap;
                 }).collect(Collectors.toList());
 
+                // 从日志中提取唯一的任务
+                List<Task> tasksInLogs = logs.stream()
+                        .map(Log::getTask)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+
+                // 构建tasks JSON
+                List<Map<String, Object>> taskList = tasksInLogs.stream().map(task -> {
+                    Map<String, Object> taskMap = new HashMap<>();
+                    taskMap.put("taskId", task.getTaskId());
+                    taskMap.put("taskTitle", task.getTaskTitle());
+                    taskMap.put("taskContent", task.getTaskContent());
+                    taskMap.put("taskStatus", task.getTaskStatus());
+                    taskMap.put("startTime", task.getStartTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    taskMap.put("endTime", task.getEndTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    taskMap.put("priority", task.getPriority());
+                    return taskMap;
+                }).collect(Collectors.toList());
+
                 Map<String, Object> data = new HashMap<>();
                 data.put("users", userList);
                 data.put("logs", logList);
+                data.put("tasks", taskList); // 添加任务列表
                 jsonData = objectMapper.writeValueAsString(data);
                 fullPrompt = request.getPrompt() + "\n\n以下是相关数据：\n" + jsonData;
             } else if (mode == 1) { // 仅任务模式
@@ -284,6 +305,10 @@ public class AIService {
                 data.put("task", taskMap);
                 data.put("users", userList);
                 data.put("logs", logList);
+                // 在任务模式下，直接使用已获取的任务作为任务列表
+                List<Map<String, Object>> taskList = new ArrayList<>();
+                taskList.add(taskMap);
+                data.put("tasks", taskList); // 添加任务列表
                 jsonData = objectMapper.writeValueAsString(data);
                 fullPrompt = request.getPrompt() + "\n\n以下是任务相关数据：\n" + jsonData;
             }
