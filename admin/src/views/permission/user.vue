@@ -25,11 +25,7 @@
           <span>{{ row.userId }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="用户名" prop="userName" align="center">
-        <template slot-scope="{row}">
-          <span>{{ row.userName }}</span>
-        </template>
-      </el-table-column>
+      <!-- 移除用户名列 -->
       <el-table-column label="真实姓名" prop="realName" align="center">
         <template slot-scope="{row}">
           <span>{{ row.realName }}</span>
@@ -85,7 +81,7 @@
           <el-input v-model="temp.realName" />
         </el-form-item>
         <el-form-item label="角色" prop="roleId">
-          <el-select v-model="temp.roleId" placeholder="请选择角色" clearable style="width: 100%">
+          <el-select v-model="temp.roleId" placeholder="请选择角色" :clearable="false" style="width: 100%">
             <el-option
               v-for="role in rolesList"
               :key="role.roleId"
@@ -95,7 +91,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="部门" prop="deptId">
-          <el-select v-model="temp.deptId" placeholder="请选择部门" clearable style="width: 100%">
+          <el-select v-model="temp.deptId" placeholder="请选择部门" :clearable="false" style="width: 100%">
             <el-option
               v-for="dept in departmentsList"
               :key="dept.departmentId || dept.deptId"
@@ -157,7 +153,9 @@ export default {
         userName: [{ required: true, message: '用户名不能为空', trigger: 'blur' }],
         password: [{ required: true, message: '密码不能为空', trigger: 'blur' }],
         realName: [{ required: true, message: '真实姓名不能为空', trigger: 'blur' }],
-        phone: [{ required: true, message: '电话号码不能为空', trigger: 'blur' }]
+        phone: [{ required: true, message: '电话号码不能为空', trigger: 'blur' }],
+        roleId: [{ required: true, message: '角色为必选项', trigger: 'change' }],
+        deptId: [{ required: true, message: '部门为必选项', trigger: 'change' }]
       }
     }
   },

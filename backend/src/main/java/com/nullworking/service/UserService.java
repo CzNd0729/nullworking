@@ -96,6 +96,10 @@ public class UserService {
                 Map<String, Object> userMap = new HashMap<>();
                 userMap.put("userId", user.getUserId());
                 userMap.put("realName", user.getRealName());
+                // 账号、联系方式
+                userMap.put("userName", user.getUserName());
+                userMap.put("phoneNumber", user.getPhoneNumber());
+                userMap.put("email", user.getEmail());
                 
                 // 获取角色名称
                 String roleName = user.getRole() != null ? user.getRole().getRoleName() : null;
@@ -124,6 +128,13 @@ public class UserService {
      */
     public ApiResponse<Void> addUser(UserCreateRequest request) {
         try {
+            // 角色与部门为必填
+            if (request.getRoleId() == null) {
+                return ApiResponse.error(400, "角色为必选项");
+            }
+            if (request.getDeptId() == null) {
+                return ApiResponse.error(400, "部门为必选项");
+            }
             // 检查用户名是否已存在
             if (userRepository.findByUserName(request.getUserName()) != null) {
                 return ApiResponse.error(409, "用户名已存在");
@@ -143,19 +154,15 @@ public class UserService {
             }
             
             // 验证角色是否存在
-            if (request.getRoleId() != null) {
-                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
-                if (roleOptional.isEmpty()) {
-                    return ApiResponse.error(404, "角色不存在");
-                }
+            Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+            if (roleOptional.isEmpty()) {
+                return ApiResponse.error(404, "角色不存在");
             }
             
             // 验证部门是否存在
-            if (request.getDeptId() != null) {
-                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
-                if (deptOptional.isEmpty()) {
-                    return ApiResponse.error(404, "部门不存在");
-                }
+            Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+            if (deptOptional.isEmpty()) {
+                return ApiResponse.error(404, "部门不存在");
             }
             
             // 密码加密
@@ -172,14 +179,10 @@ public class UserService {
             user.setCreationTime(LocalDateTime.now());
             
             // 设置角色
-            if (request.getRoleId() != null) {
-                user.setRole(roleRepository.findById(request.getRoleId()).get());
-            }
+            user.setRole(roleOptional.get());
             
             // 设置部门
-            if (request.getDeptId() != null) {
-                user.setDepartment(departmentRepository.findById(request.getDeptId()).get());
-            }
+            user.setDepartment(deptOptional.get());
             
             // 保存用户
             userRepository.save(user);
@@ -205,24 +208,28 @@ public class UserService {
             }
             
             User user = userOptional.get();
-            
-            // 更新角色
-            if (request.getRoleId() != null) {
-                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
-                if (roleOptional.isEmpty()) {
-                    return ApiResponse.error(404, "角色不存在");
-                }
-                user.setRole(roleOptional.get());
+
+            // 强制要求角色与部门为必填
+            if (request.getRoleId() == null) {
+                return ApiResponse.error(400, "角色为必选项");
             }
-            
-            // 更新部门
-            if (request.getDeptId() != null) {
-                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
-                if (deptOptional.isEmpty()) {
-                    return ApiResponse.error(404, "部门不存在");
-                }
-                user.setDepartment(deptOptional.get());
+            if (request.getDeptId() == null) {
+                return ApiResponse.error(400, "部门为必选项");
             }
+
+            // 更新角色（必填校验后）
+            Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+            if (roleOptional.isEmpty()) {
+                return ApiResponse.error(404, "角色不存在");
+            }
+            user.setRole(roleOptional.get());
+
+            // 更新部门（必填校验后）
+            Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+            if (deptOptional.isEmpty()) {
+                return ApiResponse.error(404, "部门不存在");
+            }
+            user.setDepartment(deptOptional.get());
             
             // 更新其他字段
             if (request.getUserName() != null && !request.getUserName().trim().isEmpty()) {
