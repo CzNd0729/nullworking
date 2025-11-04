@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:nullworking/models/ai_analysis_result.dart';
 import 'package:nullworking/services/business/ai_analysis_business.dart';
+import 'package:nullworking/pages/ai_analysis/ai_analysis_result_page.dart'; // 新增导入
 import 'create_analysis_request.dart';
 
 class AIAnalysisPage extends StatefulWidget {
@@ -192,10 +193,8 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => CreateAnalysisRequestPage(
+                      builder: (context) => AIAnalysisResultPage(
                         resultId: analysisResult.resultId,
-                        mode: 'view',
-                        params: const {},
                       ),
                     ),
                   );

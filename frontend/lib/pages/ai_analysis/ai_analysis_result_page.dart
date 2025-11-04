@@ -1,114 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:nullworking/models/ai_analysis_result.dart';
+import 'package:nullworking/services/business/ai_analysis_business.dart';
 
 
-class AIAnalysisResultPage extends StatelessWidget {
-  AIAnalysisResultPage({super.key});
+class AIAnalysisResultPage extends StatefulWidget {
+  final String resultId;
 
-  // ---------- Mock data (你给的完整数据) ----------
-  final Map<String, dynamic> mockData = {
-    "code": 200,
-    "message": "success",
-    "data": {
-      "constructive_suggestions": [
-        {
-          "id": "sug-001",
-          "severity": "medium",
-          "title": "测试自动创建日志任务需补充执行计划",
-          "description":
-              "\"测试自动创建日志\"任务仅接收任务（logDate10-30），未生成后续测试用例、执行步骤或验证标准文档，建议补充\"测试用例设计\"与\"自动化测试脚本开发\"环节日志，明确任务闭环流程",
-          "impact": "可降低后续测试环节返工率，提升任务完成度至100%"
-        },
-        {
-          "id": "sug-002",
-          "severity": "low",
-          "title": "日志管理模块联调阶段优化建议",
-          "description":
-              "联调与性能优化（logId121）中仅优化列表查询索引，未记录具体索引优化前后的性能指标（如响应时间对比），建议补充\"性能指标基线记录\"与\"优化效果验证\"说明，为后续同类任务积累优化经验",
-          "impact": "可标准化性能优化流程，提升技术方案可追溯性"
-        }
-      ],
-      "keyword_statistics": [
-        {"keyword": "日志管理", "count": 14, "percentage": 35},
-        {"keyword": "接口开发", "count": 8, "percentage": 20},
-        {"keyword": "联调", "count": 5, "percentage": 12},
-        {"keyword": "权限模块", "count": 3, "percentage": 7},
-        {"keyword": "测试", "count": 4, "percentage": 10},
-        {"keyword": "需求分析", "count": 2, "percentage": 5},
-        {"keyword": "数据库设计", "count": 2, "percentage": 5},
-        {"keyword": "任务完成", "count": 1, "percentage": 3}
-      ],
-      "summary":
-          "邹匀翻本周围绕\"日志管理模块\"完成2个核心任务：完成日志管理模块后端开发（task86），实现从需求分析到上线交付的全流程闭环（taskProgress从14%提升至100%）；完成前后端联调验证（task88），达成任务进度100%。同时接收\"测试自动创建日志\"任务（task90）并处于初始状态。工作时长分布不均，10-30日达32小时，日均工作时长14.7小时，任务覆盖需求分析、接口开发、权限控制、联调测试等全链路。本周核心进展为\"日志管理模块后端开发\"任务完成度100%，建议补充测试自动创建日志任务的执行计划与性能优化数据记录。",
-      "frontend_chart_data": [
-        {
-          "selected_chart_type": "折线图（任务进度推进）",
-          "chart_config": {
-            "x_axis": "日期",
-            "y_axis": "任务完成度（%）",
-            "data": [
-              {"date": "10-27", "progress": 14},
-              {"date": "10-28", "progress": 21},
-              {"date": "10-29", "progress": 59},
-              {"date": "10-30", "progress": 81},
-              {"date": "11-01", "progress": 89},
-              {"date": "11-02", "progress": 100}
-            ],
-            "additional_config": {
-              "line_color": "#4285F4",
-              "fill": "rgba(66, 133, 244, 0.1)",
-              "display_labels": true
-            }
-          }
-        },
-        {
-          "selected_chart_type": "柱状图（每日工作时长）",
-          "chart_config": {
-            "x_axis": "日期",
-            "y_axis": "工作时长（小时）",
-            "data": [
-              {"date": "10-27", "hours": 16},
-              {"date": "10-28", "hours": 16},
-              {"date": "10-29", "hours": 24},
-              {"date": "10-30", "hours": 32},
-              {"date": "10-31", "hours": 8},
-              {"date": "11-01", "hours": 8},
-              {"date": "11-02", "hours": 16}
-            ],
-            "additional_config": {
-              "color_scheme": [
-                "#34A853",
-                "#4285F4",
-                "#EA4335",
-                "#FBBC05",
-                "#9C27B0"
-              ],
-              "display_labels": true
-            }
-          }
-        },
-        {
-          "selected_chart_type": "饼图（任务类型占比）",
-          "chart_config": {
-            "name": "任务类型",
-            "value": "耗时占比（%）",
-            "data": [
-              {"task_type": "后端开发", "proportion": 45},
-              {"task_type": "联调测试", "proportion": 30},
-              {"task_type": "环境确认", "proportion": 15},
-              {"task_type": "需求分析", "proportion": 10}
-            ],
-            "additional_config": {
-              "color_scheme": ["#4285F4", "#34A853", "#EA4335", "#FBBC05"],
-              "display_labels": true
-            }
-          }
-        }
-      ]
+  const AIAnalysisResultPage({super.key, required this.resultId});
+
+  @override
+  State<AIAnalysisResultPage> createState() => _AIAnalysisResultPageState();
+}
+
+class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
+  final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
+  AiAnalysisResult? _analysisResult;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalysisResult();
+  }
+
+  Future<void> _loadAnalysisResult() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final result = await _aiAnalysisBusiness.getResultById(widget.resultId);
+    if (mounted) {
+      setState(() {
+        _analysisResult = result;
+        _isLoading = false;
+      });
     }
-  };
+  }
 
-  // ---------- helpers ----------
+
   Color _parseRgbaColor(String? rgbaStr) {
     if (rgbaStr == null) return Colors.transparent;
     final match =
@@ -180,8 +109,8 @@ class AIAnalysisResultPage extends StatelessWidget {
     final Color lineColor = Color(int.parse(lineColorHex.replaceFirst('#', '0xFF')));
     final Color fillColor = _parseRgbaColor(fillStr);
 
-    final maxProgress = _getMaxValue(data.map((e) => e['progress']).toList());
-    final maxY = (maxProgress <= 0) ? 100.0 : maxProgress * 1.1;
+    final maxYValue = _getMaxValue(data.map((e) => e['y']).toList()); // 将 maxProgress 重命名为 maxYValue
+    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.1;
 
     return SizedBox(
       height: 300,
@@ -195,7 +124,7 @@ class AIAnalysisResultPage extends StatelessWidget {
           rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (v, meta) {
-              return Text('${v.toInt()}%', style: const TextStyle(color: Colors.white70, fontSize: 12));
+              return Text('${v.toInt()}', style: const TextStyle(color: Colors.white70, fontSize: 12)); // 移除 '%' 符号
             }),
           ),
           bottomTitles: AxisTitles(
@@ -205,7 +134,7 @@ class AIAnalysisResultPage extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    data[i]['date'] as String? ?? '',
+                    data[i]['x'] as String? ?? '', // 更改为使用 'x' 字段
                     style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 );
@@ -218,7 +147,7 @@ class AIAnalysisResultPage extends StatelessWidget {
           LineChartBarData(
             spots: data.asMap().entries.map((e) {
               final x = e.key.toDouble();
-              final y = (e.value['progress'] as num).toDouble();
+              final y = (e.value['y'] as num? ?? 0).toDouble(); // 更改为使用 'y' 字段
               return FlSpot(x, y);
             }).toList(),
             isCurved: true,
@@ -239,8 +168,8 @@ class AIAnalysisResultPage extends StatelessWidget {
             .toList() ??
         ['#34A853', '#4285F4', '#EA4335', '#FBBC05', '#9C27B0'];
 
-    final maxHours = _getMaxValue(data.map((e) => e['hours']).toList());
-    final maxY = (maxHours <= 0) ? 10.0 : maxHours * 1.1;
+    final maxYValue = _getMaxValue(data.map((e) => e['y']).toList()); // 将 maxHours 重命名为 maxYValue
+    final maxY = (maxYValue <= 0) ? 10.0 : maxYValue * 1.1;
 
     return SizedBox(
       height: 300,
@@ -260,7 +189,7 @@ class AIAnalysisResultPage extends StatelessWidget {
             if (i >= 0 && i < data.length) {
               return Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(data[i]['date'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                child: Text(data[i]['x'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 11)), // 更改为使用 'x' 字段
               );
             }
             return const SizedBox.shrink();
@@ -271,7 +200,7 @@ class AIAnalysisResultPage extends StatelessWidget {
           final color = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
           return BarChartGroupData(x: e.key, barRods: [
             BarChartRodData(
-              toY: (e.value['hours'] as num).toDouble(),
+              toY: (e.value['y'] as num? ?? 0).toDouble(), // 更改为使用 'y' 字段
               color: color,
               width: 20,
               borderRadius: BorderRadius.circular(6),
@@ -289,7 +218,7 @@ class AIAnalysisResultPage extends StatelessWidget {
             .toList() ??
         ['#4285F4', '#34A853', '#EA4335', '#FBBC05'];
 
-    final total = data.fold<int>(0, (sum, e) => sum + ((e['proportion'] as num).toInt()));
+    final total = data.fold<int>(0, (sum, e) => sum + ((e['y'] as num? ?? 0).toInt())); // 更改为使用 'y' 字段
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -307,8 +236,8 @@ class AIAnalysisResultPage extends StatelessWidget {
               final Color color = Color(int.parse(hex.replaceFirst('#', '0xFF')));
               return PieChartSectionData(
                 color: color,
-                value: (item['proportion'] as num).toDouble(),
-                title: "${item['proportion']}%",
+                value: (item['proportion'] as num? ?? 0).toDouble(), // 更改为使用 'proportion' 字段
+                title: "${item['proportion']}%", // 更改为使用 'proportion' 字段
                 radius: 60,
                 titleStyle: const TextStyle(color: Colors.white, fontSize: 12),
               );
@@ -326,9 +255,9 @@ class AIAnalysisResultPage extends StatelessWidget {
               Row(children: [
                 Container(width: 12, height: 12, color: color),
                 const SizedBox(width: 8),
-                Text(item['task_type'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                Text(item['name'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)), // 更改为使用 'name' 字段
               ]),
-              Text("${item['proportion']}%", style: const TextStyle(color: Colors.white54)),
+              Text("${item['proportion']}%", style: const TextStyle(color: Colors.white54)), // 更改为使用 'proportion' 字段
             ]),
           );
         }).toList()),
@@ -361,10 +290,24 @@ class AIAnalysisResultPage extends StatelessWidget {
     );
   }
 
-  // ---------- build ----------
   @override
   Widget build(BuildContext context) {
-    final data = (mockData['data'] ?? {}) as Map<String, dynamic>;
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('AI分析结果')),
+        backgroundColor: Colors.grey[900],
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_analysisResult == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('AI分析结果')),
+        backgroundColor: Colors.grey[900],
+        body: const Center(child: Text('未能加载分析结果')),
+      );
+    }
+    final data = _analysisResult!.content as Map<String, dynamic>? ?? {};
     final suggestions = (data['constructive_suggestions'] as List<dynamic>?) ?? [];
     final keywords = (data['keyword_statistics'] as List<dynamic>?) ?? [];
     final charts = (data['frontend_chart_data'] as List<dynamic>?) ?? [];
@@ -398,10 +341,10 @@ class AIAnalysisResultPage extends StatelessWidget {
           ...charts.map<Widget>((c) {
             final item = Map<String, dynamic>.from(c as Map);
             final type = (item['selected_chart_type'] as String?) ?? '';
-            final cfg = (item['chart_config'] as Map<String, dynamic>?) ?? {};
-            if (type.contains('折线')) return _buildLineChart(cfg);
-            if (type.contains('柱状')) return _buildBarChart(cfg);
-            if (type.contains('饼图')) return _buildPieChart(cfg);
+            final rawCfg = (item['chart_config'] as Map<String, dynamic>?) ?? {};
+            if (type.contains('Line_Chart')) return _buildLineChart(rawCfg);
+            if (type.contains('Bar_Chart')) return _buildBarChart(rawCfg);
+            if (type.contains('Pie_Chart')) return _buildPieChart(rawCfg);
             return const SizedBox.shrink();
           }).toList(),
         ]),

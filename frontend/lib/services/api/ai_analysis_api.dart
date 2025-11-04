@@ -27,7 +27,6 @@ class AiAnalysisApi {
 
   Future<List<AiAnalysisResult>?> getResultList() async {
     final response = await _baseApi.get('api/analysis');
-    print(response.statusCode);
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
       if (body['code'] == 200 && body['data'] != null) {
