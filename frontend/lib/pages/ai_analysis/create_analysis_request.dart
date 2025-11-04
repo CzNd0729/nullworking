@@ -150,7 +150,8 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
                                   onPressed: () async {
                                     final picked = await showDatePicker(
                                       context: context,
-                                      initialDate: _endDate ??
+                                      initialDate:
+                                          _endDate ??
                                           (_startDate ?? DateTime.now()),
                                       firstDate: _startDate ?? DateTime(2000),
                                       lastDate: DateTime(2100),
@@ -208,20 +209,32 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
                     // 任务选择部分
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: _tasks
-                            .map(
-                              (task) => RadioListTile<String>(
-                                title: Text(task['title']!),
-                                value: task['id']!,
-                                groupValue: _selectedTaskId,
-                                onChanged: (value) {
-                                  setState(() => _selectedTaskId = value);
-                                },
+                      child: OutlinedButton(
+                        onPressed: () => _selectTask(context),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedTaskId == null
+                                    ? '选择任务'
+                                    : _tasks.firstWhere(
+                                        (t) => t['id'] == _selectedTaskId,
+                                      )['title']!,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: _selectedTaskId == null
+                                      ? Colors.white54
+                                      : Colors.white,
+                                ),
                               ),
-                            )
-                            .toList(),
+                            ),
+                            const Icon(Icons.arrow_drop_down),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -334,6 +347,114 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
                                 Expanded(
                                   child: Text(
                                     person,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Icon(
+                                    Icons.check,
+                                    color: Color(0xFF00D9A3),
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _selectTask(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: SizedBox(
+                    width: 40,
+                    height: 4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.all(Radius.circular(2)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '选择任务',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    itemCount: _tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = _tasks[index];
+                      final isSelected = task['id'] == _selectedTaskId;
+
+                      return Card(
+                        color: isSelected
+                            ? const Color(0xFF00D9A3).withOpacity(0.3)
+                            : const Color(0xFF2A2A2A),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setState(() => _selectedTaskId = task['id']);
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: const Color(0xFF00D9A3),
+                                  child: Text(
+                                    task['title']![0],
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    task['title']!,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
