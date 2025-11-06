@@ -28,11 +28,6 @@
           <span v-else style="display:inline-block;width:14px;"></span>
         </template>
       </el-table-column>
-      <el-table-column label="ID" prop="departmentId" align="center" width="80">
-        <template slot-scope="{row}">
-          <span>{{ row.departmentId }}</span>
-        </template>
-      </el-table-column>
       <el-table-column label="部门名称" prop="deptName" align="left">
         <template slot-scope="{row}">
           <span :style="{ paddingLeft: (row.level ? row.level * 16 : 0) + 'px' }">{{ row.deptName || row.departmentName }}</span>

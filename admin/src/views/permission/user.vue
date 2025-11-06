@@ -219,12 +219,13 @@ export default {
     }
   },
   async created() {
-    // Load roles, departments and department tree first, then load users
+    // Load roles and department tree first, then load departments (which depends on tree), then load users
     await Promise.all([
       this.loadRoles(),
-      this.loadDepartments(),
       this.loadDeptTree()
     ])
+    // 部门列表依赖于部门树，所以要在树加载完成后加载
+    await this.loadDepartments()
     this.getList()
   },
   methods: {
@@ -337,49 +338,53 @@ export default {
     },
     async loadDepartments() {
       try {
-        // Try to get all departments recursively
-        let allDepts = []
+        // 使用部门树数据来构建扁平的部门列表，避免重复
+        // 如果部门树已经加载，直接使用；否则先加载部门树
+        if (this.deptTreeData.length === 0) {
+          await this.loadDeptTree()
+        }
+        
+        // 从部门树中提取所有部门（递归遍历）
+        const allDepts = []
         const visitedDeptIds = new Set()
         
-        const fetchDepartments = async (deptId) => {
+        const extractDepartments = (deptNode) => {
+          const deptId = deptNode.deptId
+          // 避免重复添加
           if (visitedDeptIds.has(deptId)) {
             return
           }
           visitedDeptIds.add(deptId)
           
-          try {
-            const response = await listSubDepts(deptId)
-            if (response.data && response.data.depts) {
-              const subDepts = response.data.depts
-              allDepts = allDepts.concat(subDepts)
-              
-              for (const subDept of subDepts) {
-                const subDeptId = subDept.deptId || subDept.departmentId
-                if (subDeptId && !visitedDeptIds.has(subDeptId)) {
-                  await fetchDepartments(subDeptId)
-                }
-              }
-            }
-          } catch (error) {
-            // Skip if department doesn't exist
+          allDepts.push({
+            departmentId: deptId,
+            deptName: deptNode.deptName,
+            deptDescription: deptNode.deptDescription,
+            parentDept: deptNode.parentDept
+          })
+          
+          // 递归处理子部门
+          if (deptNode.children && deptNode.children.length > 0) {
+            deptNode.children.forEach(child => {
+              extractDepartments(child)
+            })
           }
         }
         
-        // Try common root department IDs
-        for (let rootId = 0; rootId <= 10; rootId++) {
-          try {
-            await fetchDepartments(rootId)
-          } catch (error) {
-            continue
-          }
-        }
+        // 遍历所有根部门
+        this.deptTreeData.forEach(rootDept => {
+          extractDepartments(rootDept)
+        })
         
-        this.departmentsList = allDepts.map(dept => ({
-          departmentId: dept.deptId || dept.departmentId,
-          deptName: dept.deptName || dept.departmentName,
-          deptDescription: dept.deptDescription || dept.description,
-          parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
-        }))
+        // 去重：按部门ID去重，确保没有重复
+        const uniqueDeptsMap = new Map()
+        allDepts.forEach(dept => {
+          if (!uniqueDeptsMap.has(dept.departmentId)) {
+            uniqueDeptsMap.set(dept.departmentId, dept)
+          }
+        })
+        
+        this.departmentsList = Array.from(uniqueDeptsMap.values())
       } catch (error) {
         console.error('Failed to load departments:', error)
         this.departmentsList = []
