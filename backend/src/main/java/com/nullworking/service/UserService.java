@@ -54,6 +54,9 @@ public class UserService {
     // 所有的业务逻辑将在这里实现
 
     public ApiResponse<Map<String, Object>> getSubDeptUser(Integer currentUserId) {
+        if (currentUserId == null) {
+            return ApiResponse.error(400, "当前用户ID不能为空");
+        }
         // 1. 获取当前用户所属部门ID
         User currentUser = userRepository.findById(currentUserId).orElse(null);
         if (currentUser == null || currentUser.getDepartment() == null) {
@@ -325,6 +328,34 @@ public class UserService {
         List<Department> subDepartments = departmentRepository.findByParentDepartment_departmentId(departmentId);
         for (Department subDepartment : subDepartments) {
             collectDepartmentHierarchy(subDepartment.getDepartmentId(), collectedDepartmentIds);
+        }
+    }
+
+    /**
+     * 获取用户个人资料（角色、邮箱、手机号）
+     * @param userId 用户ID
+     * @return 包含用户个人资料的响应
+     */
+    public ApiResponse<Map<String, Object>> getUserProfile(Integer userId) {
+        try {
+            User user = userRepository.findById(Objects.requireNonNull(userId)).orElse(null);
+            if (user == null) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+
+            Map<String, Object> userProfile = new HashMap<>();
+            userProfile.put("userId", user.getUserId());
+            userProfile.put("realName", user.getRealName());
+            userProfile.put("email", user.getEmail());
+            userProfile.put("phoneNumber", user.getPhoneNumber());
+            userProfile.put("roleId", user.getRole() != null ? user.getRole().getRoleId() : null);
+            userProfile.put("deptId", user.getDepartment() != null ? user.getDepartment().getDepartmentId() : null);
+            userProfile.put("roleName", user.getRole() != null ? user.getRole().getRoleName() : null);
+            userProfile.put("deptName", user.getDepartment() != null ? user.getDepartment().getDepartmentName() : null);
+
+            return ApiResponse.success(userProfile);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取用户个人资料失败: " + e.getMessage());
         }
     }
 }

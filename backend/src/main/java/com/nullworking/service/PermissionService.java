@@ -6,7 +6,6 @@ import com.nullworking.repository.PermissionRepository;
 import com.nullworking.repository.RolePermissionRelationRepository;
 import com.nullworking.repository.UserRepository;
 
-import org.apache.commons.lang.ObjectUtils.Null;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +37,10 @@ public class PermissionService {
 
         User currentUser = userRepository.findById(currentUserId).orElse(null);
         if (currentUser == null) {
+            return false;
+        }
+
+        if (currentUser.getRole() == null) {
             return false;
         }
 
