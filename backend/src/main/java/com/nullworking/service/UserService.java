@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class UserService {
@@ -44,6 +45,9 @@ public class UserService {
     @Autowired
     private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
+    @Autowired
+    private PermissionService permissionService;
+
     // @Autowired
     // private JwtUtil jwtUtil;
 
@@ -54,7 +58,8 @@ public class UserService {
         User currentUser = userRepository.findById(currentUserId).orElse(null);
         if (currentUser == null || currentUser.getDepartment() == null) {
             Map<String, Object> data = new HashMap<>();
-            data.put("users", new ArrayList<>());
+            List<Map<String, Object>> emptyUserList = new ArrayList<>();
+            data.put("users", emptyUserList);
             return ApiResponse.success(data);
         }
         Integer currentDepartmentId = currentUser.getDepartment().getDepartmentId();
@@ -67,6 +72,7 @@ public class UserService {
         List<User> usersInHierarchy = userRepository.findByDepartmentDepartmentIdIn(departmentIdsInHierarchy)
                 .stream()
                 .filter(user -> !user.getUserId().equals(currentUserId)) // 排除当前用户自己
+                .filter(user -> permissionService.canAssignTaskToUser(Objects.requireNonNull(currentUserId), user)) // 过滤掉无权分配任务的用户
                 .collect(Collectors.toList());
 
         // 4. 格式化结果
@@ -154,13 +160,13 @@ public class UserService {
             }
             
             // 验证角色是否存在
-            Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+            Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
             if (roleOptional.isEmpty()) {
                 return ApiResponse.error(404, "角色不存在");
             }
             
             // 验证部门是否存在
-            Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+            Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
             if (deptOptional.isEmpty()) {
                 return ApiResponse.error(404, "部门不存在");
             }
@@ -202,7 +208,7 @@ public class UserService {
     public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
         try {
             // 查找用户
-            Optional<User> userOptional = userRepository.findById(userId);
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
             if (userOptional.isEmpty()) {
                 return ApiResponse.error(404, "用户不存在");
             }
@@ -218,14 +224,14 @@ public class UserService {
             }
 
             // 更新角色（必填校验后）
-            Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
+            Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
             if (roleOptional.isEmpty()) {
                 return ApiResponse.error(404, "角色不存在");
             }
             user.setRole(roleOptional.get());
 
             // 更新部门（必填校验后）
-            Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
+            Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
             if (deptOptional.isEmpty()) {
                 return ApiResponse.error(404, "部门不存在");
             }
@@ -270,7 +276,7 @@ public class UserService {
     public ApiResponse<Void> deleteUser(Integer userId) {
         try {
             // 查找用户
-            Optional<User> userOptional = userRepository.findById(userId);
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
             if (userOptional.isEmpty()) {
                 return ApiResponse.error(404, "用户不存在");
             }
@@ -296,7 +302,7 @@ public class UserService {
             }
             
             // 删除用户
-            userRepository.delete(user);
+            userRepository.delete(Objects.requireNonNull(user));
             
             return ApiResponse.success();
         } catch (Exception e) {
