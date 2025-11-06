@@ -11,15 +11,58 @@
       </el-button>
     </div>
 
-    <el-table
-      :key="tableKey"
-      v-loading="listLoading"
-      :data="list"
-      border
-      fit
-      highlight-current-row
-      style="width: 100%;"
-    >
+    <div class="user-management-layout">
+      <!-- 左侧部门树 -->
+      <div class="dept-tree-container">
+        <div class="dept-tree-header">
+          <span>选择部门</span>
+          <el-button 
+            type="text" 
+            size="mini" 
+            @click="toggleAllExpand"
+          >
+            {{ treeAllExpanded ? '全部折叠' : '全部展开' }}
+          </el-button>
+        </div>
+        <el-tree
+          ref="deptTree"
+          :data="deptTreeData"
+          :props="deptTreeProps"
+          node-key="deptId"
+          :default-expand-all="false"
+          :expand-on-click-node="false"
+          :highlight-current="true"
+          @node-expand="onNodeExpand"
+          @node-collapse="onNodeCollapse"
+          @node-click="handleDeptNodeClick"
+          class="dept-tree"
+        >
+          <span class="custom-tree-node" slot-scope="{ node, data }">
+            <el-button 
+              v-if="data && data.children && data.children.length > 0"
+              type="text" 
+              size="mini" 
+              class="node-toggle-btn"
+              @click.stop="toggleNodeExpand(node)"
+            >
+              <i :class="node.expanded ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
+            </el-button>
+            <span class="node-label" @click.stop="handleDeptNodeClick(data)">{{ node.label }}</span>
+          </span>
+        </el-tree>
+      </div>
+
+      <!-- 右侧用户列表 -->
+      <div class="user-table-container">
+        <el-table
+          :key="tableKey"
+          v-loading="listLoading"
+          :data="filteredList"
+          border
+          fit
+          highlight-current-row
+          style="width: 100%;"
+        >
       <el-table-column label="用户ID" prop="userId" align="center" width="80">
         <template slot-scope="{row}">
           <span>{{ row.userId }}</span>
@@ -61,7 +104,9 @@
           </el-button>
         </template>
       </el-table-column>
-    </el-table>
+        </el-table>
+      </div>
+    </div>
 
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" width="500px">
       <el-form 
@@ -122,7 +167,7 @@
 <script>
 import { listUsers, createUser, updateUser, deleteUser } from '@/api/user'
 import { listRoles } from '@/api/role'
-import { listSubDepts } from '@/api/department'
+import { listSubDepts, getDeptTree, getSubDeptUsers } from '@/api/department'
 
 export default {
   name: 'UserManagement',
@@ -130,9 +175,18 @@ export default {
     return {
       tableKey: 0,
       list: null,
+      allUsersList: [], // 存储所有用户，用于过滤
       listLoading: true,
       rolesList: [],
       departmentsList: [],
+      deptTreeData: [], // 部门树数据
+      deptTreeProps: {
+        children: 'children',
+        label: 'deptName'
+      },
+      treeAllExpanded: false, // 部门树是否全部展开
+      selectedDeptId: null, // 当前选中的部门ID
+      selectedDeptUserIds: [], // 当前选中部门及其子部门的用户ID列表
       temp: {
         userId: undefined,
         userName: '',
@@ -159,12 +213,31 @@ export default {
       }
     }
   },
+  computed: {
+    // 根据选中的部门过滤用户列表
+    filteredList() {
+      // 如果没有选中部门，显示所有用户
+      if (!this.selectedDeptId) {
+        return this.allUsersList
+      }
+      // 如果选中了部门，即使该部门没有用户，也返回空列表（而不是显示所有用户）
+      if (this.selectedDeptUserIds.length === 0) {
+        return []
+      }
+      // 只显示选中部门及其子部门的用户
+      return this.allUsersList.filter(user => 
+        this.selectedDeptUserIds.includes(user.userId)
+      )
+    }
+  },
   async created() {
-    // Load roles and departments first, then load users
+    // Load roles and department tree first, then load departments (which depends on tree), then load users
     await Promise.all([
       this.loadRoles(),
-      this.loadDepartments()
+      this.loadDeptTree()
     ])
+    // 部门列表依赖于部门树，所以要在树加载完成后加载
+    await this.loadDepartments()
     this.getList()
   },
   methods: {
@@ -176,7 +249,7 @@ export default {
           // Backend may return userId, realName, roleName, deptName
           // Try to also get userName, phoneNumber, email if available
           // Also try to match roleId and deptId by name
-          this.list = response.data.users.map(user => {
+          const mappedUsers = response.data.users.map(user => {
             // Try to find roleId and deptId by matching names
             let roleId = user.roleId
             let deptId = user.deptId
@@ -208,13 +281,102 @@ export default {
               email: user.email || ''
             }
           })
+          // 保存所有用户到 allUsersList
+          this.allUsersList = mappedUsers
+          this.list = mappedUsers
         } else {
+          this.allUsersList = []
           this.list = []
         }
         this.listLoading = false
       }).catch(() => {
         this.listLoading = false
       })
+    },
+    async loadDeptTree() {
+      try {
+        const response = await getDeptTree()
+        if (response.data && response.data.tree) {
+          this.deptTreeData = response.data.tree
+        } else {
+          this.deptTreeData = []
+        }
+        // 加载后根据实际展开状态更新按钮
+        this.$nextTick(() => this.updateTreeAllExpanded())
+      } catch (error) {
+        console.error('Failed to load department tree:', error)
+        this.deptTreeData = []
+      }
+    },
+    toggleNodeExpand(node) {
+      // 切换单个节点展开/折叠
+      if (!node) return
+      node.expanded = !node.expanded
+      this.$nextTick(() => this.updateTreeAllExpanded())
+    },
+    toggleAllExpand() {
+      // 全部展开或折叠
+      const tree = this.$refs.deptTree
+      if (!tree || !tree.store || !tree.store.nodesMap) return
+      const expandTo = !this.treeAllExpanded
+      const nodesMap = tree.store.nodesMap
+      Object.keys(nodesMap).forEach(key => {
+        const n = nodesMap[key]
+        if (n) n.expanded = expandTo
+      })
+      this.treeAllExpanded = expandTo
+      this.$nextTick(() => this.updateTreeAllExpanded())
+    },
+    onNodeExpand() {
+      this.updateTreeAllExpanded()
+    },
+    onNodeCollapse() {
+      this.updateTreeAllExpanded()
+    },
+    updateTreeAllExpanded() {
+      const tree = this.$refs.deptTree
+      if (!tree || !tree.store || !tree.store.nodesMap) {
+        this.treeAllExpanded = false
+        return
+      }
+      const nodesMap = tree.store.nodesMap
+      const expandableNodes = Object.keys(nodesMap)
+        .map(k => nodesMap[k])
+        .filter(n => Array.isArray(n.childNodes) && n.childNodes.length > 0)
+      if (expandableNodes.length === 0) {
+        this.treeAllExpanded = false
+        return
+      }
+      const allExpanded = expandableNodes.every(n => n.expanded)
+      this.treeAllExpanded = allExpanded
+    },
+    async handleDeptNodeClick(data) {
+      // 当点击部门树节点时，获取该部门及其子部门的用户
+      this.selectedDeptId = data.deptId
+      this.listLoading = true
+      try {
+        const response = await getSubDeptUsers(data.deptId)
+        if (response.data && response.data.users) {
+          // 提取用户ID列表
+          this.selectedDeptUserIds = response.data.users.map(user => user.userId)
+        } else {
+          this.selectedDeptUserIds = []
+        }
+      } catch (error) {
+        console.error('Failed to load department users:', error)
+        this.selectedDeptUserIds = []
+        this.$message.error('获取部门用户失败')
+      } finally {
+        this.listLoading = false
+      }
+    },
+    clearDeptFilter() {
+      this.selectedDeptId = null
+      this.selectedDeptUserIds = []
+      // 取消树节点的选中状态
+      if (this.$refs.deptTree) {
+        this.$refs.deptTree.setCurrentKey(null)
+      }
     },
     async loadRoles() {
       try {
@@ -232,49 +394,53 @@ export default {
     },
     async loadDepartments() {
       try {
-        // Try to get all departments recursively
-        let allDepts = []
+        // 使用部门树数据来构建扁平的部门列表，避免重复
+        // 如果部门树已经加载，直接使用；否则先加载部门树
+        if (this.deptTreeData.length === 0) {
+          await this.loadDeptTree()
+        }
+        
+        // 从部门树中提取所有部门（递归遍历）
+        const allDepts = []
         const visitedDeptIds = new Set()
         
-        const fetchDepartments = async (deptId) => {
+        const extractDepartments = (deptNode) => {
+          const deptId = deptNode.deptId
+          // 避免重复添加
           if (visitedDeptIds.has(deptId)) {
             return
           }
           visitedDeptIds.add(deptId)
           
-          try {
-            const response = await listSubDepts(deptId)
-            if (response.data && response.data.depts) {
-              const subDepts = response.data.depts
-              allDepts = allDepts.concat(subDepts)
-              
-              for (const subDept of subDepts) {
-                const subDeptId = subDept.deptId || subDept.departmentId
-                if (subDeptId && !visitedDeptIds.has(subDeptId)) {
-                  await fetchDepartments(subDeptId)
-                }
-              }
-            }
-          } catch (error) {
-            // Skip if department doesn't exist
+          allDepts.push({
+            departmentId: deptId,
+            deptName: deptNode.deptName,
+            deptDescription: deptNode.deptDescription,
+            parentDept: deptNode.parentDept
+          })
+          
+          // 递归处理子部门
+          if (deptNode.children && deptNode.children.length > 0) {
+            deptNode.children.forEach(child => {
+              extractDepartments(child)
+            })
           }
         }
         
-        // Try common root department IDs
-        for (let rootId = 0; rootId <= 10; rootId++) {
-          try {
-            await fetchDepartments(rootId)
-          } catch (error) {
-            continue
-          }
-        }
+        // 遍历所有根部门
+        this.deptTreeData.forEach(rootDept => {
+          extractDepartments(rootDept)
+        })
         
-        this.departmentsList = allDepts.map(dept => ({
-          departmentId: dept.deptId || dept.departmentId,
-          deptName: dept.deptName || dept.departmentName,
-          deptDescription: dept.deptDescription || dept.description,
-          parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
-        }))
+        // 去重：按部门ID去重，确保没有重复
+        const uniqueDeptsMap = new Map()
+        allDepts.forEach(dept => {
+          if (!uniqueDeptsMap.has(dept.departmentId)) {
+            uniqueDeptsMap.set(dept.departmentId, dept)
+          }
+        })
+        
+        this.departmentsList = Array.from(uniqueDeptsMap.values())
       } catch (error) {
         console.error('Failed to load departments:', error)
         this.departmentsList = []
@@ -390,6 +556,65 @@ export default {
 </script>
 
 <style scoped>
+.user-management-layout {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
 
+.dept-tree-container {
+  width: 250px;
+  min-width: 250px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #fff;
+}
+
+.dept-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.dept-tree {
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.user-table-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-tree-node {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  padding-right: 8px;
+  gap: 6px;
+}
+
+.custom-tree-node .node-label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.custom-tree-node .node-toggle-btn {
+  padding: 0 4px;
+}
+
+/* 隐藏 Element UI 树的默认展开箭头，仅保留自定义的箭头 */
+.dept-tree ::v-deep .el-tree-node__expand-icon {
+  display: none !important;
+}
+/* 兼容旧版深度选择器写法 */
+.dept-tree /deep/ .el-tree-node__expand-icon {
+  display: none !important;
+}
 </style>
 

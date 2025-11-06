@@ -39,7 +39,7 @@ public class UserController {
     private UserService userService;
 
     @Operation(summary = "获取同级及下级部门用户", description = "从token解析用户ID，递归查询同级及下级部门中的其他用户，返回用户ID与用户真实姓名")
-    @GetMapping("/getSubDeptUser")
+    @GetMapping("/subordinateUsers")
     public ApiResponse<Map<String, Object>> getSubDeptUser(HttpServletRequest request) {
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         try {
