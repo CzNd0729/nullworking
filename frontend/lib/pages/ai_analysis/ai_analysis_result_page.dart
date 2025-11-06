@@ -136,6 +136,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         (cfg['additional_config']?['line_color'] as String?) ?? '#4285F4';
     final String fillStr =
         (cfg['additional_config']?['fill'] as String?) ?? 'rgba(0,0,0,0)';
+    final String yAxisLabel = (cfg['y_axis'] as String?) ?? ''; // 获取Y轴标签
     final Color lineColor = Color(
       int.parse(lineColorHex.replaceFirst('#', '0xFF')),
     );
@@ -164,6 +165,13 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (yAxisLabel.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Y轴: $yAxisLabel',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -265,6 +273,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
             ?.map((e) => e.toString())
             .toList() ??
         ['#34A853', '#4285F4', '#EA4335', '#FBBC05', '#9C27B0'];
+    final String yAxisLabel = (cfg['y_axis'] as String?) ?? ''; // 获取Y轴标签
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
     final maxY = (maxYValue <= 0) ? 10.0 : maxYValue * 1.2; // 顶部预留20%空间
@@ -289,6 +298,13 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (yAxisLabel.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Y轴: $yAxisLabel',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -320,7 +336,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                                 return const SizedBox.shrink();
                               }
                               return Text(
-                                '${v.toInt()}h',
+                                '${v.toInt()}', // 移除固定的"h"单位
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
