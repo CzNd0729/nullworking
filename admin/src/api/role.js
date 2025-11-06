@@ -29,3 +29,10 @@ export function deleteRole(roleId) {
     method: 'delete'
   })
 }
+
+export function listPermissions() {
+  return request({
+    url: '/api/roles/permissions',
+    method: 'get'
+  })
+}

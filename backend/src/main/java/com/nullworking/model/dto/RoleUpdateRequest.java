@@ -13,8 +13,8 @@ public class RoleUpdateRequest {
     @JsonProperty("roleDescription")
     private String roleDescription;
 
-    @JsonProperty("permissions")
-    private List<Integer> permissions;
+    @JsonProperty("permissionIds")
+    private List<Integer> permissionIds;
 
     // Getters and Setters
     public Integer getRoleId() {
@@ -41,11 +41,11 @@ public class RoleUpdateRequest {
         this.roleDescription = roleDescription;
     }
 
-    public List<Integer> getPermissions() {
-        return permissions;
+    public List<Integer> getPermissionIds() {
+        return permissionIds;
     }
 
-    public void setPermissions(List<Integer> permissions) {
-        this.permissions = permissions;
+    public void setPermissionIds(List<Integer> permissionIds) {
+        this.permissionIds = permissionIds;
     }
 }

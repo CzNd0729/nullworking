@@ -55,6 +55,11 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="temp.description" type="textarea" :rows="3" placeholder="请输入角色描述" />
         </el-form-item>
+        <el-form-item label="权限" prop="permissions">
+          <el-checkbox-group v-model="selectedPermissions">
+            <el-checkbox v-for="permission in permissionsList" :key="permission.permissionId" :label="permission.permissionName">{{ permission.permissionDescription }}</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">
@@ -69,7 +74,7 @@
 </template>
 
 <script>
-import { listRoles, createRole, updateRole, deleteRole } from '@/api/role'
+import { listRoles, createRole, updateRole, deleteRole, listPermissions } from '@/api/role'
 
 export default {
   name: 'RoleManagement',
@@ -83,6 +88,8 @@ export default {
         roleName: '',
         description: ''
       },
+      permissionsList: [],
+      selectedPermissions: [],
       dialogFormVisible: false,
       dialogStatus: '',
       textMap: {
@@ -129,19 +136,23 @@ export default {
       this.$nextTick(() => {
         this.$refs['dataForm'].clearValidate()
       })
+      this.getPermissionsList()
     },
     createData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          // Map description to roleDescription as backend expects
           const tempData = {
             roleName: this.temp.roleName,
-            roleDescription: this.temp.description || ''
+            roleDescription: this.temp.description || '',
+            permissionIds: this.selectedPermissions.map(name => {
+              const permission = this.permissionsList.find(p => p.permissionName === name);
+              return permission ? permission.permissionId : null;
+            }).filter(id => id !== null) // Filter out any nulls if a permission name isn't found
           }
           createRole(tempData).then(() => {
             this.dialogFormVisible = false
             this.$message.success('添加角色成功')
-            this.getList() // Refresh the list
+            this.getList()
           }).catch(error => {
             console.error("Error creating role:", error)
             this.$message.error(error.response?.data?.message || '添加角色失败')
@@ -150,30 +161,46 @@ export default {
       })
     },
     handleUpdate(row) {
-      this.temp = Object.assign({}, row) // copy obj
-      // Map roleDescription to description for form display
-      if (row.roleDescription && !row.description) {
-        this.temp.description = row.roleDescription
+      const latestRole = this.list.find(r => r.roleId === row.roleId) || row;
+      this.temp = Object.assign({}, latestRole);
+
+      if (latestRole.roleDescription && !latestRole.description) {
+        this.temp.description = latestRole.roleDescription;
       }
-      this.dialogStatus = 'update'
-      this.dialogFormVisible = true
+
+      const rolePermissionIds = latestRole.permissionIds || [];
+      this.selectedPermissions = this.permissionsList
+        .filter(permission => rolePermissionIds.includes(permission.permissionId))
+        .map(permission => permission.permissionName);
+
+      this.dialogStatus = 'update';
+      this.dialogFormVisible = true;
       this.$nextTick(() => {
-        this.$refs['dataForm'].clearValidate()
-      })
+        this.$refs['dataForm'].clearValidate();
+      });
+      this.getPermissionsList();
     },
     updateData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          // Map description to roleDescription as backend expects
           const tempData = {
             roleId: this.temp.roleId,
             roleName: this.temp.roleName,
-            roleDescription: this.temp.description
+            roleDescription: this.temp.description,
+            permissionIds: this.selectedPermissions.map(name => {
+              const permission = this.permissionsList.find(p => p.permissionName === name);
+              return permission ? permission.permissionId : null;
+            }).filter(id => id !== null) // Filter out any nulls if a permission name isn't found
           }
           updateRole(tempData.roleId, tempData).then(() => {
             this.dialogFormVisible = false
             this.$message.success('更新角色成功')
-            this.getList() // Refresh the list
+            // Find the updated role in the list and update its properties
+            const index = this.list.findIndex(v => v.roleId === tempData.roleId)
+            if (index !== -1) {
+              this.list.splice(index, 1, { ...tempData, permissionIds: tempData.permissionIds })
+            }
+            // No need to call getList() as the list is updated directly
           }).catch(error => {
             console.error("Error updating role:", error)
             this.$message.error(error.response?.data?.message || '更新角色失败')
@@ -188,13 +215,26 @@ export default {
         type: 'warning'
       }).then(() => {
         deleteRole(row.roleId).then(() => {
-          this.$message.success('删除角色成功')
-          this.getList() // Refresh the list
+          this.list.splice(index, 1)
+          this.$message.success('删除成功')
         }).catch(error => {
-          this.$message.error(error.response?.data?.message || '删除角色失败')
+          console.error("Error deleting role:", error)
+          this.$message.error(error.response?.data?.message || '删除失败')
         })
       }).catch(() => {
         this.$message.info('已取消删除')
+      })
+    },
+    getPermissionsList() {
+      listPermissions().then(response => {
+        if (response.data && response.data.permissions) {
+          this.permissionsList = response.data.permissions
+        } else {
+          this.permissionsList = []
+        }
+      }).catch(error => {
+        console.error("Error fetching permissions:", error)
+        this.$message.error('获取权限列表失败')
       })
     }
   }

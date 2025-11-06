@@ -94,4 +94,19 @@ public class RoleController {
         }
         return roleService.deleteRole(roleId);
     }
+
+    /**
+     * 列出所有权限
+     * @return 包含权限列表的响应
+     */
+    @Operation(summary = "列出所有权限", description = "获取系统中所有权限的列表，包括权限ID、名称和描述")
+    @GetMapping("/permissions")
+    public ApiResponse<Map<String, Object>> listPermissions(HttpServletRequest request) {
+        // 检查是否为管理员
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (currentUserId == null || currentUserId != 0) {
+            return ApiResponse.error(403, "只有管理员可以查看权限列表");
+        }
+        return roleService.listPermissions();
+    }
 }
