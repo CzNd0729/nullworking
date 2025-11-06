@@ -142,10 +142,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     final Color fillColor = _parseRgbaColor(fillStr);
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.1;
+    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.2; // 顶部预留20%空间
 
-    // 计算图表宽度：每个数据点占用更多空间（80像素），避免日期重叠
-    final chartWidth = (data.length * 80.0).clamp(300.0, double.infinity);
+    // 计算图表宽度：每个数据点占用80像素
+    // 额外添加一个空列(+1)以确保最后日期标签完整显示
+    final chartWidth = ((data.length + 1) * 80.0).clamp(300.0, double.infinity);
 
     return Card(
       color: Colors.grey[850],
@@ -173,6 +174,8 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                   height: 300,
                   child: LineChart(
                     LineChartData(
+                      minX: 0,
+                      maxX: data.length.toDouble(), // X轴多显示一个位置
                       minY: 0,
                       maxY: maxY,
                       gridData: const FlGridData(show: false),
@@ -189,6 +192,10 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
+                              // 只显示实际数据范围内的Y轴标签，隐藏预留空间的标签
+                              if (v > maxYValue) {
+                                return const SizedBox.shrink();
+                              }
                               return Text(
                                 '${v.toInt()}',
                                 style: const TextStyle(
@@ -260,10 +267,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         ['#34A853', '#4285F4', '#EA4335', '#FBBC05', '#9C27B0'];
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    final maxY = (maxYValue <= 0) ? 10.0 : maxYValue * 1.1;
+    final maxY = (maxYValue <= 0) ? 10.0 : maxYValue * 1.2; // 顶部预留20%空间
 
-    // 计算图表宽度：每个柱子占用足够空间
-    final chartWidth = (data.length * 80.0).clamp(300.0, double.infinity);
+    // 计算图表宽度：每个柱子占用80像素
+    // 额外添加一个空列(+1)以确保最后标签完整显示
+    final chartWidth = ((data.length + 1) * 80.0).clamp(300.0, double.infinity);
 
     return Card(
       color: Colors.grey[850],
@@ -307,6 +315,10 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
+                              // 只显示实际数据范围内的Y轴标签，隐藏预留空间的标签
+                              if (v > maxYValue) {
+                                return const SizedBox.shrink();
+                              }
                               return Text(
                                 '${v.toInt()}h',
                                 style: const TextStyle(
@@ -471,54 +483,54 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
 
   Widget _buildKeywordPane(List<dynamic> keywords) {
     final kw = keywords.cast<Map<String, dynamic>>();
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[850],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "关键词统计",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...kw.map((k) {
-            final double intensity = ((k['percentage'] as num?) ?? 0) / 100.0;
-            final Color keywordColor = Color.fromRGBO(
-              50,
-              150,
-              255,
-              (0.5 + intensity * 0.5).clamp(0.0, 1.0),
-            );
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    k['keyword'] as String? ?? '未知',
-                    style: TextStyle(
-                      color: keywordColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    "${k['count']} • ${k['percentage']}%",
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ],
+    return Card(
+      color: Colors.grey[850],
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "关键词统计",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-            );
-          }).toList(),
-        ],
+            ),
+            const SizedBox(height: 8),
+            ...kw.map((k) {
+              final double intensity = ((k['percentage'] as num?) ?? 0) / 100.0;
+              final Color keywordColor = Color.fromRGBO(
+                50,
+                150,
+                255,
+                (0.5 + intensity * 0.5).clamp(0.0, 1.0),
+              );
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      k['keyword'] as String? ?? '未知',
+                      style: TextStyle(
+                        color: keywordColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      "${k['count']} • ${k['percentage']}%",
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+        ),
       ),
     );
   }
@@ -550,64 +562,75 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('AI分析结果')),
       backgroundColor: Colors.grey[900],
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 建议
-            const Text(
-              '建设性建议',
-              style: TextStyle(color: Colors.white, fontSize: 22),
-            ),
-            const SizedBox(height: 12),
-            ...suggestions
-                .map(
-                  (s) =>
-                      _buildSuggestionCard(Map<String, dynamic>.from(s as Map)),
-                )
-                .toList(),
-
-            const SizedBox(height: 18),
-            // 关键词（右侧简单列表样式）
-            _buildKeywordPane(keywords),
-
-            const SizedBox(height: 18),
-            // 概述
-            const Text(
-              '概述',
-              style: TextStyle(color: Colors.white, fontSize: 22),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              color: Colors.grey[850],
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  summary,
-                  style: const TextStyle(color: Colors.white70, height: 1.5),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 建议
+                const Text(
+                  '建设性建议',
+                  style: TextStyle(color: Colors.white, fontSize: 22),
                 ),
-              ),
-            ),
+                const SizedBox(height: 12),
+                ...suggestions
+                    .map(
+                      (s) => _buildSuggestionCard(
+                        Map<String, dynamic>.from(s as Map),
+                      ),
+                    )
+                    .toList(),
 
-            const SizedBox(height: 18),
-            // 数据图表（按 mock 数据顺序渲染）
-            const Text(
-              '数据图表',
-              style: TextStyle(color: Colors.white, fontSize: 22),
+                const SizedBox(height: 18),
+                // 关键词（右侧简单列表样式）
+                _buildKeywordPane(keywords),
+
+                const SizedBox(height: 18),
+                // 概述
+                const Text(
+                  '概述',
+                  style: TextStyle(color: Colors.white, fontSize: 22),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  color: Colors.grey[850],
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      summary,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+                // 数据图表（按 mock 数据顺序渲染）
+                const Text(
+                  '数据图表',
+                  style: TextStyle(color: Colors.white, fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                ...charts.map<Widget>((c) {
+                  final item = Map<String, dynamic>.from(c as Map);
+                  final type = (item['selected_chart_type'] as String?) ?? '';
+                  final rawCfg =
+                      (item['chart_config'] as Map<String, dynamic>?) ?? {};
+                  if (type.contains('Line_Chart'))
+                    return _buildLineChart(rawCfg);
+                  if (type.contains('Bar_Chart')) return _buildBarChart(rawCfg);
+                  if (type.contains('Pie_Chart')) return _buildPieChart(rawCfg);
+                  return const SizedBox.shrink();
+                }).toList(),
+              ],
             ),
-            const SizedBox(height: 12),
-            ...charts.map<Widget>((c) {
-              final item = Map<String, dynamic>.from(c as Map);
-              final type = (item['selected_chart_type'] as String?) ?? '';
-              final rawCfg =
-                  (item['chart_config'] as Map<String, dynamic>?) ?? {};
-              if (type.contains('Line_Chart')) return _buildLineChart(rawCfg);
-              if (type.contains('Bar_Chart')) return _buildBarChart(rawCfg);
-              if (type.contains('Pie_Chart')) return _buildPieChart(rawCfg);
-              return const SizedBox.shrink();
-            }).toList(),
-          ],
+          ),
         ),
       ),
     );
