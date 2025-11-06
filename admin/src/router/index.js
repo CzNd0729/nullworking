@@ -23,16 +23,17 @@ export const constantRoutes = [
         path: 'important-items',
         component: () => import('@/views/importantItems/index.vue'),
         name: 'ImportantItems',
-        meta: { title: '重要事项管理', icon: 'list' }
+        meta: { title: '重要事项管理', icon: 'tree' }
       }
     ]
   },
   {
     path: '/permission',
     component: () => import('@/layout'),
-    redirect: '/permission/role',
+    redirect: 'noRedirect',
     name: 'Permission',
-    meta: { title: '权限管理', icon: 'lock' },
+    meta: { title: '权限管理', icon: 'user' },
+    alwaysShow: true,
     children: [
       {
         path: 'role',
