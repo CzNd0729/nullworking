@@ -19,10 +19,9 @@
           <el-button 
             type="text" 
             size="mini" 
-            @click="clearDeptFilter"
-            v-if="selectedDeptId"
+            @click="toggleAllExpand"
           >
-            清除筛选
+            {{ treeAllExpanded ? '全部折叠' : '全部展开' }}
           </el-button>
         </div>
         <el-tree
@@ -31,12 +30,24 @@
           :props="deptTreeProps"
           node-key="deptId"
           :default-expand-all="false"
+          :expand-on-click-node="false"
           :highlight-current="true"
+          @node-expand="onNodeExpand"
+          @node-collapse="onNodeCollapse"
           @node-click="handleDeptNodeClick"
           class="dept-tree"
         >
           <span class="custom-tree-node" slot-scope="{ node, data }">
-            <span>{{ node.label }}</span>
+            <el-button 
+              v-if="data && data.children && data.children.length > 0"
+              type="text" 
+              size="mini" 
+              class="node-toggle-btn"
+              @click.stop="toggleNodeExpand(node)"
+            >
+              <i :class="node.expanded ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
+            </el-button>
+            <span class="node-label" @click.stop="handleDeptNodeClick(data)">{{ node.label }}</span>
           </span>
         </el-tree>
       </div>
@@ -173,6 +184,7 @@ export default {
         children: 'children',
         label: 'deptName'
       },
+      treeAllExpanded: false, // 部门树是否全部展开
       selectedDeptId: null, // 当前选中的部门ID
       selectedDeptUserIds: [], // 当前选中部门及其子部门的用户ID列表
       temp: {
@@ -289,10 +301,54 @@ export default {
         } else {
           this.deptTreeData = []
         }
+        // 加载后根据实际展开状态更新按钮
+        this.$nextTick(() => this.updateTreeAllExpanded())
       } catch (error) {
         console.error('Failed to load department tree:', error)
         this.deptTreeData = []
       }
+    },
+    toggleNodeExpand(node) {
+      // 切换单个节点展开/折叠
+      if (!node) return
+      node.expanded = !node.expanded
+      this.$nextTick(() => this.updateTreeAllExpanded())
+    },
+    toggleAllExpand() {
+      // 全部展开或折叠
+      const tree = this.$refs.deptTree
+      if (!tree || !tree.store || !tree.store.nodesMap) return
+      const expandTo = !this.treeAllExpanded
+      const nodesMap = tree.store.nodesMap
+      Object.keys(nodesMap).forEach(key => {
+        const n = nodesMap[key]
+        if (n) n.expanded = expandTo
+      })
+      this.treeAllExpanded = expandTo
+      this.$nextTick(() => this.updateTreeAllExpanded())
+    },
+    onNodeExpand() {
+      this.updateTreeAllExpanded()
+    },
+    onNodeCollapse() {
+      this.updateTreeAllExpanded()
+    },
+    updateTreeAllExpanded() {
+      const tree = this.$refs.deptTree
+      if (!tree || !tree.store || !tree.store.nodesMap) {
+        this.treeAllExpanded = false
+        return
+      }
+      const nodesMap = tree.store.nodesMap
+      const expandableNodes = Object.keys(nodesMap)
+        .map(k => nodesMap[k])
+        .filter(n => Array.isArray(n.childNodes) && n.childNodes.length > 0)
+      if (expandableNodes.length === 0) {
+        this.treeAllExpanded = false
+        return
+      }
+      const allExpanded = expandableNodes.every(n => n.expanded)
+      this.treeAllExpanded = allExpanded
     },
     async handleDeptNodeClick(data) {
       // 当点击部门树节点时，获取该部门及其子部门的用户
@@ -538,9 +594,27 @@ export default {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   font-size: 14px;
   padding-right: 8px;
+  gap: 6px;
+}
+
+.custom-tree-node .node-label {
+  flex: 1;
+  cursor: pointer;
+}
+
+.custom-tree-node .node-toggle-btn {
+  padding: 0 4px;
+}
+
+/* 隐藏 Element UI 树的默认展开箭头，仅保留自定义的箭头 */
+.dept-tree ::v-deep .el-tree-node__expand-icon {
+  display: none !important;
+}
+/* 兼容旧版深度选择器写法 */
+.dept-tree /deep/ .el-tree-node__expand-icon {
+  display: none !important;
 }
 </style>
 
