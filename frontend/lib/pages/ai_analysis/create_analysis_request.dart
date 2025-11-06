@@ -36,8 +36,6 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   final TaskApi _taskApi = TaskApi();
   final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
 
-  bool _loadingData = false;
-
   List<String> _people = ['全部'];
   List<Map<String, String>> _tasks = [];
   Map<String, int> _peopleMap = {}; // name -> userId
@@ -55,8 +53,6 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   }
 
   Future<void> _loadRemoteData() async {
-    setState(() => _loadingData = true);
-
     // 加载人员（同级及下级部门用户）
     try {
       final userResp = await _userApi.getSubDeptUser();
@@ -115,8 +111,6 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
     } catch (e) {
       debugPrint('加载任务失败: $e');
     }
-
-    setState(() => _loadingData = false);
   }
 
   @override
@@ -133,17 +127,6 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
         body: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            if (_loadingData)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Center(
-                  child: SizedBox(
-                    width: 120,
-                    height: 24,
-                    child: LinearProgressIndicator(),
-                  ),
-                ),
-              ),
             // 分析模式选择
             Card(
               color: const Color(0xFF1E1E1E),
