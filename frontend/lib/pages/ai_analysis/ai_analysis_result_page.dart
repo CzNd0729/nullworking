@@ -129,7 +129,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     );
   }
 
-  Widget _buildLineChart(Map<String, dynamic> cfg) {
+  Widget _buildLineChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     final String lineColorHex =
@@ -156,9 +156,9 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '趋势图',
-              style: TextStyle(
+            Text(
+              description ?? '趋势图',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -257,7 +257,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     );
   }
 
-  Widget _buildBarChart(Map<String, dynamic> cfg) {
+  Widget _buildBarChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     final List<String> colorsHex =
@@ -281,9 +281,9 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '柱状图',
-              style: TextStyle(
+            Text(
+              description ?? '柱状图',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -380,7 +380,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     );
   }
 
-  Widget _buildPieChart(Map<String, dynamic> cfg) {
+  Widget _buildPieChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     final List<String> colorsHex =
@@ -402,9 +402,9 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '饼图',
-              style: TextStyle(
+            Text(
+              description ?? '饼图',
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -620,12 +620,15 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 ...charts.map<Widget>((c) {
                   final item = Map<String, dynamic>.from(c as Map);
                   final type = (item['selected_chart_type'] as String?) ?? '';
+                  final description = (item['description'] as String?);
                   final rawCfg =
                       (item['chart_config'] as Map<String, dynamic>?) ?? {};
                   if (type.contains('Line_Chart'))
-                    return _buildLineChart(rawCfg);
-                  if (type.contains('Bar_Chart')) return _buildBarChart(rawCfg);
-                  if (type.contains('Pie_Chart')) return _buildPieChart(rawCfg);
+                    return _buildLineChart(rawCfg, description);
+                  if (type.contains('Bar_Chart'))
+                    return _buildBarChart(rawCfg, description);
+                  if (type.contains('Pie_Chart'))
+                    return _buildPieChart(rawCfg, description);
                   return const SizedBox.shrink();
                 }).toList(),
               ],
