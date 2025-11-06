@@ -36,23 +36,23 @@ export const constantRoutes = [
     alwaysShow: true,
     children: [
       {
-        path: 'role',
-        component: () => import('@/views/permission/role.vue'),
-        name: 'RoleManagement',
-        meta: { title: '角色管理', icon: 'role' }
+        path: 'user',
+        component: () => import('@/views/permission/user.vue'),
+        name: 'UserManagement',
+        meta: { title: '用户管理', icon: 'user' }
       },
       {
         path: 'department',
         component: () => import('@/views/permission/department.vue'),
         name: 'DepartmentManagement',
-        meta: { title: '部门管理', icon: 'house' }
+        meta: { title: '部门管理', icon: 'tree' }
       },
       {
-        path: 'user',
-        component: () => import('@/views/permission/user.vue'),
-        name: 'UserManagement',
-        meta: { title: '用户管理', icon: 'user' }
-      }
+        path: 'role',
+        component: () => import('@/views/permission/role.vue'),
+        name: 'RoleManagement',
+        meta: { title: '角色管理', icon: 'role' }
+      },
     ]
   },
   // 404 page must be placed at the end !!!
