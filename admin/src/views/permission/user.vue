@@ -11,15 +11,47 @@
       </el-button>
     </div>
 
-    <el-table
-      :key="tableKey"
-      v-loading="listLoading"
-      :data="list"
-      border
-      fit
-      highlight-current-row
-      style="width: 100%;"
-    >
+    <div class="user-management-layout">
+      <!-- 左侧部门树 -->
+      <div class="dept-tree-container">
+        <div class="dept-tree-header">
+          <span>选择部门</span>
+          <el-button 
+            type="text" 
+            size="mini" 
+            @click="clearDeptFilter"
+            v-if="selectedDeptId"
+          >
+            清除筛选
+          </el-button>
+        </div>
+        <el-tree
+          ref="deptTree"
+          :data="deptTreeData"
+          :props="deptTreeProps"
+          node-key="deptId"
+          :default-expand-all="false"
+          :highlight-current="true"
+          @node-click="handleDeptNodeClick"
+          class="dept-tree"
+        >
+          <span class="custom-tree-node" slot-scope="{ node, data }">
+            <span>{{ node.label }}</span>
+          </span>
+        </el-tree>
+      </div>
+
+      <!-- 右侧用户列表 -->
+      <div class="user-table-container">
+        <el-table
+          :key="tableKey"
+          v-loading="listLoading"
+          :data="filteredList"
+          border
+          fit
+          highlight-current-row
+          style="width: 100%;"
+        >
       <el-table-column label="用户ID" prop="userId" align="center" width="80">
         <template slot-scope="{row}">
           <span>{{ row.userId }}</span>
@@ -61,7 +93,9 @@
           </el-button>
         </template>
       </el-table-column>
-    </el-table>
+        </el-table>
+      </div>
+    </div>
 
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" width="500px">
       <el-form 
@@ -122,7 +156,7 @@
 <script>
 import { listUsers, createUser, updateUser, deleteUser } from '@/api/user'
 import { listRoles } from '@/api/role'
-import { listSubDepts } from '@/api/department'
+import { listSubDepts, getDeptTree, getSubDeptUsers } from '@/api/department'
 
 export default {
   name: 'UserManagement',
@@ -130,9 +164,17 @@ export default {
     return {
       tableKey: 0,
       list: null,
+      allUsersList: [], // 存储所有用户，用于过滤
       listLoading: true,
       rolesList: [],
       departmentsList: [],
+      deptTreeData: [], // 部门树数据
+      deptTreeProps: {
+        children: 'children',
+        label: 'deptName'
+      },
+      selectedDeptId: null, // 当前选中的部门ID
+      selectedDeptUserIds: [], // 当前选中部门及其子部门的用户ID列表
       temp: {
         userId: undefined,
         userName: '',
@@ -159,11 +201,29 @@ export default {
       }
     }
   },
+  computed: {
+    // 根据选中的部门过滤用户列表
+    filteredList() {
+      // 如果没有选中部门，显示所有用户
+      if (!this.selectedDeptId) {
+        return this.allUsersList
+      }
+      // 如果选中了部门，即使该部门没有用户，也返回空列表（而不是显示所有用户）
+      if (this.selectedDeptUserIds.length === 0) {
+        return []
+      }
+      // 只显示选中部门及其子部门的用户
+      return this.allUsersList.filter(user => 
+        this.selectedDeptUserIds.includes(user.userId)
+      )
+    }
+  },
   async created() {
-    // Load roles and departments first, then load users
+    // Load roles, departments and department tree first, then load users
     await Promise.all([
       this.loadRoles(),
-      this.loadDepartments()
+      this.loadDepartments(),
+      this.loadDeptTree()
     ])
     this.getList()
   },
@@ -176,7 +236,7 @@ export default {
           // Backend may return userId, realName, roleName, deptName
           // Try to also get userName, phoneNumber, email if available
           // Also try to match roleId and deptId by name
-          this.list = response.data.users.map(user => {
+          const mappedUsers = response.data.users.map(user => {
             // Try to find roleId and deptId by matching names
             let roleId = user.roleId
             let deptId = user.deptId
@@ -208,13 +268,58 @@ export default {
               email: user.email || ''
             }
           })
+          // 保存所有用户到 allUsersList
+          this.allUsersList = mappedUsers
+          this.list = mappedUsers
         } else {
+          this.allUsersList = []
           this.list = []
         }
         this.listLoading = false
       }).catch(() => {
         this.listLoading = false
       })
+    },
+    async loadDeptTree() {
+      try {
+        const response = await getDeptTree()
+        if (response.data && response.data.tree) {
+          this.deptTreeData = response.data.tree
+        } else {
+          this.deptTreeData = []
+        }
+      } catch (error) {
+        console.error('Failed to load department tree:', error)
+        this.deptTreeData = []
+      }
+    },
+    async handleDeptNodeClick(data) {
+      // 当点击部门树节点时，获取该部门及其子部门的用户
+      this.selectedDeptId = data.deptId
+      this.listLoading = true
+      try {
+        const response = await getSubDeptUsers(data.deptId)
+        if (response.data && response.data.users) {
+          // 提取用户ID列表
+          this.selectedDeptUserIds = response.data.users.map(user => user.userId)
+        } else {
+          this.selectedDeptUserIds = []
+        }
+      } catch (error) {
+        console.error('Failed to load department users:', error)
+        this.selectedDeptUserIds = []
+        this.$message.error('获取部门用户失败')
+      } finally {
+        this.listLoading = false
+      }
+    },
+    clearDeptFilter() {
+      this.selectedDeptId = null
+      this.selectedDeptUserIds = []
+      // 取消树节点的选中状态
+      if (this.$refs.deptTree) {
+        this.$refs.deptTree.setCurrentKey(null)
+      }
     },
     async loadRoles() {
       try {
@@ -390,6 +495,47 @@ export default {
 </script>
 
 <style scoped>
+.user-management-layout {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
 
+.dept-tree-container {
+  width: 250px;
+  min-width: 250px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #fff;
+}
+
+.dept-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.dept-tree {
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.user-table-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-tree-node {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  padding-right: 8px;
+}
 </style>
 
