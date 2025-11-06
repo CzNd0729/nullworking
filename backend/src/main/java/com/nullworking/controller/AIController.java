@@ -49,9 +49,13 @@ public class AIController {
     }
 
     @GetMapping("/analysis/{resultId}")
-    public ApiResponse<Map<String, Object>> getAIAnalysisResult(@PathVariable Integer resultId) {
+    public ApiResponse<Map<String, Object>> getAIAnalysisResult(@PathVariable Integer resultId, HttpServletRequest httpRequest) {
         try {
-            Map<String, Object> result = aiService.getAIAnalysisResult(resultId);
+            Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+            if (currentUserId == null) {
+                return ApiResponse.error(401, "未授权");
+            }
+            Map<String, Object> result = aiService.getAIAnalysisResult(resultId, currentUserId);
             return ApiResponse.success(result);
         } catch (Exception e) {
             e.printStackTrace();

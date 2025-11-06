@@ -123,22 +123,27 @@ public class AIService {
             if (request.getEndDate() == null || request.getEndDate().isEmpty()) {
                 return ApiResponse.error(400, "在用户+时间模式下，结束日期 (endDate) 不能为空。");
             }
+            // 权限校验：只能分析自己的日志
+            if (request.getUserIds().size() != 1 || !request.getUserIds().contains(userId)) {
+                return ApiResponse.error(403, "权限不足：只能分析自己的日志。");
+            }
         } else if (mode == 1) { // 仅任务模式
             if (request.getTaskId() == null) {
                 return ApiResponse.error(400, "在任务模式下，任务ID (taskId) 不能为空。");
             }
+            // 可选：如需校验任务归属，可在此补充
         } else {
             return ApiResponse.error(400, "不支持的分析模式: " + mode + "。支持的模式为0 (用户+时间) 或1 (仅任务)。");
         }
 
         AIAnalysisResult analysisResult = new AIAnalysisResult();
-        
+
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found for ID: " + userId));
         analysisResult.setUser(currentUser);
         analysisResult.setAnalysisTime(LocalDateTime.now());
         // 设置初始状态为0（分析中）
-        analysisResult.setStatus(0); 
+        analysisResult.setStatus(0);
         // 设置分析模式
         analysisResult.setMode(mode);
         // 将整个request对象转换为JSON字符串并存储到prompt字段
@@ -332,9 +337,13 @@ public class AIService {
         }
     }
 
-    public Map<String, Object> getAIAnalysisResult(Integer resultId) {
+    public Map<String, Object> getAIAnalysisResult(Integer resultId, Integer userId) {
         AIAnalysisResult analysisResult = aiAnalysisResultRepository.findById(resultId)
                 .orElseThrow(() -> new RuntimeException("AI分析结果未找到，ID: " + resultId));
+        // 权限校验：只能查看自己的分析结果
+        if (!analysisResult.getUser().getUserId().equals(userId)) {
+            throw new RuntimeException("权限不足：只能查看自己的分析结果。");
+        }
         String content = analysisResult.getContent();
         if (content == null) {
             throw new RuntimeException("AI分析结果内容为空，ID: " + resultId);
@@ -347,7 +356,9 @@ public class AIService {
     }
 
     public List<AIAnalysisResultSummaryDTO> listAIAnalysisResults(Integer userId) {
+        // 只返回当前用户的分析结果，按分析时间降序排序
         return aiAnalysisResultRepository.findByUser_UserId(userId).stream()
+                .sorted((a, b) -> b.getAnalysisTime().compareTo(a.getAnalysisTime()))
                 .map(result -> {
                     Map<String, Object> promptMap = null;
                     String promptString = result.getPrompt();
@@ -356,7 +367,6 @@ public class AIService {
                             promptMap = objectMapper.readValue(promptString, new TypeReference<Map<String, Object>>() {});
                         } catch (JsonProcessingException e) {
                             System.err.println("Error parsing prompt JSON for resultId " + result.getResultId() + ": " + e.getMessage());
-                            // 可以选择返回一个包含错误信息的默认Map，或者抛出异常
                             promptMap = new HashMap<>();
                             promptMap.put("error", "Error parsing prompt JSON");
                         }
