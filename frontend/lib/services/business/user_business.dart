@@ -61,9 +61,9 @@ class UserBusiness {
       return null;
     }
   }  // 获取同部门下级员工列表
-  Future<List<User>> getSubDeptUsers() async {
+  Future<List<User>> getSubordinateUserss() async {
     try {
-      final response = await _userApi.getSubDeptUser();
+      final response = await _userApi.getSubordinateUsers();
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);

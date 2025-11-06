@@ -212,49 +212,35 @@ export default {
     },
     async loadAllDepartments() {
       try {
-        // Load all departments for the dropdown
-        let allDepts = []
-        const visitedDeptIds = new Set()
+        // 使用 getDeptTree 获取完整的部门树，然后扁平化并去重
+        const resp = await getDeptTree()
+        const trees = (resp && resp.data && resp.data.tree) ? resp.data.tree : []
         
-        const fetchDepartments = async (deptId) => {
-          if (visitedDeptIds.has(deptId)) {
-            return
+        // 扁平化部门树，使用 Set 去重
+        const deptMap = new Map() // 使用 Map 存储，key 为 departmentId，确保唯一性
+        
+        const flattenTree = (node, parentId = null) => {
+          const deptId = node.deptId || node.departmentId
+          if (deptId && !deptMap.has(deptId)) {
+            deptMap.set(deptId, {
+              departmentId: deptId,
+              deptName: node.deptName || node.departmentName,
+              deptDescription: node.deptDescription || node.description,
+              parentDept: parentId
+            })
           }
-          visitedDeptIds.add(deptId)
           
-          try {
-            const response = await listSubDepts(deptId)
-            if (response.data && response.data.depts) {
-              const subDepts = response.data.depts
-              allDepts = allDepts.concat(subDepts)
-              
-              for (const subDept of subDepts) {
-                const subDeptId = subDept.deptId || subDept.departmentId
-                if (subDeptId && !visitedDeptIds.has(subDeptId)) {
-                  await fetchDepartments(subDeptId)
-                }
-              }
-            }
-          } catch (error) {
-            // Skip if department doesn't exist
+          // 递归处理子部门
+          if (node.children && Array.isArray(node.children)) {
+            node.children.forEach(child => flattenTree(child, deptId))
           }
         }
         
-        // Try common root department IDs
-        for (let rootId = 0; rootId <= 10; rootId++) {
-          try {
-            await fetchDepartments(rootId)
-          } catch (error) {
-            continue
-          }
-        }
+        // 遍历所有根节点
+        trees.forEach(root => flattenTree(root))
         
-        this.departmentsList = allDepts.map(dept => ({
-          departmentId: dept.deptId || dept.departmentId,
-          deptName: dept.deptName || dept.departmentName,
-          deptDescription: dept.deptDescription || dept.description,
-          parentDept: dept.parentDept !== undefined ? dept.parentDept : (dept.parentId !== undefined ? dept.parentId : null)
-        }))
+        // 转换为数组
+        this.departmentsList = Array.from(deptMap.values())
       } catch (error) {
         console.error('Failed to load departments for dropdown:', error)
         this.departmentsList = []

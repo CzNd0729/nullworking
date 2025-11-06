@@ -55,7 +55,7 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   Future<void> _loadRemoteData() async {
     // 加载人员（同级及下级部门用户）
     try {
-      final userResp = await _userApi.getSubDeptUser();
+      final userResp = await _userApi.getSubordinateUsers();
       if (userResp.statusCode == 200) {
         final body = jsonDecode(userResp.body);
         if (body['code'] == 200 && body['data'] != null) {
