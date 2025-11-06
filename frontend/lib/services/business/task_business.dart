@@ -135,7 +135,7 @@ class TaskBusiness {
 
   Future<List<Map<String, dynamic>>> fetchTeamMembers() async {
     try {
-      final response = await _userApi.getSubDeptUser();
+      final response = await _userApi.getSubordinateUsers();
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {

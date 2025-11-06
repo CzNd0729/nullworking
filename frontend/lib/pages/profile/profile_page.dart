@@ -32,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final user = await _userBusiness.getCurrentUser();
-      final subUsers = await _userBusiness.getSubDeptUsers();
+      final subUsers = await _userBusiness.getSubordinateUserss();
 
       setState(() {
         _currentUser = user;
