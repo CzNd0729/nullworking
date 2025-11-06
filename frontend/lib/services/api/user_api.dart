@@ -60,7 +60,7 @@ class UserApi {
     return await _baseApi.get('api/users/getCurrentUserInfo');
   }
 
-  Future<http.Response> getSubDeptUser() async {
-    return await _baseApi.get('api/users/getSubDeptUser');
+  Future<http.Response> getSubordinateUsers() async {
+    return await _baseApi.get('api/users/subordinateUsers');
   }
 }
