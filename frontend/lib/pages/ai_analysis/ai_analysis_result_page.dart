@@ -62,9 +62,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     return nums.reduce((a, b) => a > b ? a : b);
   }
 
-  // ---------- UI widgets ----------
   Widget _buildSuggestionCard(Map<String, dynamic> s) {
-    // 明确类型并提供默认值
     final String severityKey = (s['severity'] as String?) ?? 'unknown';
     final Map<String, dynamic> severityLookup = {
       'high': {'color': Colors.red, 'text': '高'},
@@ -136,17 +134,15 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         (cfg['additional_config']?['line_color'] as String?) ?? '#4285F4';
     final String fillStr =
         (cfg['additional_config']?['fill'] as String?) ?? 'rgba(0,0,0,0)';
-    final String yAxisLabel = (cfg['y_axis'] as String?) ?? ''; // 获取Y轴标签
+    final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
     final Color lineColor = Color(
       int.parse(lineColorHex.replaceFirst('#', '0xFF')),
     );
     final Color fillColor = _parseRgbaColor(fillStr);
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.2; // 顶部预留20%空间
+    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.2;
 
-    // 计算图表宽度：每个数据点占用80像素
-    // 额外添加一个空列(+1)以确保最后日期标签完整显示
     final chartWidth = ((data.length + 1) * 80.0).clamp(300.0, double.infinity);
 
     return Card(
@@ -183,7 +179,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                   child: LineChart(
                     LineChartData(
                       minX: 0,
-                      maxX: data.length.toDouble(), // X轴多显示一个位置
+                      maxX: data.length.toDouble(),
                       minY: 0,
                       maxY: maxY,
                       gridData: const FlGridData(show: false),
@@ -200,7 +196,6 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
-                              // 只显示实际数据范围内的Y轴标签，隐藏预留空间的标签
                               if (v > maxYValue) {
                                 return const SizedBox.shrink();
                               }
@@ -265,6 +260,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     );
   }
 
+  // 方案1：固定字体+文字换行 实现
   Widget _buildBarChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
@@ -273,14 +269,14 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
             ?.map((e) => e.toString())
             .toList() ??
         ['#34A853', '#4285F4', '#EA4335', '#FBBC05', '#9C27B0'];
-    final String yAxisLabel = (cfg['y_axis'] as String?) ?? ''; // 获取Y轴标签
+    final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    final maxY = (maxYValue <= 0) ? 10.0 : maxYValue * 1.2; // 顶部预留20%空间
+    // 修复类型错误：显式转换为double
+    final double maxY = (maxYValue <= 0) ? 10.0 : (maxYValue * 1.2).toDouble();
 
-    // 计算图表宽度：每个柱子占用80像素
-    // 额外添加一个空列(+1)以确保最后标签完整显示
-    final chartWidth = ((data.length + 1) * 80.0).clamp(300.0, double.infinity);
+    // 核心配置：固定字体大小（10号字，适合换行显示）
+    const double xAxisFontSize = 10.0;
 
     return Card(
       color: Colors.grey[850],
@@ -305,13 +301,52 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
+            // 新增X轴字段说明（同之前，带颜色标识）
+            if (data.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: data.map((item) {
+                    final text = item['x'] as String? ?? '';
+                    final colorHex =
+                        colorsHex[data.indexOf(item) % colorsHex.length];
+                    final color = Color(
+                      int.parse(colorHex.replaceFirst('#', '0xFF')),
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            color: color,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            text,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: chartWidth,
+                  // 增加每个柱子的横向占用宽度（80→100），给换行标签留空间
+                  width: ((data.length + 1) * 100.0).clamp(300.0, double.infinity),
                   height: 300,
                   child: BarChart(
                     BarChartData(
@@ -331,12 +366,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
-                              // 只显示实际数据范围内的Y轴标签，隐藏预留空间的标签
                               if (v > maxYValue) {
                                 return const SizedBox.shrink();
                               }
                               return Text(
-                                '${v.toInt()}', // 移除固定的"h"单位
+                                '${v.toInt()}',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
@@ -349,17 +383,24 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                           sideTitles: SideTitles(
                             showTitles: true,
                             interval: 1,
+                            // 增加底部预留空间（默认20→40），容纳两行文字
+                            reservedSize: 40,
                             getTitlesWidget: (v, meta) {
                               final i = v.toInt();
                               if (i >= 0 && i < data.length) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 4),
+                                final labelText = data[i]['x'] as String? ?? '';
+                                return SizedBox(
+                                  // 限制标签容器宽度，触发自动换行
+                                  width: 80,
                                   child: Text(
-                                    data[i]['x'] as String? ?? '',
-                                    style: const TextStyle(
+                                    labelText,
+                                    style: TextStyle(
                                       color: Colors.white70,
-                                      fontSize: 11,
+                                      fontSize: xAxisFontSize, // 固定字体大小
                                     ),
+                                    textAlign: TextAlign.center, // 文字居中
+                                    maxLines: 2, // 最多显示2行
+                                    overflow: TextOverflow.ellipsis, // 超出部分省略
                                   ),
                                 );
                               }
@@ -379,7 +420,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             BarChartRodData(
                               toY: (e.value['y'] as num? ?? 0).toDouble(),
                               color: color,
-                              width: 20,
+                              width: 25, // 适当增加柱子宽度，提升视觉效果
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ],
@@ -408,7 +449,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     final total = data.fold<int>(
       0,
       (sum, e) => sum + ((e['y'] as num? ?? 0).toInt()),
-    ); // 更改为使用 'y' 字段
+    );
 
     return Card(
       color: Colors.grey[850],
@@ -440,9 +481,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                     final Color color = Color(
                       int.parse(hex.replaceFirst('#', '0xFF')),
                     );
+                    // 修复类型错误：num→double?
+                    final double? pieValue = (item['value'] as num?)?.toDouble();
                     return PieChartSectionData(
                       color: color,
-                      value: (item['value'] as num? ?? 0).toDouble(),
+                      value: pieValue,
                       title: "${item['value']}%",
                       radius: 60,
                       titleStyle: const TextStyle(
@@ -586,7 +629,6 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 建议
                 const Text(
                   '建设性建议',
                   style: TextStyle(color: Colors.white, fontSize: 22),
@@ -599,13 +641,9 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                       ),
                     )
                     .toList(),
-
                 const SizedBox(height: 18),
-                // 关键词（右侧简单列表样式）
                 _buildKeywordPane(keywords),
-
                 const SizedBox(height: 18),
-                // 概述
                 const Text(
                   '概述',
                   style: TextStyle(color: Colors.white, fontSize: 22),
@@ -625,9 +663,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 18),
-                // 数据图表（按 mock 数据顺序渲染）
                 const Text(
                   '数据图表',
                   style: TextStyle(color: Colors.white, fontSize: 22),
