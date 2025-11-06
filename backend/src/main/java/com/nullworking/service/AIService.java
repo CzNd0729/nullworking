@@ -97,7 +97,7 @@ public class AIService {
         messages.add(userMessage);
 
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model("doubao-seed-1-6-flash-250828") // 指定您创建的方舟推理接入点 ID
+                .model("doubao-seed-1-6-lite-251015") // 指定您创建的方舟推理接入点 ID
                 .messages(messages)
                 .reasoningEffort("medium")
                 .build();
@@ -122,10 +122,6 @@ public class AIService {
             }
             if (request.getEndDate() == null || request.getEndDate().isEmpty()) {
                 return ApiResponse.error(400, "在用户+时间模式下，结束日期 (endDate) 不能为空。");
-            }
-            // 权限校验：只能分析自己的日志
-            if (request.getUserIds().size() != 1 || !request.getUserIds().contains(userId)) {
-                return ApiResponse.error(403, "权限不足：只能分析自己的日志。");
             }
         } else if (mode == 1) { // 仅任务模式
             if (request.getTaskId() == null) {

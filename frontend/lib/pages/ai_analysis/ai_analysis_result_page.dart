@@ -17,6 +17,21 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
   AiAnalysisResult? _analysisResult;
   bool _isLoading = true;
 
+  final List<String> _chartColorPalette = const [
+    '#4285F4', // Google Blue
+    '#34A853', // Google Green
+    '#EA4335', // Google Red
+    '#FBBC05', // Google Yellow
+    '#9C27B0', // Deep Purple
+    '#00BCD4', // Cyan
+    '#FF9800', // Orange
+    '#E91E63', // Pink
+    '#673AB7', // Violet
+    '#009688', // Teal
+    '#795548', // Brown
+    '#607D8B', // Blue Grey
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -131,7 +146,8 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     final String lineColorHex =
-        (cfg['additional_config']?['line_color'] as String?) ?? '#4285F4';
+        (cfg['additional_config']?['line_color'] as String?) ??
+            _chartColorPalette[0];
     final String fillStr =
         (cfg['additional_config']?['fill'] as String?) ?? 'rgba(0,0,0,0)';
     final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
@@ -268,7 +284,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         (cfg['additional_config']?['color_scheme'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
-        ['#34A853', '#4285F4', '#EA4335', '#FBBC05', '#9C27B0'];
+        _chartColorPalette;
     final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
 
     final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
@@ -444,7 +460,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         (cfg['additional_config']?['color_scheme'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
-        ['#4285F4', '#34A853', '#EA4335', '#FBBC05'];
+        _chartColorPalette;
 
     final total = data.fold<int>(
       0,
@@ -550,23 +566,8 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "关键词统计",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
             ...kw.map((k) {
               final double intensity = ((k['percentage'] as num?) ?? 0) / 100.0;
-              final Color keywordColor = Color.fromRGBO(
-                50,
-                150,
-                255,
-                (0.5 + intensity * 0.5).clamp(0.0, 1.0),
-              );
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
@@ -575,8 +576,8 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                     Text(
                       k['keyword'] as String? ?? '未知',
                       style: TextStyle(
-                        color: keywordColor,
-                        fontSize: 14,
+                        color: Colors.white,
+                        fontSize: 14 + (intensity * 10),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -630,21 +631,6 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Text(
-                  '建设性建议',
-                  style: TextStyle(color: Colors.white, fontSize: 22),
-                ),
-                const SizedBox(height: 12),
-                ...suggestions
-                    .map(
-                      (s) => _buildSuggestionCard(
-                        Map<String, dynamic>.from(s as Map),
-                      ),
-                    )
-                    .toList(),
-                const SizedBox(height: 18),
-                _buildKeywordPane(keywords),
-                const SizedBox(height: 18),
-                const Text(
                   '概述',
                   style: TextStyle(color: Colors.white, fontSize: 22),
                 ),
@@ -663,6 +649,26 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 18),
+                const Text(
+                  '建设性建议',
+                  style: TextStyle(color: Colors.white, fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                ...suggestions
+                    .map(
+                      (s) => _buildSuggestionCard(
+                        Map<String, dynamic>.from(s as Map),
+                      ),
+                    )
+                    .toList(),
+                const SizedBox(height: 18),
+                const Text(
+                  '关键词统计',
+                  style: TextStyle(color: Colors.white, fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                _buildKeywordPane(keywords),
                 const SizedBox(height: 18),
                 const Text(
                   '数据图表',
