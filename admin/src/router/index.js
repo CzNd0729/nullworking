@@ -23,7 +23,7 @@ export const constantRoutes = [
         path: 'important-items',
         component: () => import('@/views/importantItems/index.vue'),
         name: 'ImportantItems',
-        meta: { title: '重要事项管理', icon: 'tree' }
+        meta: { title: '重要事项管理', icon: 'todo' }
       }
     ]
   },
@@ -32,26 +32,26 @@ export const constantRoutes = [
     component: () => import('@/layout'),
     redirect: 'noRedirect',
     name: 'Permission',
-    meta: { title: '权限管理', icon: 'user' },
+    meta: { title: '权限管理', icon: 'key' },
     alwaysShow: true,
     children: [
       {
         path: 'role',
         component: () => import('@/views/permission/role.vue'),
         name: 'RoleManagement',
-        meta: { title: '角色管理' }
+        meta: { title: '角色管理', icon: 'role' }
       },
       {
         path: 'department',
         component: () => import('@/views/permission/department.vue'),
         name: 'DepartmentManagement',
-        meta: { title: '部门管理' }
+        meta: { title: '部门管理', icon: 'house' }
       },
       {
         path: 'user',
         component: () => import('@/views/permission/user.vue'),
         name: 'UserManagement',
-        meta: { title: '用户管理' }
+        meta: { title: '用户管理', icon: 'user' }
       }
     ]
   },

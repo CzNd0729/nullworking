@@ -1,0 +1,10 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="200" height="200" fill="currentColor">
+  <!-- 更大更粗的钥匙：放大钥匙头与齿部，使与 todo 图标视觉权重接近 -->
+  <!-- 钥匙头（实心圆，直径更大） -->
+  <circle cx="360" cy="512" r="280" />
+  <!-- 钥匙颈部（更粗更长） -->
+  <rect x="520" y="468" width="180" height="88" rx="12" />
+  <!-- 钥匙齿部（更大齿形） -->
+  <path d="M700 460h224v96h-72v88h-96v88h-112v-272z"/>
+</svg>
+

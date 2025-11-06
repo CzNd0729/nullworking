@@ -54,3 +54,12 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+/* 将权限管理下的三个子项标题整体右移一些（仅移动文字，不影响图标） */
+::v-deep .el-menu .el-menu-item[index="/permission/role"] > span,
+::v-deep .el-menu .el-menu-item[index="/permission/department"] > span,
+::v-deep .el-menu .el-menu-item[index="/permission/user"] > span {
+  margin-left: 6px;
+}
+</style>
