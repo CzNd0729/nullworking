@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:nullworking/services/api/task_api.dart';
+import 'package:nullworking/services/business/ai_analysis_business.dart';
+import 'package:nullworking/pages/ai_analysis/ai_analysis_result_page.dart';
 
 class CreateAnalysisRequestPage extends StatefulWidget {
   final String mode;
@@ -32,6 +34,7 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   String? _selectedTaskId;
   final UserApi _userApi = UserApi();
   final TaskApi _taskApi = TaskApi();
+  final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
 
   bool _loadingData = false;
 
@@ -728,54 +731,23 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
                         .where((id) => id != null)
                         .map((id) => id!)
                         .toList(),
-              'startDate': _startDate!.toIso8601String(),
-              'endDate': _endDate!.toIso8601String(),
-              'prompt': prompt,
+              'startDate': _startDate!.toIso8601String().split('T')[0],
+              'endDate': _endDate!.toIso8601String().split('T')[0],
+              'userPrompt': prompt,
             }
-          : {'taskId': _selectedTaskId, 'prompt': prompt};
+          : {'taskId': _selectedTaskId, 'userPrompt': prompt};
 
-      // TODO: 在这里调用 AI 接口
-      debugPrint('发送分析请求: $requestData');
-
-      // 模拟网络延迟
-      await Future.delayed(const Duration(seconds: 2));
+      final analysisModeInt = _analysisMode == 'time' ? 0 : 1;
+      final resultId = await _aiAnalysisBusiness.logAnalysis(analysisModeInt, requestData);
 
       if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('分析完成'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('分析模式: ${_analysisMode == 'time' ? '按时间' : '按任务'}'),
-                  if (_analysisMode == 'time') ...[
-                    Text(
-                      '时间范围: ${_startDate!.toString().split(' ')[0]} 至 ${_endDate!.toString().split(' ')[0]}',
-                    ),
-                    Text(
-                      '选择人员: ${_selectedPeople.isEmpty ? '全部' : (_selectedPeople.length == 1 ? _selectedPeople.first : '${_selectedPeople.length}人')}',
-                    ),
-                  ] else ...[
-                    Text(
-                      '选择任务: ${_tasks.firstWhere((t) => t['id'] == _selectedTaskId)['title']}',
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  const Text('分析结果将在这里显示（目前为占位）'),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('关闭'),
-              ),
-            ],
-          ),
-        );
+        if (resultId != null) {
+          Navigator.of(context).pop();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('分析请求失败，请稍后再试')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

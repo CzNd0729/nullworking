@@ -1,6 +1,6 @@
 class AiAnalysisResult {
   String resultId;
-  String prompt;
+  Map<String, dynamic> prompt;
   DateTime analysisTime;
   int status; // 0 for processing, 1 for completed, 2 for failed
   int mode; // 0 for default, other values for specific analysis modes
@@ -18,7 +18,7 @@ class AiAnalysisResult {
   factory AiAnalysisResult.fromJson(Map<String, dynamic> json) {
     return AiAnalysisResult(
       resultId: json['resultId']?.toString() ?? '',
-      prompt: json['prompt']?.toString() ?? '',
+      prompt: Map<String, dynamic>.from(json['prompt'] ?? {}),
       analysisTime: json['analysisTime'] != null
           ? DateTime.parse(json['analysisTime'].toString())
           : DateTime.now(),

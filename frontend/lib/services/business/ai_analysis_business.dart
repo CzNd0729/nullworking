@@ -14,7 +14,7 @@ class AiAnalysisBusiness {
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200) {
-          return responseBody['data']['resultId'].toString();
+          return responseBody['data'].toString();
         } else {
           return null;
         }

@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Lazy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -72,6 +73,7 @@ public class AIService {
         this.systemPrompt = systemPrompt;
         this.objectMapper = objectMapper;
         this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块
+        this.objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // 忽略null字段
     }
 
     public String getAIResponse(String text, String imageUrl) {
@@ -164,7 +166,7 @@ public class AIService {
         try {
             // 1. 根据request参数（userIds, startDate, endDate, taskId）构建完整的AI请求
             String jsonData = "";
-            String fullPrompt = request.getPrompt();
+            String fullPrompt = request.getUserPrompt(); // 使用新的userPrompt字段
 
             if (mode == 0) { // 用户+时间模式
                 // 获取用户列表
@@ -242,7 +244,7 @@ public class AIService {
                 data.put("logs", logList);
                 data.put("tasks", taskList); // 添加任务列表
                 jsonData = objectMapper.writeValueAsString(data);
-                fullPrompt = request.getPrompt() + "\n\n以下是相关数据：\n" + jsonData;
+                fullPrompt = request.getUserPrompt() + "\n\n以下是相关数据：\n" + jsonData; // 使用新的userPrompt字段
             } else if (mode == 1) { // 仅任务模式
                 // 根据taskId获取任务
                 Task task = taskRepository.findById(request.getTaskId())
@@ -311,7 +313,7 @@ public class AIService {
                 taskList.add(taskMap);
                 data.put("tasks", taskList); // 添加任务列表
                 jsonData = objectMapper.writeValueAsString(data);
-                fullPrompt = request.getPrompt() + "\n\n以下是任务相关数据：\n" + jsonData;
+                fullPrompt = request.getUserPrompt() + "\n\n以下是任务相关数据：\n" + jsonData; // 使用新的userPrompt字段
             }
             
             // 模拟AI分析结果
@@ -347,11 +349,21 @@ public class AIService {
     public List<AIAnalysisResultSummaryDTO> listAIAnalysisResults(Integer userId) {
         return aiAnalysisResultRepository.findByUser_UserId(userId).stream()
                 .map(result -> {
-                    String prompt = result.getPrompt();
-                    if (prompt == null) {
-                        prompt = ""; // 或者其他默认值
+                    Map<String, Object> promptMap = null;
+                    String promptString = result.getPrompt();
+                    if (promptString != null) {
+                        try {
+                            promptMap = objectMapper.readValue(promptString, new TypeReference<Map<String, Object>>() {});
+                        } catch (JsonProcessingException e) {
+                            System.err.println("Error parsing prompt JSON for resultId " + result.getResultId() + ": " + e.getMessage());
+                            // 可以选择返回一个包含错误信息的默认Map，或者抛出异常
+                            promptMap = new HashMap<>();
+                            promptMap.put("error", "Error parsing prompt JSON");
+                        }
+                    } else {
+                        promptMap = new HashMap<>();
                     }
-                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), prompt, result.getStatus(), result.getMode());
+                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), promptMap, result.getStatus(), result.getMode());
                 })
                 .collect(Collectors.toList());
     }

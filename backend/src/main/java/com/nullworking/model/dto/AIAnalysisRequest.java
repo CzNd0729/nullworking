@@ -21,5 +21,5 @@ public class AIAnalysisRequest {
     private Integer taskId;
 
     @Schema(description = "AI分析的提示词", example = "分析这个人本周的工作情况")
-    private String prompt;
+    private String userPrompt;
 }

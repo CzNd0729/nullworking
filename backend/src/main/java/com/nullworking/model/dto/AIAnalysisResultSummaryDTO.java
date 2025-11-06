@@ -1,21 +1,22 @@
 package com.nullworking.model.dto;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 public class AIAnalysisResultSummaryDTO {
     private Integer resultId;
     private LocalDateTime analysisTime;
-    private String prompt;
+    private Map<String, Object> prompt;
     private Integer status;
     private Integer mode;
 
-    public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, String prompt) {
+    public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, Map<String, Object> prompt) {
         this.resultId = resultId;
         this.analysisTime = analysisTime;
         this.prompt = prompt;
     }
 
-    public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, String prompt, Integer status, Integer mode) {
+    public AIAnalysisResultSummaryDTO(Integer resultId ,LocalDateTime analysisTime, Map<String, Object> prompt, Integer status, Integer mode) {
         this.resultId = resultId;
         this.analysisTime = analysisTime;
         this.prompt = prompt;
@@ -31,11 +32,11 @@ public class AIAnalysisResultSummaryDTO {
         this.analysisTime = analysisTime;
     }
 
-    public String getPrompt() {
+    public Map<String, Object> getPrompt() {
         return prompt;
     }
 
-    public void setPrompt(String prompt) {
+    public void setPrompt(Map<String, Object> prompt) {
         this.prompt = prompt;
     }
 

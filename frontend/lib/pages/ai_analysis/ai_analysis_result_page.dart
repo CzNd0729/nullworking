@@ -236,8 +236,8 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
               final Color color = Color(int.parse(hex.replaceFirst('#', '0xFF')));
               return PieChartSectionData(
                 color: color,
-                value: (item['proportion'] as num? ?? 0).toDouble(), // 更改为使用 'proportion' 字段
-                title: "${item['proportion']}%", // 更改为使用 'proportion' 字段
+                value: (item['value'] as num? ?? 0).toDouble(), 
+                title: "${item['value']}%", 
                 radius: 60,
                 titleStyle: const TextStyle(color: Colors.white, fontSize: 12),
               );
@@ -255,9 +255,9 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
               Row(children: [
                 Container(width: 12, height: 12, color: color),
                 const SizedBox(width: 8),
-                Text(item['name'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)), // 更改为使用 'name' 字段
+                Text(item['name'] as String? ?? '', style: const TextStyle(color: Colors.white70, fontSize: 14)),
               ]),
-              Text("${item['proportion']}%", style: const TextStyle(color: Colors.white54)), // 更改为使用 'proportion' 字段
+              Text("${item['value']}%", style: const TextStyle(color: Colors.white54)), 
             ]),
           );
         }).toList()),

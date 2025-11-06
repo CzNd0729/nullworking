@@ -4,6 +4,9 @@ import 'package:nullworking/models/ai_analysis_result.dart';
 import 'package:nullworking/services/business/ai_analysis_business.dart';
 import 'package:nullworking/pages/ai_analysis/ai_analysis_result_page.dart'; // 新增导入
 import 'create_analysis_request.dart';
+import 'dart:convert'; // Added for jsonDecode
+import 'package:nullworking/services/api/user_api.dart';
+import 'package:nullworking/services/api/task_api.dart';
 
 class AIAnalysisPage extends StatefulWidget {
   const AIAnalysisPage({super.key});
@@ -17,10 +20,76 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
   List<AiAnalysisResult>? _analysisList;
   bool _isLoading = true;
 
+  final UserApi _userApi = UserApi();
+  final TaskApi _taskApi = TaskApi();
+
+  List<String> _people = [];
+  Map<String, int> _peopleMap = {}; // name -> userId
+  List<Map<String, String>> _tasks = [];
+
   @override
   void initState() {
     super.initState();
     _loadAnalysisHistory();
+    _loadRemoteData();
+  }
+
+  Future<void> _loadRemoteData() async {
+    // 加载人员（同级及下级部门用户）
+    try {
+      final userResp = await _userApi.getSubDeptUser(); // Assuming a method to get sub-department users
+      if (userResp.statusCode == 200) {
+        final body = jsonDecode(userResp.body);
+        if (body['code'] == 200 && body['data'] != null) {
+          final users = body['data']['users'] as List<dynamic>?;
+          if (users != null) {
+            final names = <String>[];
+            final map = <String, int>{};
+            for (var u in users) {
+              final id = u['userId'];
+              final name = u['realName']?.toString() ?? '';
+              if (name.isNotEmpty) {
+                names.add(name);
+                if (id != null) {
+                  try {
+                    map[name] = int.parse(id.toString());
+                  } catch (_) {
+                    // ignore parse
+                  }
+                }
+              }
+            }
+            setState(() {
+              _people = names;
+              _peopleMap = map;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('加载用户失败: $e');
+    }
+
+    // 加载任务（当前用户创建与参与的任务）
+    try {
+      final taskList = await _taskApi.listTasks(); // Assuming a method to list tasks
+      if (taskList != null) {
+        final combined = <Map<String, String>>[];
+        for (var t in taskList.createdTasks) {
+          combined.add({'id': t.taskId, 'title': t.taskTitle});
+        }
+        for (var t in taskList.participatedTasks) {
+          if (!combined.any((e) => e['id'] == t.taskId)) {
+            combined.add({'id': t.taskId, 'title': t.taskTitle});
+          }
+        }
+        setState(() {
+          _tasks = combined;
+        });
+      }
+    } catch (e) {
+      debugPrint('加载任务失败: $e');
+    }
   }
 
   Future<void> _loadAnalysisHistory() async {
@@ -142,69 +211,110 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
         statusColor = Colors.grey;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.history, color: Colors.white70),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  analysisResult.prompt,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+    return InkWell(
+      onTap: analysisResult.status == 1
+          ? () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => AIAnalysisResultPage(
+                    resultId: analysisResult.resultId,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+              );
+            }
+          : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.history, color: Colors.white70),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    analysisResult.prompt['userPrompt'] ?? '无提示词',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                child: Text(
-                  statusText,
-                  style: TextStyle(color: statusColor, fontSize: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(color: statusColor, fontSize: 12),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              ],
+            ),
+            const SizedBox(height: 8),
+            // 根据 mode 显示不同的详情
+            if (analysisResult.mode == 0) ...[
+              // 按时间分析
               Text(
-                DateFormat('yyyy年MM月dd日 HH:mm')
-                    .format(analysisResult.analysisTime),
+                '时间范围: ${analysisResult.prompt['startDate'] ?? '未知'} 至 ${analysisResult.prompt['endDate'] ?? '未知'}',
                 style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => AIAnalysisResultPage(
-                        resultId: analysisResult.resultId,
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('查看详情'),
+              Text(
+                '分析人员: ${(_getUserNamesFromIds(analysisResult.prompt['userIds'] as List<dynamic>?))}',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              ),
+            ] else if (analysisResult.mode == 1) ...[
+              // 按任务分析
+              Text(
+                '分析任务: ${(_getTaskTitleFromId(analysisResult.prompt['taskId']?.toString()))}',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
             ],
-          ),
-        ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  DateFormat('yyyy年MM月dd日 HH:mm')
+                      .format(analysisResult.analysisTime),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                ),
+                // 移除查看详情按钮
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _getUserNamesFromIds(List<dynamic>? userIds) {
+    if (userIds == null || userIds.isEmpty) return '全部';
+    final names = userIds.map((id) {
+      final userEntry = _peopleMap.entries.firstWhere(
+        (element) => element.value == id,
+        orElse: () => MapEntry('未知用户', id),
+      );
+      return userEntry.key;
+    }).toList();
+    return names.join(', ');
+  }
+
+  String _getTaskTitleFromId(String? taskId) {
+    if (taskId == null) return '未知任务';
+    final taskEntry = _tasks.firstWhere(
+      (element) => element['id'] == taskId,
+      orElse: () => {'title': '未知任务'},
+    );
+    return taskEntry['title'] ?? '未知任务';
   }
 }
