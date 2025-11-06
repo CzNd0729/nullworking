@@ -32,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final user = await _userBusiness.getCurrentUser();
-      final subUsers = await _userBusiness.getSubordinateUserss();
+      final subUsers = await _userBusiness.getSubordinateUsers();
 
       setState(() {
         _currentUser = user;
@@ -126,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             // 用户名
             Text(
-              _currentUser?.userName ?? '未登录',
+              _currentUser?.realName ?? _currentUser?.userName ?? '未登录',
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -135,18 +135,9 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 8),
 
-            // 真实姓名
-            if (_currentUser?.realName != null)
-              Text(
-                _currentUser!.realName!,
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
-              ),
-
-            const SizedBox(height: 16),
-
             // 其他信息
-            if (_currentUser?.phone != null)
-              _buildInfoRow(Icons.phone, _currentUser!.phone!),
+            if (_currentUser?.phoneNumber != null)
+              _buildInfoRow(Icons.phone, _currentUser!.phoneNumber!),
             if (_currentUser?.email != null)
               _buildInfoRow(Icons.email, _currentUser!.email!),
             if (_currentUser?.deptName != null)
@@ -254,7 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (user.phone != null)
+                      if (user.phoneNumber != null)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -265,7 +256,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              user.phone!,
+                              user.phoneNumber!,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey.shade400,

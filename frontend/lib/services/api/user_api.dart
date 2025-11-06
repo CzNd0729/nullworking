@@ -57,7 +57,7 @@ class UserApi {
   }
 
   Future<http.Response> getCurrentUserInfo() async {
-    return await _baseApi.get('api/users/getCurrentUserInfo');
+    return await _baseApi.get('api/users/profile');
   }
 
   Future<http.Response> getSubordinateUsers() async {
