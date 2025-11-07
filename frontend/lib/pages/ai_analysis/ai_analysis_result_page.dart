@@ -548,8 +548,6 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 8),
-            Text("总计 $total%", style: const TextStyle(color: Colors.white54)),
           ],
         ),
       ),

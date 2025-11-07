@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:nullworking/services/api/task_api.dart';
 import 'package:nullworking/services/business/ai_analysis_business.dart';
-import 'package:nullworking/pages/ai_analysis/ai_analysis_result_page.dart';
 
 class CreateAnalysisRequestPage extends StatefulWidget {
   final String mode;
@@ -64,14 +63,35 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
             // 保留全部选项在头部，同时记录 name->id 映射
             final names = <String>[];
             final map = <String, int>{};
+
+            // 获取当前用户并添加到列表
+            final currentUserResp = await _userApi.getCurrentUserInfo();
+            if (currentUserResp.statusCode == 200) {
+              final currentUserBody = jsonDecode(currentUserResp.body);
+              if (currentUserBody['code'] == 200 && currentUserBody['data'] != null) {
+                final currentUserId = currentUserBody['data']['userId'];
+                final currentUserName = currentUserBody['data']['realName']?.toString() ?? '';
+                if (currentUserName.isNotEmpty && currentUserId != null) {
+                  names.add(currentUserName);
+                  try {
+                    map[currentUserName] = int.parse(currentUserId.toString());
+                  } catch (_) {
+                    // ignore parse
+                  }
+                }
+              }
+            }
+            // 处理下级用户
+            final subordinateNames = <String>[];
+            final subordinateMap = <String, int>{};
             for (var u in users) {
               final id = u['userId'];
               final name = u['realName']?.toString() ?? '';
               if (name.isNotEmpty) {
-                names.add(name);
+                subordinateNames.add(name);
                 if (id != null) {
                   try {
-                    map[name] = int.parse(id.toString());
+                    subordinateMap[name] = int.parse(id.toString());
                   } catch (_) {
                     // ignore parse
                   }
@@ -79,8 +99,8 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
               }
             }
             setState(() {
-              _people = ['全部', ...names];
-              _peopleMap = map;
+              _people = ['全部', ...names, ...subordinateNames];
+              _peopleMap = {...map, ...subordinateMap};
             });
           }
         }
@@ -331,7 +351,7 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
               controller: _promptController,
               maxLines: 4,
               decoration: InputDecoration(
-                hintText: '例如：帮我总结该时间段内的主要舆情...',
+                hintText: '例如：帮我分析这个人本周工作的情况...',
                 filled: true,
                 fillColor: const Color(0xFF121212),
                 border: OutlineInputBorder(

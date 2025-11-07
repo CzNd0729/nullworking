@@ -244,7 +244,8 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: null, // 允许无限行
+                    softWrap: true, // 允许软换行
                   ),
                 ),
                 Container(

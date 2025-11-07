@@ -97,7 +97,7 @@ public class AIService {
         messages.add(userMessage);
 
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model("doubao-seed-1-6-lite-251015") // 指定您创建的方舟推理接入点 ID
+                .model("doubao-seed-1-6-thinking-250715") // 指定您创建的方舟推理接入点 ID
                 .messages(messages)
                 .reasoningEffort("medium")
                 .build();
