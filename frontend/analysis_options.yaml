@@ -21,8 +21,27 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+    # -------------------------- 核心错误类规则（必须遵守）--------------------------
+    unused_local_variable: error  # 禁止未使用的局部变量（红色波浪线）
+    unused_import: error          # 禁止未使用的导入（红色波浪线，清理冗余）
+    unused_catch_clause: error    # 禁止未使用的 catch 异常变量
+    deprecated_member_use: error  # 禁止使用废弃的 API（避免兼容性问题）
+    invalid_use_of_protected_member: error  # 禁止非法使用受保护的成员
+    
+    # -------------------------- 风格规范类规则（统一代码风格）--------------------------
+    prefer_const_constructors: error  # 强制使用 const 构造函数（优化性能+统一风格）
+    prefer_const_literals_to_create_immutables: error  # 集合（List/Map）优先用 const
+    prefer_single_quotes: true        # 字符串优先用单引号（统一风格，可选）
+    camel_case_types: error           # 类/枚举名必须用驼峰式（如 UserModel，而非 user_model）
+    camel_case_variables: error       # 变量名必须用驼峰式（如 userName，而非 user_name）
+    snake_case_functions: error       # 函数/方法名必须用蛇形（如 get_user_info，Flutter 推荐）
+    constant_identifier_names: error  # 常量名必须全大写+下划线（如 const MAX_COUNT = 10）
+    
+    # -------------------------- 警告类规则（开发时注意，不阻断运行）--------------------------
+    avoid_print: warn  # 警告使用 print 语句（开发时可保留，上线前清理）
+    avoid_empty_else: warn  # 警告空的 else 语句（冗余代码）
+    prefer_conditional_assignment: warn  # 推荐用三元运算符简化赋值（如 a ??= b）
+    
+    # -------------------------- 可选关闭的规则（根据项目情况调整）--------------------------
+    # avoid_setters_without_getters: false  # 若需要“只写属性”，可关闭此规则
+    # prefer_final_fields: false  # 若不需要强制字段为 final，可关闭
