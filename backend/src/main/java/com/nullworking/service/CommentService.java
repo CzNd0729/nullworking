@@ -74,4 +74,24 @@ public class CommentService {
         commentRepository.save(c);
         return ApiResponse.success();
     }
+
+    public ApiResponse<java.util.Map<String, Object>> listComments(Integer logId) {
+        java.util.List<Comment> list = commentRepository.findByLogIdAndIsDeletedFalseOrderByLatest(logId);
+
+        java.util.List<java.util.Map<String, Object>> items = new java.util.ArrayList<>();
+        for (Comment c : list) {
+            java.util.Map<String, Object> m = new java.util.HashMap<>();
+            m.put("id", c.getId());
+            m.put("userId", c.getUserId());
+            m.put("content", c.getContent());
+            m.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : null);
+            m.put("updatedAt", c.getUpdatedAt() != null ? c.getUpdatedAt().toString() : null);
+            items.add(m);
+        }
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("comments", items);
+
+        return ApiResponse.success(data);
+    }
 }

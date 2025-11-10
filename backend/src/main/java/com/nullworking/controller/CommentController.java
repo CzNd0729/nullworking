@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -77,5 +78,18 @@ public class CommentController {
         } else {
             return ResponseEntity.status(500).body(response);
         }
+    }
+
+    @GetMapping("/{logId}")
+    public ApiResponse<java.util.Map<String, Object>> listComments(
+            @PathVariable("logId") Integer logId,
+            HttpServletRequest httpRequest) {
+
+        Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (userId == null) {
+            return ApiResponse.error(401, "Unauthorized: 无效的token或用户ID");
+        }
+
+        return commentService.listComments(logId);
     }
 }
