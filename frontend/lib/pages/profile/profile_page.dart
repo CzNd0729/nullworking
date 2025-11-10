@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../login/login_page.dart';
+import 'user_detail_page.dart';
 import '../../services/business/auth_business.dart';
 import '../../services/business/user_business.dart';
 import '../../models/user.dart';
@@ -103,46 +104,59 @@ class _ProfilePageState extends State<ProfilePage> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // 头像
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.blue.shade200,
-              child: Text(
-                _currentUser?.realName?.substring(0, 1) ??
-                    _currentUser?.userName?.substring(0, 1).toUpperCase() ??
-                    '用',
+      child: InkWell(
+        onTap: () {
+          if (_currentUser != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserDetailPage(user: _currentUser!),
+              ),
+            ).then((_) => _loadData()); // 返回时刷新数据
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              // 头像
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.blue.shade200,
+                child: Text(
+                  _currentUser?.realName?.substring(0, 1) ??
+                      _currentUser?.userName?.substring(0, 1).toUpperCase() ??
+                      '用',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 用户名
+              Text(
+                _currentUser?.realName ?? _currentUser?.userName ?? '未登录',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-            // 用户名
-            Text(
-              _currentUser?.realName ?? _currentUser?.userName ?? '未登录',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 其他信息
-            if (_currentUser?.phoneNumber != null)
-              _buildInfoRow(Icons.phone, _currentUser!.phoneNumber!),
-            if (_currentUser?.email != null)
-              _buildInfoRow(Icons.email, _currentUser!.email!),
-            if (_currentUser?.deptName != null)
-              _buildInfoRow(Icons.business, _currentUser!.deptName!),
-          ],
+              // 其他信息
+              if (_currentUser?.phoneNumber != null)
+                _buildInfoRow(Icons.phone, _currentUser!.phoneNumber!),
+              if (_currentUser?.email != null)
+                _buildInfoRow(Icons.email, _currentUser!.email!),
+              if (_currentUser?.deptName != null)
+                _buildInfoRow(Icons.business, _currentUser!.deptName!),
+            ],
+          ),
         ),
       ),
     );
