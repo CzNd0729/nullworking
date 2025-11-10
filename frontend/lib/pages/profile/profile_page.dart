@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../login/login_page.dart';
 import 'user_detail_page.dart';
+import 'subordinate_detail_page.dart';
 import '../../services/business/auth_business.dart';
 import '../../services/business/user_business.dart';
 import '../../models/user.dart';
@@ -220,65 +221,76 @@ class _ProfilePageState extends State<ProfilePage> {
               final user = _subDeptUsers[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 8.0),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade200,
-                    child: Text(
-                      user.realName?.substring(0, 1) ??
-                          user.userName?.substring(0, 1).toUpperCase() ??
-                          '?',
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SubordinateDetailPage(user: user),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blue.shade200,
+                      child: Text(
+                        user.realName?.substring(0, 1) ??
+                            user.userName?.substring(0, 1).toUpperCase() ??
+                            '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      user.realName ?? user.userName ?? '未知用户',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                  ),
-                  title: Text(
-                    user.realName ?? user.userName ?? '未知用户',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (user.userName != null)
+                          Text(
+                            '用户名: ${user.userName}',
+                            style: TextStyle(color: Colors.grey.shade400),
+                          ),
+                        if (user.deptName != null)
+                          Text(
+                            '部门: ${user.deptName}',
+                            style: TextStyle(color: Colors.grey.shade400),
+                          ),
+                      ],
                     ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (user.userName != null)
-                        Text(
-                          '用户名: ${user.userName}',
-                          style: TextStyle(color: Colors.grey.shade400),
-                        ),
-                      if (user.deptName != null)
-                        Text(
-                          '部门: ${user.deptName}',
-                          style: TextStyle(color: Colors.grey.shade400),
-                        ),
-                    ],
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (user.phoneNumber != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.phone,
-                              size: 14,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              user.phoneNumber!,
-                              style: TextStyle(
-                                fontSize: 12,
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (user.phoneNumber != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.phone,
+                                size: 14,
                                 color: Colors.grey.shade400,
                               ),
-                            ),
-                          ],
-                        ),
-                    ],
+                              const SizedBox(width: 4),
+                              Text(
+                                user.phoneNumber!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );
