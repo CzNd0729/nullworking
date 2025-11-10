@@ -1,9 +1,14 @@
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:nullworking/services/api/auth_service.dart';
+import 'package:nullworking/services/business/user_business.dart'; // Import UserBusiness
+import 'package:nullworking/models/user.dart'; // Assuming User model is in this path
 
 class AuthBusiness {
   final UserApi _userApi = UserApi();
+  final AuthService _authService = AuthService();
+  final UserBusiness _userBusiness = UserBusiness(); // Instantiate UserBusiness
 
   Future<String?> login(String username, String password) async {
     try {
@@ -24,7 +29,8 @@ class AuthBusiness {
         return '网络请求失败，请稍后重试';
       }
     } catch (e) {
-      return e.toString();
+      print('登录失败: $e');
+      return null;
     }
   }
 
@@ -47,9 +53,20 @@ class AuthBusiness {
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-    await prefs.remove('userName');
-    await prefs.remove('token');
+    await _authService.logout();
+    // Also clear user data from UserBusiness
+    await _userBusiness.clearCurrentUser(); // Assuming a clearCurrentUser method in UserBusiness
+  }
+
+  Future<String?> getRoleName() async {
+    // Role name is now part of the User object in UserBusiness
+    final user = await _userBusiness.getCurrentUser();
+    return user?.roleName;
+  }
+
+  Future<String?> getDeptName() async {
+    // Department name is now part of the User object in UserBusiness
+    final user = await _userBusiness.getCurrentUser();
+    return user?.deptName;
   }
 }

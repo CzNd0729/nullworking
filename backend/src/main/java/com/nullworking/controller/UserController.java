@@ -39,7 +39,7 @@ public class UserController {
     private UserService userService;
 
     @Operation(summary = "获取同级及下级部门用户", description = "从token解析用户ID，递归查询同级及下级部门中的其他用户，返回用户ID与用户真实姓名")
-    @GetMapping("/getSubDeptUser")
+    @GetMapping("/subordinateUsers")
     public ApiResponse<Map<String, Object>> getSubDeptUser(HttpServletRequest request) {
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
         try {
@@ -96,5 +96,19 @@ public class UserController {
             return ApiResponse.error(403, "权限不足，只有管理员可以删除用户");
         }
         return userService.deleteUser(userId);
+    }
+
+    @Operation(summary = "获取用户个人资料", description = "从token解析用户ID，返回用户角色、邮箱和手机号")
+    @GetMapping("/profile")
+    public ApiResponse<Map<String, Object>> getUserProfile(HttpServletRequest request) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未认证或无效的Token");
+        }
+        try {
+            return userService.getUserProfile(currentUserId);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "服务器错误: " + e.getMessage());
+        }
     }
 }

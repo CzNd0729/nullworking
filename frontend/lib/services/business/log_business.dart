@@ -218,7 +218,7 @@ Future<List<Log>> getTodayLogs() async {
   /// 获取特定条件下的任务列表
   Future<List<Task>> getExecutorTasksForLogSelection() async {
     try {
-      final tasksResponse = await _taskApi.listExecutorTasks();
+      final tasksResponse = await _taskApi.listTasks(participantType: 'executor');
       if (tasksResponse != null) {
         List<Task> tasks = [];
         tasks.addAll(tasksResponse.createdTasks);

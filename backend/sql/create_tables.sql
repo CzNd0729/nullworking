@@ -102,14 +102,12 @@ CREATE TABLE `important_item` (
 CREATE TABLE `ai_analysis_result` (
   `Result_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `User_ID` INT(11) NOT NULL COMMENT '外键，关联用户表（分析结果所属用户）',
-  `Keyword_Imformation` TEXT NOT NULL COMMENT '关键词信息（JSON格式存储）',
-  `Trend_Analysis` TEXT NOT NULL COMMENT '趋势分析内容（JSON格式存储）',
-  `Task_List` TEXT NOT NULL COMMENT '推荐任务清单（JSON格式存储）',
-  `Constructive_Suggestions` TEXT NOT NULL COMMENT 'AI生成的建设性意见',
-  `Analysis_Date` DATE NOT NULL COMMENT '分析结果生成日期',
+  `Prompt` MEDIUMTEXT NOT NULL COMMENT 'AI分析的提示词（JSON格式存储）',
+  `Content` MEDIUMTEXT NOT NULL COMMENT 'AI分析结果内容（JSON格式存储）',
+  `Analysis_Time` DATETIME NOT NULL COMMENT '分析结果生成时间',
   PRIMARY KEY (`Result_ID`),
   KEY `fk_analysis_user` (`User_ID`),
-  KEY `idx_analysis_date` (`Analysis_Date`),
+  KEY `idx_analysis_time` (`Analysis_Time`),
   CONSTRAINT `fk_analysis_user` FOREIGN KEY (`User_ID`) REFERENCES `user` (`User_ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI分析结果表';
 
@@ -161,3 +159,45 @@ CREATE TABLE `log_file` (
   KEY `idx_upload_time` (`Upload_Time`),
   CONSTRAINT `fk_file_log` FOREIGN KEY (`Log_ID`) REFERENCES `log` (`Log_ID`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日志文件附件表（存储日志相关的图片等文件信息）';
+
+12-- 创建评论表
+CREATE TABLE `comment` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '评论ID（主键）',
+  `log_id` int NOT NULL COMMENT '评论的日志ID（外键）',
+  `user_id` int DEFAULT NULL COMMENT '评论者用户ID（外键）',
+  `content` text NOT NULL COMMENT '评论内容',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '评论创建时间',
+  `updated_at` datetime DEFAULT NULL COMMENT '评论更新时间（支持编辑）',
+  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '是否删除（0=未删除，1=已删除）',
+  PRIMARY KEY (`id`),
+  -- 外键关联日志表（日志删除则评论同步删除）
+  KEY `fk_comment_log` (`log_id`),
+  CONSTRAINT `fk_comment_log` FOREIGN KEY (`log_id`) REFERENCES `log` (`Log_ID`) ON DELETE CASCADE,
+  -- 外键关联用户表（用户删除则评论保留，用户ID设为NULL）
+  KEY `fk_comment_user` (`user_id`),
+  CONSTRAINT `fk_comment_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`User_ID`) ON DELETE SET NULL,
+  -- 联合索引：加速查询某日志下的有效评论
+  KEY `idx_log_deleted` (`log_id`, `is_deleted`),
+  -- 索引：查询某用户发布的所有评论
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='日志评论表';
+
+13-- 创建通知表
+CREATE TABLE `notification` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '通知ID（主键）',
+  `receiver_id` int NOT NULL COMMENT '接收通知的用户ID（外键）',
+  `type` tinyint NOT NULL COMMENT '通知类型（1=任务分配，2=日志被评论，3=任务接近DDL，4=任务已完成...）',
+  `content` varchar(500) NOT NULL COMMENT '通知文本内容',
+  `related_type` varchar(20) NOT NULL COMMENT '关联对象类型（log=日志，task=任务，comment=评论等）',
+  `related_id` int NOT NULL COMMENT '关联对象的ID（如日志ID、任务ID、评论ID等）',
+  `is_read` tinyint NOT NULL DEFAULT 0 COMMENT '是否已读（0=未读，1=已读）',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '通知创建时间',
+  PRIMARY KEY (`id`),
+  -- 外键关联用户表（接收者删除则通知同步删除）
+  KEY `fk_notification_receiver` (`receiver_id`),
+  CONSTRAINT `fk_notification_receiver` FOREIGN KEY (`receiver_id`) REFERENCES `user` (`User_ID`) ON DELETE CASCADE,
+  -- 联合索引：加速查询某用户的未读/已读通知
+  KEY `idx_receiver_read` (`receiver_id`, `is_read`),
+  -- 索引：按时间倒序展示最新通知
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知表';

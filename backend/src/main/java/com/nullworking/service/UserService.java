@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 public class UserService {
@@ -44,17 +45,24 @@ public class UserService {
     @Autowired
     private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
+    @Autowired
+    private PermissionService permissionService;
+
     // @Autowired
     // private JwtUtil jwtUtil;
 
     // 所有的业务逻辑将在这里实现
 
     public ApiResponse<Map<String, Object>> getSubDeptUser(Integer currentUserId) {
+        if (currentUserId == null) {
+            return ApiResponse.error(400, "当前用户ID不能为空");
+        }
         // 1. 获取当前用户所属部门ID
         User currentUser = userRepository.findById(currentUserId).orElse(null);
         if (currentUser == null || currentUser.getDepartment() == null) {
             Map<String, Object> data = new HashMap<>();
-            data.put("users", new ArrayList<>());
+            List<Map<String, Object>> emptyUserList = new ArrayList<>();
+            data.put("users", emptyUserList);
             return ApiResponse.success(data);
         }
         Integer currentDepartmentId = currentUser.getDepartment().getDepartmentId();
@@ -67,6 +75,7 @@ public class UserService {
         List<User> usersInHierarchy = userRepository.findByDepartmentDepartmentIdIn(departmentIdsInHierarchy)
                 .stream()
                 .filter(user -> !user.getUserId().equals(currentUserId)) // 排除当前用户自己
+                .filter(user -> permissionService.canAssignTaskToUser(Objects.requireNonNull(currentUserId), user)) // 过滤掉无权分配任务的用户
                 .collect(Collectors.toList());
 
         // 4. 格式化结果
@@ -96,6 +105,10 @@ public class UserService {
                 Map<String, Object> userMap = new HashMap<>();
                 userMap.put("userId", user.getUserId());
                 userMap.put("realName", user.getRealName());
+                // 账号、联系方式
+                userMap.put("userName", user.getUserName());
+                userMap.put("phoneNumber", user.getPhoneNumber());
+                userMap.put("email", user.getEmail());
                 
                 // 获取角色名称
                 String roleName = user.getRole() != null ? user.getRole().getRoleName() : null;
@@ -124,6 +137,13 @@ public class UserService {
      */
     public ApiResponse<Void> addUser(UserCreateRequest request) {
         try {
+            // 角色与部门为必填
+            if (request.getRoleId() == null) {
+                return ApiResponse.error(400, "角色为必选项");
+            }
+            if (request.getDeptId() == null) {
+                return ApiResponse.error(400, "部门为必选项");
+            }
             // 检查用户名是否已存在
             if (userRepository.findByUserName(request.getUserName()) != null) {
                 return ApiResponse.error(409, "用户名已存在");
@@ -143,19 +163,15 @@ public class UserService {
             }
             
             // 验证角色是否存在
-            if (request.getRoleId() != null) {
-                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
-                if (roleOptional.isEmpty()) {
-                    return ApiResponse.error(404, "角色不存在");
-                }
+            Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
+            if (roleOptional.isEmpty()) {
+                return ApiResponse.error(404, "角色不存在");
             }
             
             // 验证部门是否存在
-            if (request.getDeptId() != null) {
-                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
-                if (deptOptional.isEmpty()) {
-                    return ApiResponse.error(404, "部门不存在");
-                }
+            Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
+            if (deptOptional.isEmpty()) {
+                return ApiResponse.error(404, "部门不存在");
             }
             
             // 密码加密
@@ -172,14 +188,10 @@ public class UserService {
             user.setCreationTime(LocalDateTime.now());
             
             // 设置角色
-            if (request.getRoleId() != null) {
-                user.setRole(roleRepository.findById(request.getRoleId()).get());
-            }
+            user.setRole(roleOptional.get());
             
             // 设置部门
-            if (request.getDeptId() != null) {
-                user.setDepartment(departmentRepository.findById(request.getDeptId()).get());
-            }
+            user.setDepartment(deptOptional.get());
             
             // 保存用户
             userRepository.save(user);
@@ -199,30 +211,34 @@ public class UserService {
     public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
         try {
             // 查找用户
-            Optional<User> userOptional = userRepository.findById(userId);
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
             if (userOptional.isEmpty()) {
                 return ApiResponse.error(404, "用户不存在");
             }
             
             User user = userOptional.get();
-            
-            // 更新角色
-            if (request.getRoleId() != null) {
-                Optional<Role> roleOptional = roleRepository.findById(request.getRoleId());
-                if (roleOptional.isEmpty()) {
-                    return ApiResponse.error(404, "角色不存在");
-                }
-                user.setRole(roleOptional.get());
+
+            // 强制要求角色与部门为必填
+            if (request.getRoleId() == null) {
+                return ApiResponse.error(400, "角色为必选项");
             }
-            
-            // 更新部门
-            if (request.getDeptId() != null) {
-                Optional<Department> deptOptional = departmentRepository.findById(request.getDeptId());
-                if (deptOptional.isEmpty()) {
-                    return ApiResponse.error(404, "部门不存在");
-                }
-                user.setDepartment(deptOptional.get());
+            if (request.getDeptId() == null) {
+                return ApiResponse.error(400, "部门为必选项");
             }
+
+            // 更新角色（必填校验后）
+            Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
+            if (roleOptional.isEmpty()) {
+                return ApiResponse.error(404, "角色不存在");
+            }
+            user.setRole(roleOptional.get());
+
+            // 更新部门（必填校验后）
+            Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
+            if (deptOptional.isEmpty()) {
+                return ApiResponse.error(404, "部门不存在");
+            }
+            user.setDepartment(deptOptional.get());
             
             // 更新其他字段
             if (request.getUserName() != null && !request.getUserName().trim().isEmpty()) {
@@ -263,7 +279,7 @@ public class UserService {
     public ApiResponse<Void> deleteUser(Integer userId) {
         try {
             // 查找用户
-            Optional<User> userOptional = userRepository.findById(userId);
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
             if (userOptional.isEmpty()) {
                 return ApiResponse.error(404, "用户不存在");
             }
@@ -289,7 +305,7 @@ public class UserService {
             }
             
             // 删除用户
-            userRepository.delete(user);
+            userRepository.delete(Objects.requireNonNull(user));
             
             return ApiResponse.success();
         } catch (Exception e) {
@@ -312,6 +328,34 @@ public class UserService {
         List<Department> subDepartments = departmentRepository.findByParentDepartment_departmentId(departmentId);
         for (Department subDepartment : subDepartments) {
             collectDepartmentHierarchy(subDepartment.getDepartmentId(), collectedDepartmentIds);
+        }
+    }
+
+    /**
+     * 获取用户个人资料（角色、邮箱、手机号）
+     * @param userId 用户ID
+     * @return 包含用户个人资料的响应
+     */
+    public ApiResponse<Map<String, Object>> getUserProfile(Integer userId) {
+        try {
+            User user = userRepository.findById(Objects.requireNonNull(userId)).orElse(null);
+            if (user == null) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+
+            Map<String, Object> userProfile = new HashMap<>();
+            userProfile.put("userId", user.getUserId());
+            userProfile.put("realName", user.getRealName());
+            userProfile.put("email", user.getEmail());
+            userProfile.put("phoneNumber", user.getPhoneNumber());
+            userProfile.put("roleId", user.getRole() != null ? user.getRole().getRoleId() : null);
+            userProfile.put("deptId", user.getDepartment() != null ? user.getDepartment().getDepartmentId() : null);
+            userProfile.put("roleName", user.getRole() != null ? user.getRole().getRoleName() : null);
+            userProfile.put("deptName", user.getDepartment() != null ? user.getDepartment().getDepartmentName() : null);
+
+            return ApiResponse.success(userProfile);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取用户个人资料失败: " + e.getMessage());
         }
     }
 }

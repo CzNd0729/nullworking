@@ -1,7 +1,7 @@
 package com.nullworking.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "AI_Analysis_Result")
@@ -17,23 +17,21 @@ public class AIAnalysisResult {
     private User user;
 
     @Lob
-    @Column(name = "Keyword_Imformation", nullable = false)
-    private String keywordInformation;
+    @Column(name = "Prompt", nullable = false, columnDefinition = "MEDIUMTEXT")
+    private String prompt;
 
     @Lob
-    @Column(name = "Trend_Analysis", nullable = false)
-    private String trendAnalysis;
+    @Column(name = "Content", nullable = false, columnDefinition = "MEDIUMTEXT")
+    private String content;
 
-    @Lob
-    @Column(name = "Task_List", nullable = false)
-    private String taskList;
+    @Column(name = "Analysis_Time", nullable = false)
+    private LocalDateTime analysisTime;
 
-    @Lob
-    @Column(name = "Constructive_Suggestions", nullable = false)
-    private String constructiveSuggestions;
+    @Column(name = "Status", nullable = false)
+    private Integer status; // 0: 分析中, 1: 分析完成
 
-    @Column(name = "Analysis_Date", nullable = false)
-    private LocalDate analysisDate;
+    @Column(name = "Mode", nullable = false)
+    private Integer mode; // 0: 用户+时间模式, 1: 仅任务模式
 
     // Getters and Setters
     public Integer getResultId() {
@@ -52,43 +50,43 @@ public class AIAnalysisResult {
         this.user = user;
     }
 
-    public String getKeywordInformation() {
-        return keywordInformation;
+    public String getPrompt() {
+        return prompt;
     }
 
-    public void setKeywordInformation(String keywordInformation) {
-        this.keywordInformation = keywordInformation;
+    public void setPrompt(String prompt) {
+        this.prompt = prompt;
     }
 
-    public String getTrendAnalysis() {
-        return trendAnalysis;
+    public String getContent() {
+        return content;
     }
 
-    public void setTrendAnalysis(String trendAnalysis) {
-        this.trendAnalysis = trendAnalysis;
+    public void setContent(String content) {
+        this.content = content;
     }
 
-    public String getTaskList() {
-        return taskList;
+    public LocalDateTime getAnalysisTime() {
+        return analysisTime;
     }
 
-    public void setTaskList(String taskList) {
-        this.taskList = taskList;
+    public void setAnalysisTime(LocalDateTime analysisTime) {
+        this.analysisTime = analysisTime;
     }
 
-    public String getConstructiveSuggestions() {
-        return constructiveSuggestions;
+    public Integer getStatus() {
+        return status;
     }
 
-    public void setConstructiveSuggestions(String constructiveSuggestions) {
-        this.constructiveSuggestions = constructiveSuggestions;
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 
-    public LocalDate getAnalysisDate() {
-        return analysisDate;
+    public Integer getMode() {
+        return mode;
     }
 
-    public void setAnalysisDate(LocalDate analysisDate) {
-        this.analysisDate = analysisDate;
+    public void setMode(Integer mode) {
+        this.mode = mode;
     }
 }

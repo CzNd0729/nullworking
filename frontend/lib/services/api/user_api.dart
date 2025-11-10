@@ -8,10 +8,7 @@ class UserApi {
   final AuthService _authService = AuthService();
 
   Future<http.Response> login(String username, String password) async {
-    final body = {
-      'userName': username,
-      'password': password,
-    };
+    final body = {'userName': username, 'password': password};
 
     final response = await _baseApi.post(
       'api/auth/login',
@@ -59,7 +56,11 @@ class UserApi {
     return await _baseApi.get('api/health');
   }
 
-  Future<http.Response> getSubDeptUser() async {
-    return await _baseApi.get('api/users/getSubDeptUser');
+  Future<http.Response> getCurrentUserInfo() async {
+    return await _baseApi.get('api/users/profile');
+  }
+
+  Future<http.Response> getSubordinateUsers() async {
+    return await _baseApi.get('api/users/subordinateUsers');
   }
 }

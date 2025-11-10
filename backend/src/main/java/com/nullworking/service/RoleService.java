@@ -20,6 +20,8 @@ import com.nullworking.repository.RolePermissionRelationRepository;
 import com.nullworking.repository.RoleRepository;
 import com.nullworking.repository.UserRepository;
 
+import java.util.Objects;
+
 @Service
 public class RoleService {
 
@@ -51,6 +53,14 @@ public class RoleService {
                         roleInfo.put("roleId", role.getRoleId());
                         roleInfo.put("roleName", role.getRoleName());
                         roleInfo.put("roleDescription", role.getRoleDescription());
+                        
+                        // 获取该角色关联的权限ID
+                        List<Integer> permissionIds = rolePermissionRelationRepository.findByRole_RoleId(role.getRoleId())
+                                .stream()
+                                .map(relation -> relation.getPermission().getPermissionId())
+                                .collect(Collectors.toList());
+                        roleInfo.put("permissionIds", permissionIds);
+
                         return roleInfo;
                     })
                     .collect(Collectors.toList());
@@ -92,17 +102,46 @@ public class RoleService {
 
             Role savedRole = roleRepository.save(role);
 
-            // 关联权限
-            if (request.getPermissions() != null && !request.getPermissions().isEmpty()) {
-                for (Integer permissionId : request.getPermissions()) {
-                    Permission permission = permissionRepository.findById(permissionId).orElse(null);
-                    if (permission == null) {
+            // 确保“分配任务给该角色”的权限存在 (但不自动关联)
+            String assignTaskPermissionName = "ASSIGN_TASK_TO_" + savedRole.getRoleName().toUpperCase();
+            Permission assignTaskPermission = permissionRepository.findByPermissionName(assignTaskPermissionName)
+                    .orElseGet(() -> {
+                        Permission newPermission = new Permission();
+                        newPermission.setPermissionName(assignTaskPermissionName);
+                        newPermission.setPermissionDescription("允许将任务分配给" + savedRole.getRoleName());
+                        newPermission.setCreationTime(LocalDateTime.now());
+                        newPermission.setUpdateTime(LocalDateTime.now());
+                        return permissionRepository.save(newPermission);
+                    });
+
+            // 关联请求中提供的权限
+            if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
+                for (Integer permissionId : request.getPermissionIds()) {
+                    if (permissionId == null) {
+                        continue; // Skip null permissionId
+                    }
+
+                    Permission permissionToAssociate = null;
+                    if (assignTaskPermission != null && permissionId.equals(assignTaskPermission.getPermissionId())) {
+                        permissionToAssociate = assignTaskPermission;
+                    } else {
+                        permissionToAssociate = permissionRepository.findById(permissionId).orElse(null);
+                    }
+
+                    if (permissionToAssociate == null) {
                         return ApiResponse.error(404, "权限ID " + permissionId + " 不存在");
+                    }
+
+                    // 检查是否已存在该权限关联，避免重复添加
+                    if (savedRole.getRoleId() != null && permissionToAssociate.getPermissionId() != null) {
+                        if (rolePermissionRelationRepository.findByRole_RoleIdAndPermission_PermissionId(savedRole.getRoleId(), permissionToAssociate.getPermissionId()).isPresent()) {
+                            continue; // Skip if already associated
+                        }
                     }
 
                     RolePermissionRelation relation = new RolePermissionRelation();
                     relation.setRole(savedRole);
-                    relation.setPermission(permission);
+                    relation.setPermission(permissionToAssociate);
                     rolePermissionRelationRepository.save(relation);
                 }
             }
@@ -121,7 +160,10 @@ public class RoleService {
     @Transactional
     public ApiResponse<String> updateRole(RoleUpdateRequest request) {
         try {
-            Role role = roleRepository.findById(request.getRoleId()).orElse(null);
+            if (request.getRoleId() == null) {
+                return ApiResponse.error(400, "角色ID不能为空");
+            }
+            Role role = roleRepository.findById(Objects.requireNonNull(request.getRoleId())).orElse(null);
             if (role == null) {
                 return ApiResponse.error(404, "角色不存在");
             }
@@ -131,7 +173,7 @@ public class RoleService {
                 // 检查角色名称是否与其他角色重复
                 List<Role> existingRoles = roleRepository.findAll();
                 for (Role r : existingRoles) {
-                    if (!r.getRoleId().equals(request.getRoleId()) 
+                    if (r.getRoleId() != null && !r.getRoleId().equals(request.getRoleId()) 
                         && r.getRoleName().equals(request.getRoleName())) {
                         return ApiResponse.error(400, "角色名称已存在");
                     }
@@ -146,25 +188,61 @@ public class RoleService {
             role.setUpdateTime(LocalDateTime.now());
             roleRepository.save(role);
 
+            // 确保“分配任务给该角色”的权限存在 (但不自动关联)
+            String assignTaskPermissionName = "ASSIGN_TASK_TO_" + role.getRoleName().toUpperCase();
+            Permission assignTaskPermission = permissionRepository.findByPermissionName(assignTaskPermissionName)
+                    .orElseGet(() -> {
+                        Permission newPermission = new Permission();
+                        newPermission.setPermissionName(assignTaskPermissionName);
+                        newPermission.setPermissionDescription("允许将任务分配给 " + role.getRoleName() + ".");
+                        newPermission.setCreationTime(LocalDateTime.now());
+                        newPermission.setUpdateTime(LocalDateTime.now());
+                        return permissionRepository.save(newPermission);
+                    });
+            
             // 更新权限关联
-            if (request.getPermissions() != null) {
-                // 删除旧的权限关联
-                List<RolePermissionRelation> oldRelations = rolePermissionRelationRepository.findByRole_RoleId(request.getRoleId());
+            if (request.getPermissionIds() != null) {
+                // 删除旧的权限关联 (只删除不在请求中的权限)
+                List<RolePermissionRelation> oldRelations = rolePermissionRelationRepository.findByRole_RoleId(Objects.requireNonNull(request.getRoleId()));
+                Set<Integer> newPermissionIds = new HashSet<>(request.getPermissionIds());
+
                 for (RolePermissionRelation relation : oldRelations) {
-                    rolePermissionRelationRepository.delete(relation);
+                    if (relation == null || relation.getPermission() == null || relation.getPermission().getPermissionId() == null) {
+                        continue; // Skip null relations or relations with null permissions
+                    }
+                    if (!newPermissionIds.contains(relation.getPermission().getPermissionId())) {
+                        rolePermissionRelationRepository.delete(relation);
+                    }
                 }
 
                 // 添加新的权限关联
-                if (!request.getPermissions().isEmpty()) {
-                    for (Integer permissionId : request.getPermissions()) {
-                        Permission permission = permissionRepository.findById(permissionId).orElse(null);
-                        if (permission == null) {
+                if (!request.getPermissionIds().isEmpty()) {
+                    for (Integer permissionId : request.getPermissionIds()) {
+                        if (permissionId == null) {
+                            continue; // Skip null permissionId
+                        }
+                        
+                        Permission permissionToAssociate = null;
+                        if (assignTaskPermission != null && permissionId.equals(assignTaskPermission.getPermissionId())) {
+                            permissionToAssociate = assignTaskPermission;
+                        } else {
+                            permissionToAssociate = permissionRepository.findById(permissionId).orElse(null);
+                        }
+
+                        if (permissionToAssociate == null) {
                             return ApiResponse.error(404, "权限ID " + permissionId + " 不存在");
+                        }
+
+                        // 检查是否已存在该权限关联，避免重复添加
+                        if (role.getRoleId() != null && permissionToAssociate.getPermissionId() != null) {
+                            if (rolePermissionRelationRepository.findByRole_RoleIdAndPermission_PermissionId(role.getRoleId(), permissionToAssociate.getPermissionId()).isPresent()) {
+                                continue; // Skip if already associated
+                            }
                         }
 
                         RolePermissionRelation relation = new RolePermissionRelation();
                         relation.setRole(role);
-                        relation.setPermission(permission);
+                        relation.setPermission(permissionToAssociate);
                         rolePermissionRelationRepository.save(relation);
                     }
                 }
@@ -184,6 +262,9 @@ public class RoleService {
     @Transactional
     public ApiResponse<String> deleteRole(Integer roleId) {
         try {
+            if (roleId == null) {
+                return ApiResponse.error(400, "角色ID不能为空");
+            }
             Role role = roleRepository.findById(roleId).orElse(null);
             if (role == null) {
                 return ApiResponse.error(404, "角色不存在");
@@ -192,7 +273,10 @@ public class RoleService {
             // 检查是否有关联用户
             List<User> allUsers = userRepository.findAll();
             for (User user : allUsers) {
-                if (user.getRole() != null && user.getRole().getRoleId().equals(roleId)) {
+                if (user == null) {
+                    continue; // Skip null user
+                }
+                if (user.getRole() != null && user.getRole().getRoleId() != null && user.getRole().getRoleId().equals(roleId)) {
                     return ApiResponse.error(400, "该角色下有关联用户，无法删除");
                 }
             }
@@ -200,6 +284,9 @@ public class RoleService {
             // 删除权限关联
             List<RolePermissionRelation> relations = rolePermissionRelationRepository.findByRole_RoleId(roleId);
             for (RolePermissionRelation relation : relations) {
+                if (relation == null) {
+                    continue; // Skip null relation
+                }
                 rolePermissionRelationRepository.delete(relation);
             }
 
@@ -208,6 +295,30 @@ public class RoleService {
             return ApiResponse.success("角色删除成功");
         } catch (Exception e) {
             return ApiResponse.error(500, "删除角色失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 列出所有权限
+     * @return 包含权限列表的响应
+     */
+    public ApiResponse<Map<String, Object>> listPermissions() {
+        try {
+            List<Permission> permissions = permissionRepository.findAll();
+            Map<String, Object> result = new HashMap<>();
+            List<Map<String, Object>> permissionList = permissions.stream()
+                    .map(permission -> {
+                        Map<String, Object> permissionInfo = new HashMap<>();
+                        permissionInfo.put("permissionId", permission.getPermissionId());
+                        permissionInfo.put("permissionName", permission.getPermissionName());
+                        permissionInfo.put("permissionDescription", permission.getPermissionDescription());
+                        return permissionInfo;
+                    })
+                    .collect(Collectors.toList());
+            result.put("permissions", permissionList);
+            return ApiResponse.success(result);
+        } catch (Exception e) {
+            return ApiResponse.error(500, "获取权限列表失败: " + e.getMessage());
         }
     }
 }
