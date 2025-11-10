@@ -272,8 +272,8 @@ public class DepartmentService {
                     return ApiResponse.error(404, "父部门不存在");
                 }
                 
-                // 检查是否会产生循环引用（父部门是自己的子部门）
-                if (isDescendant(department, parentDept.getDepartmentId())) {
+                // 检查是否会产生循环引用（新父部门不能是当前部门的后代）
+                if (isDescendantOf(parentDept, departmentId)) {
                     return ApiResponse.error(400, "不能将部门设置为其子部门的子部门");
                 }
                 
@@ -289,9 +289,12 @@ public class DepartmentService {
     }
 
     /**
-     * 检查部门是否是指定部门的子部门
+     * 检查部门是否是指定部门的后代（子孙部门）
+     * @param department 要检查的部门
+     * @param ancestorId 祖先部门ID
+     * @return 如果department的祖先链中包含ancestorId，返回true
      */
-    private boolean isDescendant(Department department, Integer ancestorId) {
+    private boolean isDescendantOf(Department department, Integer ancestorId) {
         Department current = department.getParentDepartment();
         while (current != null) {
             if (current.getDepartmentId().equals(ancestorId)) {

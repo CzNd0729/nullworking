@@ -20,17 +20,19 @@
       highlight-current-row
       style="width: 100%;"
     >
-      <el-table-column label="" align="center" width="40">
-        <template slot-scope="{row}">
-          <span v-if="hasChildren[row.departmentId]" class="expand-toggle" @click="toggleRow(row)">
-            <i :class="expanded[row.departmentId] ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
-          </span>
-          <span v-else style="display:inline-block;width:14px;"></span>
-        </template>
-      </el-table-column>
       <el-table-column label="部门名称" prop="deptName" align="left">
         <template slot-scope="{row}">
-          <span :style="{ paddingLeft: (row.level ? row.level * 16 : 0) + 'px' }">{{ row.deptName || row.departmentName }}</span>
+          <div :style="{ paddingLeft: (row.level ? row.level * 20 : 0) + 'px' }" class="dept-name-cell">
+            <span 
+              v-if="hasChildren[row.departmentId]" 
+              class="expand-toggle" 
+              @click="toggleRow(row)"
+            >
+              <i :class="expanded[row.departmentId] ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
+            </span>
+            <span v-else class="expand-placeholder"></span>
+            <span class="dept-name-text">{{ row.deptName || row.departmentName }}</span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="描述" prop="deptDescription" align="center">
@@ -361,5 +363,42 @@ export default {
 </script>
 
 <style scoped>
+.dept-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
+.expand-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: #606266;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.expand-toggle:hover {
+  color: #409EFF;
+}
+
+.expand-toggle i {
+  font-size: 14px;
+}
+
+.expand-placeholder {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.dept-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 </style>
