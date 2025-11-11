@@ -124,7 +124,7 @@ class _ProfilePageState extends State<ProfilePage> {
               // 头像
               CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.blue.shade200,
+                backgroundColor: const Color(0xFF00D9A3),
                 child: Text(
                   _currentUser?.realName?.substring(0, 1) ??
                       _currentUser?.userName?.substring(0, 1).toUpperCase() ??
@@ -233,7 +233,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   borderRadius: BorderRadius.circular(12),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Colors.blue.shade200,
+                      backgroundColor: const Color(0xFF00D9A3),
                       child: Text(
                         user.realName?.substring(0, 1) ??
                             user.userName?.substring(0, 1).toUpperCase() ??

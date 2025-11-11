@@ -5,7 +5,6 @@ import 'pages/mindmap/mindmap_page.dart';
 import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
-import 'pages/login/register_page.dart';
 import 'pages/splash_page.dart';
 
 void main() {
@@ -41,7 +40,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginPage(),
         '/home': (context) => const MainPage(),
-        '/register': (context) => const RegisterPage(),
       },
       home: const SplashPage(),
     );

@@ -346,7 +346,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     final initial = _getInitial(_currentUser);
     return CircleAvatar(
       radius: 50,
-      backgroundColor: Colors.blue.shade200,
+      backgroundColor: const Color(0xFF00D9A3),
       child: Text(
         initial,
         style: const TextStyle(

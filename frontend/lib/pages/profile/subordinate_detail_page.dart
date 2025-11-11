@@ -30,7 +30,7 @@ class SubordinateDetailPage extends StatelessWidget {
             // 头像
             CircleAvatar(
               radius: 50,
-              backgroundColor: Colors.blue.shade200,
+              backgroundColor: const Color(0xFF00D9A3),
               child: Text(
                 _getInitial(user),
                 style: const TextStyle(
