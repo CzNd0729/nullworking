@@ -7,8 +7,11 @@ import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/login/register_page.dart';
 import 'pages/splash_page.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   runApp(const MyApp());
 }
 
