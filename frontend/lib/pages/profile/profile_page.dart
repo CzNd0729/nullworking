@@ -140,7 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               // 用户名
               Text(
-                _currentUser?.realName ?? _currentUser?.userName ?? '未登录',
+                _currentUser?.realName ?? '未登录',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -189,7 +189,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const Icon(Icons.people, color: Colors.white70),
             const SizedBox(width: 8),
             Text(
-              '同部门下级员工 (${_subDeptUsers.length})',
+              '我的下属 (${_subDeptUsers.length})',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -226,7 +226,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => SubordinateDetailPage(user: user),
+                        builder: (context) => SubordinateDetailPage(userId: user.userId.toString()),
                       ),
                     );
                   },
@@ -254,11 +254,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (user.userName != null)
-                          Text(
-                            '用户名: ${user.userName}',
-                            style: TextStyle(color: Colors.grey.shade400),
-                          ),
                         if (user.deptName != null)
                           Text(
                             '部门: ${user.deptName}',

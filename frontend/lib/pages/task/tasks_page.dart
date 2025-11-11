@@ -3,6 +3,7 @@ import 'create_task_page.dart';
 import 'task_detail_page.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
+import '../../services/notification_service.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -333,6 +334,8 @@ class _TasksPageState extends State<TasksPage> {
                   IconButton(
                     onPressed: () {
                       _forceSearchUnfocus();
+                      NotificationService()
+                          .showNotification('通知', '这是一条测试通知');
                     },
                     icon: const Icon(Icons.notifications),
                   ),

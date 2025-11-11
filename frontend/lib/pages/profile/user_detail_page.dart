@@ -374,20 +374,11 @@ class _UserDetailPageState extends State<UserDetailPage> {
       child: Column(
         children: [
           _buildInfoItem(
-            icon: Icons.person,
-            title: '用户名',
-            value: _currentUser.userName ?? '未设置',
-            onTap: () =>
-                _editField('用户名', _currentUser.userName ?? '', 'userName'),
-          ),
-          const Divider(height: 1),
-
-          _buildInfoItem(
             icon: Icons.badge,
-            title: '真实姓名',
+            title: '姓名',
             value: _currentUser.realName ?? '未设置',
             onTap: () =>
-                _editField('真实姓名', _currentUser.realName ?? '', 'realName'),
+                _editField('姓名', _currentUser.realName ?? '', 'realName'),
           ),
           const Divider(height: 1),
 

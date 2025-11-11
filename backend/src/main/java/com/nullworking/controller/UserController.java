@@ -98,15 +98,12 @@ public class UserController {
         return userService.deleteUser(userId);
     }
 
-    @Operation(summary = "获取用户个人资料", description = "从token解析用户ID，返回用户角色、邮箱和手机号")
-    @GetMapping("/profile")
-    public ApiResponse<Map<String, Object>> getUserProfile(HttpServletRequest request) {
-        Integer currentUserId = JwtUtil.extractUserIdFromRequest(request, jwtUtil);
-        if (currentUserId == null) {
-            return ApiResponse.error(401, "未认证或无效的Token");
-        }
+    @Operation(summary = "获取用户个人资料", description = "根据用户ID获取用户个人资料，包括用户角色、邮箱和手机号")
+    @GetMapping("/profile/{userId}")
+    public ApiResponse<Map<String, Object>> getUserProfile(
+            @Parameter(description = "用户ID") @PathVariable("userId") Integer userId) {
         try {
-            return userService.getUserProfile(currentUserId);
+            return userService.getUserProfile(userId);
         } catch (Exception e) {
             return ApiResponse.error(500, "服务器错误: " + e.getMessage());
         }

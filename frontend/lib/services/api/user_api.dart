@@ -56,8 +56,8 @@ class UserApi {
     return await _baseApi.get('api/health');
   }
 
-  Future<http.Response> getCurrentUserInfo() async {
-    return await _baseApi.get('api/users/profile');
+  Future<http.Response> getCurrentUserInfo(String userId) async {
+    return await _baseApi.get('api/users/profile/$userId');
   }
 
   Future<http.Response> getSubordinateUsers() async {
