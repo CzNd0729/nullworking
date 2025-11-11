@@ -9,7 +9,15 @@ class UserBusiness {
   // 获取当前登录用户的信息
   Future<User?> getCurrentUser() async {
     try {
-      final response = await _userApi.getCurrentUserInfo();
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getString('userId');
+
+      if (currentUserId == null) {
+        print('未找到当前用户的userId，无法获取用户信息。');
+        return null;
+      }
+
+      final response = await _userApi.getCurrentUserInfo(currentUserId);
       
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -27,7 +35,6 @@ class UserBusiness {
       }
       
       // 如果 API 调用失败，尝试从 SharedPreferences 获取基本信息
-      final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final userName = prefs.getString('userName');
       final realName = prefs.getString('realName');
@@ -90,6 +97,30 @@ class UserBusiness {
     }
   }
 
+  Future<User?> getCurrentUserById(String userId) async {
+    try {
+      final response = await _userApi.getCurrentUserInfo(userId);
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['code'] == 200) {
+          final userData = responseData['data'];
+          if (userData != null) {
+            return User.fromJson(userData);
+          }
+        } else {
+          print('根据ID获取用户信息失败: ${responseData['message']}');
+        }
+      } else {
+        print('网络请求失败: ${response.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      print('根据ID获取用户信息异常: $e');
+      return null;
+    }
+  }
+
   Future<void> saveCurrentUser(User user) async {
     final prefs = await SharedPreferences.getInstance();
     if (user.userId != null) {
@@ -134,7 +165,7 @@ class UserBusiness {
     await prefs.remove('roleName');
   }
 
-  // 获取同部门下级员工列表
+  // 获取下属列表
   Future<List<User>> getSubordinateUsers() async {
     try {
       final response = await _userApi.getSubordinateUsers();

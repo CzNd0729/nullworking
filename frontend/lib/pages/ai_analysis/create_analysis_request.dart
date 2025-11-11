@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:nullworking/services/api/task_api.dart';
@@ -65,20 +66,15 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
             final map = <String, int>{};
 
             // 获取当前用户并添加到列表
-            final currentUserResp = await _userApi.getCurrentUserInfo();
-            if (currentUserResp.statusCode == 200) {
-              final currentUserBody = jsonDecode(currentUserResp.body);
-              if (currentUserBody['code'] == 200 && currentUserBody['data'] != null) {
-                final currentUserId = currentUserBody['data']['userId'];
-                final currentUserName = currentUserBody['data']['realName']?.toString() ?? '';
-                if (currentUserName.isNotEmpty && currentUserId != null) {
-                  names.add(currentUserName);
-                  try {
-                    map[currentUserName] = int.parse(currentUserId.toString());
-                  } catch (_) {
-                    // ignore parse
-                  }
-                }
+            final prefs = await SharedPreferences.getInstance();
+            final currentUserIdStr = prefs.getString('userId');
+            final currentUserName = prefs.getString('realName') ?? '';
+            if (currentUserName.isNotEmpty && currentUserIdStr != null) {
+              names.add(currentUserName);
+              try {
+                map[currentUserName] = int.parse(currentUserIdStr);
+              } catch (_) {
+                // ignore parse
               }
             }
             // 处理下级用户

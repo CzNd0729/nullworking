@@ -81,7 +81,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (_realNameController.text.trim().isEmpty) {
       setState(() {
-        _errorMessage = '请输入真实姓名';
+        _errorMessage = '请输入姓名';
       });
       return;
     }
@@ -360,7 +360,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '真实姓名',
+                    '姓名',
                     style: TextStyle(
                       color: primaryTeal,
                       fontSize: 14,
@@ -374,7 +374,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   style: const TextStyle(color: Colors.black),
                   onChanged: (_) => _clearError(),
                   decoration: InputDecoration(
-                    hintText: '请输入真实姓名',
+                    hintText: '请输入姓名',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
                     filled: true,
                     fillColor: const Color(0xFFE9EDF2),
