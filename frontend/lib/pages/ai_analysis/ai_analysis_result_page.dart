@@ -67,16 +67,6 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     return Colors.transparent;
   }
 
-  double _getMaxValue(List<dynamic>? values) {
-    if (values == null || values.isEmpty) return 0.0;
-    final nums = values
-        .where((e) => e != null)
-        .map((e) => (e as num).toDouble())
-        .toList();
-    if (nums.isEmpty) return 0.0;
-    return nums.reduce((a, b) => a > b ? a : b);
-  }
-
   Widget _buildSuggestionCard(Map<String, dynamic> s) {
     final String severityKey = (s['severity'] as String?) ?? 'unknown';
     final Map<String, dynamic> severityLookup = {
@@ -145,19 +135,43 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
   Widget _buildLineChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    final String lineColorHex =
-        (cfg['additional_config']?['line_color'] as String?) ??
-            _chartColorPalette[0];
-    final String fillStr =
-        (cfg['additional_config']?['fill'] as String?) ?? 'rgba(0,0,0,0)';
     final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
-    final Color lineColor = Color(
-      int.parse(lineColorHex.replaceFirst('#', '0xFF')),
-    );
-    final Color fillColor = _parseRgbaColor(fillStr);
 
-    final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    final maxY = (maxYValue <= 0) ? 100.0 : maxYValue * 1.2;
+    // 全局获取所有非'x'的键作为y轴参数
+    final Set<String> allYKeys = {};
+    for (final item in data) {
+      item.keys.where((key) => key != 'x').forEach(allYKeys.add);
+    }
+    final List<String> yKeys = allYKeys.toList();
+
+    // 为每个yKey分配颜色和填充
+    final List<Map<String, dynamic>> lineConfigs = yKeys.asMap().entries.map((entry) {
+      final int index = entry.key;
+      final String key = entry.value;
+      final String lineColorHex =
+          (cfg['additional_config']?[key]?['line_color'] as String?) ??
+              _chartColorPalette[index % _chartColorPalette.length];
+      final String fillStr =
+          (cfg['additional_config']?[key]?['fill'] as String?) ?? 'rgba(0,0,0,0)';
+      return {
+        'key': key,
+        'lineColor': Color(int.parse(lineColorHex.replaceFirst('#', '0xFF'))),
+        'fillColor': _parseRgbaColor(fillStr),
+      };
+    }).toList();
+
+    // 计算所有y轴的最大值
+    double globalMaxYValue = 0.0;
+    for (final item in data) {
+      for (final yKey in yKeys) {
+        final double yValue = (item[yKey] as num? ?? 0).toDouble();
+        if (yValue > globalMaxYValue) {
+          globalMaxYValue = yValue;
+        }
+      }
+    }
+
+    final double maxY = (globalMaxYValue <= 0) ? 100.0 : globalMaxYValue * 1.2;
 
     final chartWidth = ((data.length + 1) * 80.0).clamp(300.0, double.infinity);
 
@@ -184,6 +198,31 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
+            // 图例
+            if (lineConfigs.length > 1) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: lineConfigs.map((config) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 4,
+                        color: config['lineColor'] as Color,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        config['key'] as String,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               height: 300,
@@ -195,7 +234,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                   child: LineChart(
                     LineChartData(
                       minX: 0,
-                      maxX: data.length.toDouble(),
+                      maxX: data.length.toDouble() > 0 ? data.length.toDouble() -1 : 0, // Ensure maxX is not negative
                       minY: 0,
                       maxY: maxY,
                       gridData: const FlGridData(show: false),
@@ -212,7 +251,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
-                              if (v > maxYValue) {
+                              if (v > globalMaxYValue) {
                                 return const SizedBox.shrink();
                               }
                               return Text(
@@ -248,23 +287,24 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                           ),
                         ),
                       ),
-                      lineBarsData: [
-                        LineChartBarData(
+                      lineBarsData: lineConfigs.map((config) {
+                        final String currentYKey = config['key'] as String;
+                        return LineChartBarData(
                           spots: data.asMap().entries.map((e) {
                             final x = e.key.toDouble();
-                            final y = (e.value['y'] as num? ?? 0).toDouble();
+                            final y = (e.value[currentYKey] as num? ?? 0).toDouble();
                             return FlSpot(x, y);
                           }).toList(),
                           isCurved: true,
-                          color: lineColor,
+                          color: config['lineColor'] as Color,
                           barWidth: 3,
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: fillColor,
+                            color: config['fillColor'] as Color,
                           ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
                   ),
                 ),
@@ -281,15 +321,35 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
     final List<String> colorsHex =
-        (cfg['additional_config']?['color_scheme'] as List<dynamic>?)
-            ?.map((e) => e.toString())
-            .toList() ??
+        (cfg['additional_config']?['color_scheme'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
         _chartColorPalette;
     final String yAxisLabel = (cfg['y_axis'] as String?) ?? '';
 
-    final maxYValue = _getMaxValue(data.map((e) => e['y']).toList());
-    // 修复类型错误：显式转换为double
-    final double maxY = (maxYValue <= 0) ? 10.0 : (maxYValue * 1.2).toDouble();
+    // 全局获取所有非'x'的键作为y轴参数
+    final Set<String> allYKeys = {};
+    for (final item in data) {
+      item.keys.where((key) => key != 'x').forEach(allYKeys.add);
+    }
+    final List<String> yKeys = allYKeys.toList();
+
+    // 为每个yKey分配颜色
+    final Map<String, Color> yKeyColors = {};
+    for (int i = 0; i < yKeys.length; i++) {
+      yKeyColors[yKeys[i]] = Color(int.parse(colorsHex[i % colorsHex.length].replaceFirst('#', '0xFF')));
+    }
+
+    // 计算所有y轴的最大值
+    double globalMaxYValue = 0.0;
+    for (final item in data) {
+      for (final yKey in yKeys) {
+        final double yValue = (item[yKey] as num? ?? 0).toDouble();
+        if (yValue > globalMaxYValue) {
+          globalMaxYValue = yValue;
+        }
+      }
+    }
+
+    final double maxY = (globalMaxYValue <= 0) ? 10.0 : (globalMaxYValue * 1.2).toDouble();
 
     // 核心配置：固定字体大小（10号字，适合换行显示）
     const double xAxisFontSize = 10.0;
@@ -318,41 +378,29 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
               ),
             ],
             // 新增X轴字段说明（同之前，带颜色标识）
-            if (data.isNotEmpty) ...[
+            // 修改为图例，显示yKey的颜色
+            if (yKeyColors.length > 1) ...[
               const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: data.map((item) {
-                    final text = item['x'] as String? ?? '';
-                    final colorHex =
-                        colorsHex[data.indexOf(item) % colorsHex.length];
-                    final color = Color(
-                      int.parse(colorHex.replaceFirst('#', '0xFF')),
-                    );
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            color: color,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            text,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: yKeyColors.entries.map((entry) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        color: entry.value,
                       ),
-                    );
-                  }).toList(),
-                ),
+                      const SizedBox(width: 8),
+                      Text(
+                        entry.key,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  );
+                }).toList(),
               ),
             ],
             const SizedBox(height: 12),
@@ -382,7 +430,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                             showTitles: true,
                             reservedSize: 40,
                             getTitlesWidget: (v, meta) {
-                              if (v > maxYValue) {
+                              if (v > globalMaxYValue) {
                                 return const SizedBox.shrink();
                               }
                               return Text(
@@ -426,20 +474,21 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
                         ),
                       ),
                       barGroups: data.asMap().entries.map((e) {
-                        final colorHex = colorsHex[e.key % colorsHex.length];
-                        final color = Color(
-                          int.parse(colorHex.replaceFirst('#', '0xFF')),
-                        );
+                        final xIndex = e.key;
                         return BarChartGroupData(
-                          x: e.key,
-                          barRods: [
-                            BarChartRodData(
-                              toY: (e.value['y'] as num? ?? 0).toDouble(),
+                          x: xIndex,
+                          barRods: yKeys.asMap().entries.map((yEntry) {
+                            final yKey = yEntry.value;
+                            final color = yKeyColors[yKey]!;
+                            final yValue = (e.value[yKey] as num? ?? 0).toDouble();
+                            return BarChartRodData(
+                              toY: yValue,
                               color: color,
-                              width: 25, // 适当增加柱子宽度，提升视觉效果
+                              width: 25 / yKeys.length, // 根据yKeys的数量调整柱子宽度
                               borderRadius: BorderRadius.circular(6),
-                            ),
-                          ],
+                            );
+                          }).toList(),
+                          barsSpace: 4, // 柱子之间的空间
                         );
                       }).toList(),
                     ),
@@ -456,16 +505,10 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
   Widget _buildPieChart(Map<String, dynamic> cfg, String? description) {
     final data =
         (cfg['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-    final List<String> colorsHex =
-        (cfg['additional_config']?['color_scheme'] as List<dynamic>?)
+    final List<String> colorsHex = (cfg['additional_config']?['color_scheme'] as List<dynamic>?) // 允许为null
             ?.map((e) => e.toString())
             .toList() ??
         _chartColorPalette;
-
-    final total = data.fold<int>(
-      0,
-      (sum, e) => sum + ((e['y'] as num? ?? 0).toInt()),
-    );
 
     return Card(
       color: Colors.grey[850],
