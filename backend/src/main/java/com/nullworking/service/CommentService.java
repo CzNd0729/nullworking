@@ -13,6 +13,7 @@ import com.nullworking.model.dto.CommentCreateRequest;
 import com.nullworking.model.dto.CommentUpdateRequest;
 import com.nullworking.repository.CommentRepository;
 import com.nullworking.repository.LogRepository;
+import com.nullworking.repository.UserRepository; // 导入 UserRepository
 
 import jakarta.transaction.Transactional;
 import java.util.Objects;
@@ -25,6 +26,9 @@ public class CommentService {
 
     @Autowired
     private LogRepository logRepository;
+
+    @Autowired
+    private UserRepository userRepository; // 注入 UserRepository
 
     @Autowired
     private NotificationService notificationService; // 注入 NotificationService
@@ -98,6 +102,10 @@ public class CommentService {
             java.util.Map<String, Object> m = new java.util.HashMap<>();
             m.put("id", c.getId());
             m.put("userId", c.getUserId());
+            // 根据 userId 获取用户的 realName
+            if (c.getUserId() != null) {
+                userRepository.findById(c.getUserId()).ifPresent(user -> m.put("userName", user.getRealName()));
+            }
             m.put("content", c.getContent());
             m.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : null);
             m.put("updatedAt", c.getUpdatedAt() != null ? c.getUpdatedAt().toString() : null);
