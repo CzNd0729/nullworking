@@ -4,6 +4,7 @@ import 'task_detail_page.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
 import '../../services/notification_service.dart';
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -330,14 +331,18 @@ class _TasksPageState extends State<TasksPage> {
                 title: const Text('任务列表'),
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 elevation: 0,
+                centerTitle: true,
                 actions: [
                   IconButton(
                     onPressed: () {
                       _forceSearchUnfocus();
-                      NotificationService()
-                          .showNotification('通知', '这是一条测试通知');
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationListPage(),
+                        ),
+                      );
                     },
-                    icon: const Icon(Icons.notifications),
+                    icon: const Icon(Icons.notifications_outlined),
                   ),
                 ],
                 floating: true,

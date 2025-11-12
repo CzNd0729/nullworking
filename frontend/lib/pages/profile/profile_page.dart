@@ -5,6 +5,7 @@ import 'subordinate_detail_page.dart';
 import '../../services/business/auth_business.dart';
 import '../../services/business/user_business.dart';
 import '../../models/user.dart';
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -58,23 +59,19 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的'),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () async {
-              await _authBusiness.logout();
-
-              // 跳转到登录页面并移除所有之前的路由
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
-              }
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationListPage(),
+                ),
+              );
             },
-            icon: const Icon(Icons.logout, color: Colors.white),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
           ),
         ],
       ),
@@ -94,6 +91,37 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     // 下级员工列表
                     _buildSubDeptUsersSection(),
+                    const SizedBox(height: 24),
+
+                    // 退出登录按钮
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await _authBusiness.logout();
+
+                          // 跳转到登录页面并移除所有之前的路由
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const LoginPage()),
+                              (Route<dynamic> route) => false,
+                            );
+                          }
+                        },
+                        child: const Text(
+                          '退出登录',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

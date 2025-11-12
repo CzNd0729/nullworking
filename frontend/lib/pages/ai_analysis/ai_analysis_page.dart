@@ -7,6 +7,7 @@ import 'create_analysis_request.dart';
 import 'dart:convert'; // Added for jsonDecode
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:nullworking/services/api/task_api.dart';
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
 
 class AIAnalysisPage extends StatefulWidget {
   const AIAnalysisPage({super.key});
@@ -117,7 +118,11 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: 处理通知
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationListPage(),
+                ),
+              );
             },
           ),
         ],

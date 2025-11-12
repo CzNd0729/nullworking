@@ -9,6 +9,7 @@ import '../../models/item.dart';
 import '../../services/api/item_api.dart';
 import '../task/task_detail_page.dart';  // 新增：导入任务详情页
 import '../log/log_detail_page.dart';    // 新增：导入日志详情页
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
 
 class MindMapPage extends StatefulWidget {
   const MindMapPage({super.key});
@@ -115,8 +116,21 @@ class _MindMapPageState extends State<MindMapPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('导图'),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const NotificationListPage(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
