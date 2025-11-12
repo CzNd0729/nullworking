@@ -44,10 +44,6 @@ public class NotificationController {
     @Operation(summary = "发送华为推送通知示例", description = "接收华为推送标准JSON消息体，并调用华为推送服务发送通知")
     @PostMapping("/send-huawei-push-example")
     public ApiResponse<String> sendPushNotificationExample(@RequestBody Map<String, Object> huaweiPushPayload) {
-        if (huaweiPushPayload == null || !huaweiPushPayload.containsKey("target") || !((Map<String, Object>) huaweiPushPayload.get("target")).containsKey("token")) {
-            return ApiResponse.error(400, "请求体必须包含华为推送的标准格式，包括target.token字段");
-        }
-
         try {
             notificationService.sendHuaweiPushNotification(huaweiPushPayload);
             return ApiResponse.success("华为推送通知已发送");

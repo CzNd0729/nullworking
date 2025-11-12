@@ -54,7 +54,7 @@ public class JsonWebTokenFactory {
 
         return Jwts.builder()
                 .setHeader(header)
-                .setPayload(new ObjectMapper().writeValueAsString(payload))
+                .setClaims(payload)
                 .signWith(privateKey, SignatureAlgorithm.PS256)
                 .compact();
     }
@@ -69,14 +69,22 @@ public class JsonWebTokenFactory {
         try {
             // 获取鉴权令牌
             String jwt = createJwt();
+            String[] parts = jwt.split("\\.");
+            System.out.println("Header: " + new String(Base64.getUrlDecoder().decode(parts[0])));
+            System.out.println("Payload: " + new String(Base64.getUrlDecoder().decode(parts[1])));
+            System.out.println("Generated JWT: " + jwt);
         } catch (NoSuchAlgorithmException e) {
             // 异常处理流程1
+            e.printStackTrace();
         } catch (InvalidKeySpecException e) {
             // 异常处理流程2
+            e.printStackTrace();
         } catch (IOException e) {
             // 异常处理流程3
+            e.printStackTrace();
         } catch (NullPointerException e) {
             // 异常处理流程4
+            e.printStackTrace();
         }
     }
 }

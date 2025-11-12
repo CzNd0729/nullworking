@@ -68,6 +68,7 @@ public class NotificationService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(jwt);
+            headers.set("Push-Type", "0");
 
             ObjectMapper objectMapper = new ObjectMapper();
             HttpEntity<String> request = new HttpEntity<>(objectMapper.writeValueAsString(messageBody), headers);
@@ -78,11 +79,13 @@ public class NotificationService {
                 System.out.println("Huawei Push Notification sent successfully: " + response.getBody());
             } else {
                 System.err.println("Failed to send Huawei Push Notification: " + response.getStatusCode() + " - " + response.getBody());
+                throw new RuntimeException("Failed to send Huawei Push Notification: " + response.getBody());
             }
 
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException | NullPointerException e) {
             System.err.println("Error creating JWT or sending Huawei Push Notification: " + e.getMessage());
             e.printStackTrace();
+            throw new RuntimeException("Error creating JWT or sending Huawei Push Notification: " + e.getMessage(), e);
         }
     }
 
