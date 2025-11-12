@@ -6,13 +6,11 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
-import 'services/notification_service.dart';
-import 'services/business/notification_business.dart'; // 新增导入
-import 'dart:async'; // 新增导入
+import 'services/push_notification_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService().init();
   runApp(const MyApp());
 }
 
@@ -60,36 +58,15 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 2;
-  final NotificationBusiness _notificationBusiness = NotificationBusiness(); // 新增
-  Timer? _notificationTimer; // 新增
 
   @override
   void initState() {
     super.initState();
-    _startNotificationPolling(); // 启动通知轮询
   }
 
   @override
   void dispose() {
-    _notificationTimer?.cancel(); // 取消定时器
     super.dispose();
-  }
-
-  void _startNotificationPolling() {
-    _notificationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      try {
-        final unreadNotifications = await _notificationBusiness.getUnreadNotifications();
-        for (var notification in unreadNotifications) {
-          NotificationService().showNotification(
-            '新通知',
-            notification.content,
-            payload: notification.taskId != null ? notification.taskId.toString() : null,
-          );
-        }
-      } catch (e) {
-        print('获取通知失败: $e');
-      }
-    });
   }
 
   final List<Widget> _pages = [

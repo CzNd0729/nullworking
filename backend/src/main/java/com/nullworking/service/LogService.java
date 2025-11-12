@@ -27,6 +27,7 @@ import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
+import java.util.Objects;
 
 @Service
 public class LogService {
@@ -45,6 +46,9 @@ public class LogService {
 
     @Autowired
     private TaskExecutorRelationRepository taskExecutorRelationRepository;
+
+    @Autowired
+    private NotificationService notificationService; // 注入 NotificationService
 
     public ApiResponse<Map<String, Object>> listLogs(Integer userId, LocalDate startDate, LocalDate endDate) {
         List<Log> logs = logRepository.findByUserUserIdAndLogDateBetween(userId, startDate, endDate);
@@ -106,7 +110,7 @@ public class LogService {
         logRepository.save(log);
 
         if (fileIds != null && !fileIds.isEmpty()) {
-            logFileService.updateLogIdForFiles(fileIds, log.getLogId());
+            logFileService.updateLogIdForFiles(fileIds, Objects.requireNonNull(log.getLogId()));
         }
 
         // If task progress is 100% and log status is 1 (completed)
@@ -115,11 +119,15 @@ public class LogService {
             task.setTaskStatus((byte)2);
             taskRepository.save(task);
 
+            // 发送任务完成通知
+            String notificationContent = String.format("您的任务‘%s’已完成！", task.getTaskTitle());
+            notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
+
             // Clear all pending logs associated with this task
             logRepository.deleteByTaskTaskIdAndLogStatus(request.getTaskId(), 0); // 0 for pending
         }
 
-        return ApiResponse.success(log.getLogId());
+        return ApiResponse.success(Objects.requireNonNull(log.getLogId()));
     }
 
     @Transactional
@@ -176,6 +184,10 @@ public class LogService {
             task.setCompletionTime(LocalDateTime.now());
             task.setTaskStatus((byte)2);
             taskRepository.save(task);
+
+            // 发送任务完成通知
+            String notificationContent = String.format("您的任务‘%s’已完成！", task.getTaskTitle());
+            notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
             
             // 清除该任务的所有待处理日志
             logRepository.deleteByTaskTaskIdAndLogStatus(task.getTaskId(), 0);

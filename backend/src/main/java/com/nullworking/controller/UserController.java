@@ -121,4 +121,17 @@ public class UserController {
         }
         return userService.updateUserProfile(currentUserId, request);
     }
+
+    @Operation(summary = "更新用户推送token", description = "用户上传自己的华为推送token")
+    @PutMapping("/push-token")
+    public ApiResponse<Void> updateUserPushToken(
+            @RequestBody Map<String, String> payload,
+            HttpServletRequest httpRequest) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未授权，请登录");
+        }
+        String pushToken = payload.get("pushToken");
+        return userService.updateUserPushToken(currentUserId, pushToken);
+    }
 }
