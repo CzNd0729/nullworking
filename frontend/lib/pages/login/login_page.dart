@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/business/auth_business.dart';
 import 'forgot_password_page.dart';
-import '../../services/push_notification_service.dart'; // 新增导入
+import '../../services/push_notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (mounted) {
         if (errorMessage == null) {
-          PushNotificationService().uploadPushToken(); // 上传token
+          await PushNotificationService().init();
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
           setState(() {

@@ -6,6 +6,7 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
+import 'services/push_notification_service.dart';
 
 
 void main() async {

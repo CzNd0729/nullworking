@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:huawei_push/huawei_push.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:nullworking/services/api/user_api.dart';
 
 class PushNotificationService {
@@ -7,20 +8,20 @@ class PushNotificationService {
 
   Future<void> init() async {
     await Push.turnOnPush();
-  }
-
-  Future<void> uploadPushToken() async {
+    // 注册 token 监听
     Push.getTokenStream.listen(_onTokenEvent, onError: _onTokenError);
+    // 触发 token 获取
+    Push.getToken("");
   }
 
   void _onTokenEvent(String token) {
     debugPrint("Push Token: $token");
+
     _userApi.updatePushToken(token).then((response) {
       if (response.statusCode == 200) {
         debugPrint("Push token updated successfully.");
       } else {
-        debugPrint(
-            "Failed to update push token: ${response.statusCode} ${response.body}");
+        debugPrint("Failed to update push token: ${response.statusCode} ${response.body}");
       }
     }).catchError((error) {
       debugPrint("Error updating push token: $error");
