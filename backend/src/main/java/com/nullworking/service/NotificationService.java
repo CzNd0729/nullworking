@@ -3,10 +3,21 @@ package com.nullworking.service;
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Notification;
 import com.nullworking.repository.NotificationRepository;
+import com.nullworking.util.JsonWebTokenFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,6 +29,14 @@ public class NotificationService {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${huawei.push.appId}")
+    private String huaweiPushAppId;
+
+    private static final String HUAWEI_PUSH_URL = "https://push-api.cloud.huawei.com/v3/%s/messages:send";
 
     /**
      * 创建通知
@@ -35,6 +54,36 @@ public class NotificationService {
         notification.setIsRead(false); // 默认为未读
         notification.setCreationTime(LocalDateTime.now());
         notificationRepository.save(notification);
+    }
+
+    /**
+     * 发送华为推送通知
+     * @param messageBody 推送的原始消息体，直接作为华为推送API的请求体
+     */
+    public void sendHuaweiPushNotification(Map<String, Object> messageBody) {
+        try {
+            String jwt = JsonWebTokenFactory.createJwt();
+            String pushUrl = String.format(HUAWEI_PUSH_URL, huaweiPushAppId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(jwt);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            HttpEntity<String> request = new HttpEntity<>(objectMapper.writeValueAsString(messageBody), headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(pushUrl, request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                System.out.println("Huawei Push Notification sent successfully: " + response.getBody());
+            } else {
+                System.err.println("Failed to send Huawei Push Notification: " + response.getStatusCode() + " - " + response.getBody());
+            }
+
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException | NullPointerException e) {
+            System.err.println("Error creating JWT or sending Huawei Push Notification: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**

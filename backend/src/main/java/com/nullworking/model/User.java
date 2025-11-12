@@ -47,6 +47,9 @@ public class User {
     @Column(name = "Creation_Time", nullable = false)
     private LocalDateTime creationTime;
 
+    @Column(name = "huawei_push_token", length = 255)
+    private String huaweiPushToken;
+
     // Getters and Setters
     public Integer getUserId() {
         return userId;
@@ -118,5 +121,13 @@ public class User {
 
     public void setCreationTime(LocalDateTime creationTime) {
         this.creationTime = creationTime;
+    }
+
+    public String getHuaweiPushToken() {
+        return huaweiPushToken;
+    }
+
+    public void setHuaweiPushToken(String huaweiPushToken) {
+        this.huaweiPushToken = huaweiPushToken;
     }
 }
