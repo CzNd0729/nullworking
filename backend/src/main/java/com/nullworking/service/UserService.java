@@ -15,8 +15,8 @@ import com.nullworking.repository.RoleRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
-// import com.nullworking.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -422,4 +422,19 @@ public class UserService {
             return ApiResponse.error(500, "更新pushToken失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 根据用户ID获取华为推送token
+     * @param userId 用户ID
+     * @return 华为推送token，如果用户不存在或token为空则返回null
+     */
+    public String getHuaweiPushTokenByUserId(@Nullable Integer userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId)
+                .map(User::getHuaweiPushToken)
+                .orElse(null);
+    }
+
 }
