@@ -29,6 +29,12 @@ public class AuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private VerificationCodeService verificationCodeService;
+
     // 所有的业务逻辑将在这里实现
 
     public ApiResponse<Map<String, Object>> login(String userName, String password) {
@@ -74,5 +80,42 @@ public class AuthService {
         // 角色和部门可根据实际业务设置，这里默认 null
         userRepository.save(user);
         return ApiResponse.success("注册成功");
+    }
+
+    public ApiResponse<Void> sendPasswordResetCode(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return ApiResponse.error(400, "邮箱不能为空");
+        }
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            return ApiResponse.error(404, "未找到该邮箱对应的用户");
+        }
+        String code = verificationCodeService.generateCode(email);
+        String subject = "重置密码验证码";
+        String text = String.format("您的重置密码验证码是：%s，%d 分钟内有效。如非本人操作请忽略。", code, verificationCodeService.getExpireMinutes());
+        try {
+            emailService.sendSimpleMail(email, subject, text);
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "发送邮件失败: " + e.getMessage());
+        }
+    }
+
+    public ApiResponse<String> resetPasswordWithCode(String email, String code, String newPassword) {
+        if (email == null || code == null || newPassword == null) {
+            return ApiResponse.error(400, "参数不完整");
+        }
+        boolean ok = verificationCodeService.verifyCode(email, code);
+        if (!ok) {
+            return ApiResponse.error(400, "验证码错误或已过期");
+        }
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            return ApiResponse.error(404, "未找到该邮箱对应的用户");
+        }
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        user.setPassword(encoder.encode(newPassword));
+        userRepository.save(user);
+        return ApiResponse.success("密码重置成功");
     }
 }

@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.dto.LoginRequest;
 import com.nullworking.model.dto.RegisterRequest;
+import com.nullworking.model.dto.ForgotPasswordRequest;
+import com.nullworking.model.dto.ResetPasswordRequest;
 import com.nullworking.service.AuthService;
 // import com.nullworking.model.User;
 // import com.nullworking.repository.UserRepository;
@@ -50,5 +52,15 @@ public class AuthController {
     @PostMapping("/register")
     public ApiResponse<String> register(@RequestBody RegisterRequest registerRequest) {
         return authService.register(registerRequest);
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        return authService.sendPasswordResetCode(request.getEmail());
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        return authService.resetPasswordWithCode(request.getEmail(), request.getCode(), request.getNewPassword());
     }
 }
