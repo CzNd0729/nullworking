@@ -8,6 +8,7 @@ import com.nullworking.model.Task;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
+import com.nullworking.model.dto.UserProfileUpdateRequest;
 import com.nullworking.repository.DepartmentRepository;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.RoleRepository;
@@ -356,6 +357,43 @@ public class UserService {
             return ApiResponse.success(userProfile);
         } catch (Exception e) {
             return ApiResponse.error(500, "获取用户个人资料失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新用户个人资料（只能修改自己的）
+     * @param currentUserId 当前用户ID（从token中获取）
+     * @param request 更新请求
+     * @return 更新结果
+     */
+    public ApiResponse<Void> updateUserProfile(Integer currentUserId, UserProfileUpdateRequest request) {
+        try {
+            // 查找用户
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(currentUserId));
+            if (userOptional.isEmpty()) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+            User user = userOptional.get();
+
+            if (request.getRealName() != null && !request.getRealName().trim().isEmpty()) {
+                user.setRealName(request.getRealName());
+            }
+
+            if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+                user.setPhoneNumber(request.getPhoneNumber());
+            }
+
+            if (request.getEmail() != null) {
+                user.setEmail(request.getEmail());
+            }
+
+            // 保存更新
+            Objects.requireNonNull(user); // 确保 user 非空，解决 Null type safety 警告
+            userRepository.save(user);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "更新用户个人资料失败: " + e.getMessage());
         }
     }
 }

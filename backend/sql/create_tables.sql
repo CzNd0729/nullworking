@@ -168,7 +168,6 @@ CREATE TABLE `comment` (
   `content` text NOT NULL COMMENT '评论内容',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '评论创建时间',
   `updated_at` datetime DEFAULT NULL COMMENT '评论更新时间（支持编辑）',
-  `is_deleted` tinyint NOT NULL DEFAULT 0 COMMENT '是否删除（0=未删除，1=已删除）',
   PRIMARY KEY (`id`),
   -- 外键关联日志表（日志删除则评论同步删除）
   KEY `fk_comment_log` (`log_id`),
@@ -176,8 +175,6 @@ CREATE TABLE `comment` (
   -- 外键关联用户表（用户删除则评论保留，用户ID设为NULL）
   KEY `fk_comment_user` (`user_id`),
   CONSTRAINT `fk_comment_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`User_ID`) ON DELETE SET NULL,
-  -- 联合索引：加速查询某日志下的有效评论
-  KEY `idx_log_deleted` (`log_id`, `is_deleted`),
   -- 索引：查询某用户发布的所有评论
   KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='日志评论表';
@@ -186,7 +183,6 @@ CREATE TABLE `comment` (
 CREATE TABLE `notification` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '通知ID（主键）',
   `receiver_id` int NOT NULL COMMENT '接收通知的用户ID（外键）',
-  `type` tinyint NOT NULL COMMENT '通知类型（1=任务分配，2=日志被评论，3=任务接近DDL，4=任务已完成...）',
   `content` varchar(500) NOT NULL COMMENT '通知文本内容',
   `related_type` varchar(20) NOT NULL COMMENT '关联对象类型（log=日志，task=任务，comment=评论等）',
   `related_id` int NOT NULL COMMENT '关联对象的ID（如日志ID、任务ID、评论ID等）',

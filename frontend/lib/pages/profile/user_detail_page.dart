@@ -89,63 +89,33 @@ class _UserDetailPageState extends State<UserDetailPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 调用更新接口（需要根据实际 API 调整）
-      // await _userBusiness.updateUserInfo({fieldName: value});
+      Map<String, String?> updatedData = {
+        'realName': _currentUser.realName,
+        'email': _currentUser.email,
+        'phoneNumber': _currentUser.phoneNumber,
+      };
+      updatedData[fieldName] = value;
 
-      // 临时更新本地数据
-      setState(() {
-        switch (fieldName) {
-          case 'userName':
-            _currentUser = User(
-              userId: _currentUser.userId,
-              userName: value,
-              realName: _currentUser.realName,
-              email: _currentUser.email,
-              phoneNumber: _currentUser.phoneNumber,
-              deptId: _currentUser.deptId,
-              deptName: _currentUser.deptName,
-            );
-            break;
-          case 'email':
-            _currentUser = User(
-              userId: _currentUser.userId,
-              userName: _currentUser.userName,
-              realName: _currentUser.realName,
-              email: value,
-              phoneNumber: _currentUser.phoneNumber,
-              deptId: _currentUser.deptId,
-              deptName: _currentUser.deptName,
-            );
-            break;
-          case 'phoneNumber':
-            _currentUser = User(
-              userId: _currentUser.userId,
-              userName: _currentUser.userName,
-              realName: _currentUser.realName,
-              email: _currentUser.email,
-              phoneNumber: value,
-              deptId: _currentUser.deptId,
-              deptName: _currentUser.deptName,
-            );
-            break;
-          case 'realName':
-            _currentUser = User(
-              userId: _currentUser.userId,
-              userName: _currentUser.userName,
-              realName: value,
-              email: _currentUser.email,
-              phoneNumber: _currentUser.phoneNumber,
-              deptId: _currentUser.deptId,
-              deptName: _currentUser.deptName,
-            );
-            break;
+      Map<String, String> payload = {
+        'realName': updatedData['realName'] ?? '',
+        'phoneNumber': updatedData['phoneNumber'] ?? '',
+        'email': updatedData['email'] ?? '',
+      };
+
+      final success = await _userBusiness.updateUserInfo(payload);
+
+      if (mounted) {
+        if (success) {
+          _showSnackBar('更新成功');
+          await _refreshUserData();
+        } else {
+          _showSnackBar('更新失败');
         }
-      });
-
-      _showSnackBar('更新成功');
-      await _refreshUserData();
+      }
     } catch (e) {
-      _showSnackBar('更新失败: $e');
+      if (mounted) {
+        _showSnackBar('更新失败: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

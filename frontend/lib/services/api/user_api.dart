@@ -63,4 +63,8 @@ class UserApi {
   Future<http.Response> getSubordinateUsers() async {
     return await _baseApi.get('api/users/subordinateUsers');
   }
+
+  Future<http.Response> updateUserProfile(Map<String, String> data) async {
+    return await _baseApi.put('api/users/profile', body: data);
+  }
 }

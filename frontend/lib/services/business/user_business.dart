@@ -189,4 +189,25 @@ class UserBusiness {
       return [];
     }
   }
+
+  Future<bool> updateUserInfo(Map<String, String> userData) async {
+    try {
+      final response = await _userApi.updateUserProfile(userData);
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['code'] == 200) {
+          return true;
+        } else {
+          print('更新用户信息失败: ${responseData['message']}');
+          return false;
+        }
+      } else {
+        print('网络请求失败: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('更新用户信息异常: $e');
+      return false;
+    }
+  }
 }

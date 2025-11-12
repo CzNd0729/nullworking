@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
+import com.nullworking.model.dto.UserProfileUpdateRequest;
 import com.nullworking.service.UserService;
 import com.nullworking.util.JwtUtil;
 
@@ -107,5 +108,17 @@ public class UserController {
         } catch (Exception e) {
             return ApiResponse.error(500, "服务器错误: " + e.getMessage());
         }
+    }
+
+    @Operation(summary = "更新用户个人资料", description = "用户只能通过token修改自己的个人资料，包括真实姓名、电话号码和邮箱")
+    @PutMapping("/profile")
+    public ApiResponse<Void> updateUserProfile(
+            @RequestBody UserProfileUpdateRequest request,
+            HttpServletRequest httpRequest) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未授权，请登录");
+        }
+        return userService.updateUserProfile(currentUserId, request);
     }
 }
