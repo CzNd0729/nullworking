@@ -29,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import com.nullworking.model.Log;
 import com.nullworking.repository.LogRepository;
+import com.nullworking.service.NotificationService;
 
 @Service
 public class TaskService {
@@ -47,6 +48,9 @@ public class TaskService {
     
     @Autowired
     private LogRepository logRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // 所有的业务逻辑将在这里实现
 
@@ -225,6 +229,17 @@ public class TaskService {
                 log.setUpdateTime(LocalDateTime.now());
                 
                 logRepository.save(log);
+
+                // 如果执行者不是创建者，则创建通知
+                if (!executorId.equals(creatorId)) {
+                    String notificationContent = String.format("您收到了新任务：\"%s\"", savedTask.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        savedTask.getTaskId()
+                    );
+                }
             }
             
             Map<String, Object> data = new HashMap<>();
