@@ -73,7 +73,7 @@ class _SubordinateDetailPageState extends State<SubordinateDetailPage> {
                   // 头像
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: Colors.blue.shade200,
+                    backgroundColor: const Color(0xFF00D9A3),
                     child: Text(
                       _getInitial(_subordinateUser),
                       style: const TextStyle(
@@ -131,7 +131,7 @@ class _SubordinateDetailPageState extends State<SubordinateDetailPage> {
     required String value,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.blue.shade300),
+      leading: Icon(icon, color: const Color(0xFF2CB7B3)),
       title: Text(
         title,
         style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
