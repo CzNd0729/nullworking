@@ -39,7 +39,7 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
-  Future<void> showNotification(String title, String body) async {
+  Future<void> showNotification(String title, String body, {String? payload}) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
             'high_importance_channel', 'High Importance Notifications',
@@ -53,6 +53,6 @@ class NotificationService {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await flutterLocalNotificationsPlugin
-        .show(0, title, body, platformChannelSpecifics, payload: 'item x');
+        .show(0, title, body, platformChannelSpecifics, payload: payload);
   }
 }
