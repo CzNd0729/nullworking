@@ -52,7 +52,6 @@ public class NotificationService {
 
         for (Notification notification : rawNotifications) {
             Map<String, Object> notificationData = new HashMap<>();
-            notificationData.put("receiverId", notification.getReceiverId());
             notificationData.put("content", notification.getContent());
             notificationData.put("isRead", notification.getIsRead());
             notificationData.put("creationTime", notification.getCreationTime());
