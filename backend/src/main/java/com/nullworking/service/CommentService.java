@@ -15,6 +15,7 @@ import com.nullworking.repository.CommentRepository;
 import com.nullworking.repository.LogRepository;
 
 import jakarta.transaction.Transactional;
+import java.util.Objects;
 
 @Service
 public class CommentService {
@@ -25,7 +26,11 @@ public class CommentService {
     @Autowired
     private LogRepository logRepository;
 
+    @Autowired
+    private NotificationService notificationService; // 注入 NotificationService
+
     @Transactional
+    @SuppressWarnings("null") // 抑制空类型安全警告
     public ApiResponse<Integer> createComment(CommentCreateRequest request, Integer userId) {
         // verify log exists
         Optional<Log> logOptional = logRepository.findById(request.getLogId());
@@ -41,7 +46,17 @@ public class CommentService {
         c.setIsDeleted(0);
 
         commentRepository.save(c);
-        return ApiResponse.success(c.getId());
+
+        // 获取被评论日志的拥有者 ID
+        Integer logOwnerId = logOptional.get().getUser().getUserId();
+
+        // 如果评论者不是日志拥有者，则发送通知
+        if (!logOwnerId.equals(userId)) {
+            String notificationContent = String.format("您的日志‘%s’收到了新评论：‘%s’", logOptional.get().getLogTitle(), request.getContent());
+            notificationService.createNotification(Objects.requireNonNull(logOwnerId), notificationContent, "log", Objects.requireNonNull(c.getLogId())); // relatedType 应为 log，relatedId 为 logId
+        }
+
+        return ApiResponse.success((Integer) Objects.requireNonNull(c.getId()));
     }
 
     @Transactional
