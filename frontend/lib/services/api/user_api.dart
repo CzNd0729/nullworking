@@ -67,4 +67,9 @@ class UserApi {
   Future<http.Response> updateUserProfile(Map<String, String> data) async {
     return await _baseApi.put('api/users/profile', body: data);
   }
+
+  Future<http.Response> updatePushToken(String pushToken) async {
+    final body = {'pushToken': pushToken};
+    return await _baseApi.put('api/users/push-token', body: body);
+  }
 }

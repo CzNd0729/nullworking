@@ -1,15 +1,19 @@
 package com.nullworking.controller;
 
 import com.nullworking.common.ApiResponse;
+import com.nullworking.model.Notification;
 import com.nullworking.service.NotificationService;
 import com.nullworking.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +38,17 @@ public class NotificationController {
             return notificationService.getUserNotifications(userId);
         } catch (Exception e) {
             return ApiResponse.error(500, "服务器错误: " + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "发送华为推送通知示例", description = "接收华为推送标准JSON消息体，并调用华为推送服务发送通知")
+    @PostMapping("/send-huawei-push-example")
+    public ApiResponse<String> sendPushNotificationExample(@RequestBody Map<String, Object> huaweiPushPayload) {
+        try {
+            notificationService.sendHuaweiPushNotification(huaweiPushPayload);
+            return ApiResponse.success("华为推送通知已发送");
+        } catch (Exception e) {
+            return ApiResponse.error(500, "发送华为推送通知失败: " + e.getMessage());
         }
     }
 }

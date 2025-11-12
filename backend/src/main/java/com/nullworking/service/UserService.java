@@ -15,8 +15,8 @@ import com.nullworking.repository.RoleRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
-// import com.nullworking.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -396,4 +396,45 @@ public class UserService {
             return ApiResponse.error(500, "更新用户个人资料失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 更新用户的推送token
+     * @param currentUserId 当前用户ID
+     * @param pushToken 推送token
+     * @return 更新结果
+     */
+    public ApiResponse<Void> updateUserPushToken(Integer currentUserId, String pushToken) {
+        try {
+            if (pushToken == null || pushToken.trim().isEmpty()) {
+                return ApiResponse.error(400, "pushToken不能为空");
+            }
+
+            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(currentUserId));
+            if (userOptional.isEmpty()) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+            User user = userOptional.get();
+            user.setHuaweiPushToken(pushToken);
+            userRepository.save(user);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "更新pushToken失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 根据用户ID获取华为推送token
+     * @param userId 用户ID
+     * @return 华为推送token，如果用户不存在或token为空则返回null
+     */
+    public String getHuaweiPushTokenByUserId(@Nullable Integer userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId)
+                .map(User::getHuaweiPushToken)
+                .orElse(null);
+    }
+
 }
