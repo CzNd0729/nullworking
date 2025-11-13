@@ -14,7 +14,7 @@ class NotificationBusiness {
           final List<dynamic> notificationsJson = responseData['data'] as List<dynamic>;
           return notificationsJson
               .map((json) => NotificationModel.fromJson(json))
-              // .where((notification) => !notification.isRead) // 筛选未读通知
+              .where((notification) => !notification.isRead) // 筛选未读通知
               .toList();
         }
       }
@@ -58,19 +58,20 @@ class NotificationBusiness {
     }
   }
 
-  Future<bool> hasUnreadNotifications() async {
+  Future<NotificationModel?> getLatestUnreadNotification() async {
     try {
-      final response = await _notificationApi.getUnreadStatus();
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['code'] == 200 && responseData['data'] != null) {
-          return responseData['data']['hasUnread'] as bool;
-        }
+      final List<NotificationModel> unreadNotifications = await getUnreadNotifications();
+      if (unreadNotifications.isNotEmpty) {
+        // Assuming getUnreadNotifications already filters for unread
+        // or if not, you'd add .where((n) => !n.isRead)
+        // Sort by creationTime to get the latest
+        unreadNotifications.sort((a, b) => b.creationTime.compareTo(a.creationTime));
+        return unreadNotifications.first;
       }
-      return false;
+      return null;
     } catch (e) {
-      print('获取未读通知状态异常: $e');
-      return false;
+      print('获取最新未读通知异常: $e');
+      return null;
     }
   }
 }
