@@ -6,11 +6,15 @@ class PushNotificationService {
   final UserApi _userApi = UserApi();
 
   Future<void> init() async {
-    await Push.turnOnPush();
-    // 注册 token 监听
-    Push.getTokenStream.listen(_onTokenEvent, onError: _onTokenError);
-    // 触发 token 获取
-    Push.getToken("");
+    try {
+      await Push.turnOnPush();
+      // 注册 token 监听
+      Push.getTokenStream.listen(_onTokenEvent, onError: _onTokenError);
+      // 触发 token 获取
+      Push.getToken("");
+    } catch (e) {
+      debugPrint("设备不支持HMS Core: $e");
+    }
   }
 
   void _onTokenEvent(String token) {
