@@ -123,7 +123,7 @@ public class LogService {
             taskRepository.save(task);
 
             // 发送任务完成通知
-            String notificationContent = String.format("您的任务‘%s’已完成！", task.getTaskTitle());
+            String notificationContent = String.format("您发布的任务‘%s’已完成！", task.getTaskTitle());
             notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
 
             // Clear all pending logs associated with this task
@@ -189,7 +189,7 @@ public class LogService {
             taskRepository.save(task);
 
             // 发送任务完成通知
-            String notificationContent = String.format("您的任务‘%s’已完成！", task.getTaskTitle());
+            String notificationContent = String.format("您发布的任务‘%s’已完成！", task.getTaskTitle());
             notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
             
             // 清除该任务的所有待处理日志

@@ -70,6 +70,24 @@ public class TaskService {
             }
             task.setTaskStatus((byte)3);
             taskRepository.save(task);
+
+            // 获取所有执行者并发送通知
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(taskId);
+            Set<Integer> notifiedUsers = new HashSet<>();
+            // 通知所有执行者
+            for (Integer executorId : executorIds) {
+                if (!notifiedUsers.contains(executorId)) { // 避免重复通知创建者
+                    String notificationContent = String.format("您参与的任务\"%s\"已被关闭。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                    notifiedUsers.add(executorId);
+                }
+            }
+
             return ApiResponse.success("任务删除成功");
         } catch (Exception e) {
             return ApiResponse.error(500, "任务删除失败: " + e.getMessage());
@@ -289,6 +307,21 @@ public class TaskService {
 
             // 保存更新后的任务
             taskRepository.save(task);
+
+            // 获取所有执行者并发送通知
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(taskId);
+            for (Integer executorId : executorIds) {
+                if (!executorId.equals(userId)) { // 不通知更新任务的本人
+                    String notificationContent = String.format("您参与的任务\"%s\"已被更新。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                }
+            }
+
             Map<String, Object> data = new HashMap<>();
             data.put("taskId", task.getTaskId());
             return ApiResponse.success(data);
