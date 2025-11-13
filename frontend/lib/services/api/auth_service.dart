@@ -32,7 +32,7 @@ class AuthService {
     try {
       // Instantiate BaseApi here for the health check
       final BaseApi baseApi = BaseApi();
-      final response = await baseApi.get('api/health', authenticated: false); // Health check usually doesn't require auth
+      final response = await baseApi.get('api/health');
       return response.statusCode;
     } catch (e) {
       // Handle network errors or other exceptions

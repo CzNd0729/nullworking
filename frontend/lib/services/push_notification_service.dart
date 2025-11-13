@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:huawei_push/huawei_push.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:nullworking/services/api/user_api.dart';
 
 class PushNotificationService {
@@ -34,5 +33,23 @@ class PushNotificationService {
 
   static void backgroundMessageCallback(RemoteMessage remoteMessage) async {
     debugPrint('backgroundMessageCallback: ${remoteMessage.messageId}');
+  }
+
+  Future<void> deleteToken() async {
+    try {
+      await Push.deleteToken("");
+      debugPrint("Push token deleted from Huawei Push service.");
+
+      // Call the API to update the push token to an empty string
+      final response = await _userApi.updatePushToken('');
+      if (response.statusCode == 200) {
+        debugPrint("Push token successfully removed from backend.");
+      } else {
+        debugPrint(
+            "Failed to remove push token from backend: ${response.statusCode} ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Error deleting push token: $e");
+    }
   }
 }

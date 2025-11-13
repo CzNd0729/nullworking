@@ -3,12 +3,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:nullworking/services/api/auth_service.dart';
 import 'package:nullworking/services/business/user_business.dart'; // Import UserBusiness
-import 'package:nullworking/models/user.dart'; // Assuming User model is in this path
+import 'package:nullworking/services/push_notification_service.dart';
 
 class AuthBusiness {
   final UserApi _userApi = UserApi();
   final AuthService _authService = AuthService();
   final UserBusiness _userBusiness = UserBusiness(); // Instantiate UserBusiness
+  final PushNotificationService _pushNotificationService =
+      PushNotificationService();
 
   Future<String?> login(String username, String password) async {
     try {
@@ -53,6 +55,7 @@ class AuthBusiness {
   }
 
   Future<void> logout() async {
+    await _pushNotificationService.deleteToken();
     await _authService.logout();
     // Also clear user data from UserBusiness
     await _userBusiness.clearCurrentUser(); // Assuming a clearCurrentUser method in UserBusiness

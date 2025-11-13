@@ -406,7 +406,7 @@ public class UserService {
     public ApiResponse<Void> updateUserPushToken(Integer currentUserId, String pushToken) {
         try {
             if (pushToken == null || pushToken.trim().isEmpty()) {
-                return ApiResponse.error(400, "pushToken不能为空");
+                pushToken=null;
             }
 
             Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(currentUserId));
