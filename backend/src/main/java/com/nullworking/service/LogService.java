@@ -207,6 +207,7 @@ public class LogService {
         Log log = logOptional.get();
         
         // 删除日志
+        Objects.requireNonNull(log); // 确保 log 非空
         logRepository.delete(log);
         
         return ApiResponse.success();
@@ -267,6 +268,24 @@ public class LogService {
         }
 
         Map<String, Object> data = new HashMap<>();
+        data.put("taskId", task.getTaskId());
+        data.put("taskTitle", task.getTaskTitle());
+        data.put("taskContent", task.getTaskContent());
+        data.put("creatorName", Objects.requireNonNull(task.getCreator()).getRealName());
+        data.put("creationTime", task.getCreationTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        data.put("endTime", task.getEndTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        data.put("taskPriority", task.getPriority());
+        data.put("taskStatus", task.getTaskStatus());
+        data.put("deadline", task.getDeadline());
+
+        // 获取所有执行者的姓名
+        List<String> executorNames = taskExecutorRelationRepository.findByTask_TaskId(taskId)
+                .stream()
+                .map(relation -> relation.getExecutor().getRealName())
+                .collect(Collectors.toList());
+        data.put("executorNames", executorNames);
+        data.put("isParticipated", isCreator || isExecutor); // 添加 isParticipated 字段
+
         data.put("logs", items);
 
         return ApiResponse.success(data);
@@ -315,8 +334,8 @@ public class LogService {
         data.put("endTime", log.getEndTime().toString());
         data.put("logDate", log.getLogDate().toString());
         data.put("fileIds", fileIds);
-        data.put("userName",log.getUser().getRealName());
-        data.put("userId",log.getUser().getUserId());
+        data.put("userName",Objects.requireNonNull(log.getUser()).getRealName());
+        data.put("userId",Objects.requireNonNull(log.getUser()).getUserId());
 
         return ApiResponse.success(data);
     }
