@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
     List<Notification> findByReceiverIdOrderByCreationTimeDesc(Integer receiverId);
+    boolean existsByReceiverIdAndIsReadFalse(Integer receiverId);
 }

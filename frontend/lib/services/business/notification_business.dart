@@ -43,4 +43,34 @@ class NotificationBusiness {
       return [];
     }
   }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      final response = await _notificationApi.markNotificationAsRead(notificationId);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['code'] == 200) {
+          print('Notification $notificationId marked as read.');
+        }
+      }
+    } catch (e) {
+      print('标记通知已读异常: $e');
+    }
+  }
+
+  Future<bool> hasUnreadNotifications() async {
+    try {
+      final response = await _notificationApi.getUnreadStatus();
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['code'] == 200 && responseData['data'] != null) {
+          return responseData['data']['hasUnread'] as bool;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('获取未读通知状态异常: $e');
+      return false;
+    }
+  }
 }

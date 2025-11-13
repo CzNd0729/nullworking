@@ -6,6 +6,8 @@ import '../../services/business/auth_business.dart';
 import '../../services/business/user_business.dart';
 import '../../models/user.dart';
 import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../services/business/notification_business.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +19,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final AuthBusiness _authBusiness = AuthBusiness();
   final UserBusiness _userBusiness = UserBusiness();
+  final NotificationBusiness _notificationBusiness = NotificationBusiness(); // 新增实例
 
   User? _currentUser;
   List<User> _subDeptUsers = [];
@@ -36,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = await _userBusiness.getCurrentUser();
       final subUsers = await _userBusiness.getSubordinateUsers();
+      final hasUnread = await _notificationBusiness.hasUnreadNotifications(); // Add this line
 
       setState(() {
         _currentUser = user;
@@ -63,16 +67,7 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const NotificationListPage(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-          ),
+          const NotificationIconWithBadge(), // Use the new widget
         ],
       ),
       body: _isLoading

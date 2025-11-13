@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/business/auth_business.dart';
 import 'forgot_password_page.dart';
-import '../../services/push_notification_service.dart';
+import '../../services/notification_services/push_notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

@@ -8,6 +8,7 @@ import 'dart:convert'; // Added for jsonDecode
 import 'package:nullworking/services/api/user_api.dart';
 import 'package:nullworking/services/api/task_api.dart';
 import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 class AIAnalysisPage extends StatefulWidget {
   const AIAnalysisPage({super.key});
@@ -115,16 +116,7 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const NotificationListPage(),
-                ),
-              );
-            },
-          ),
+          const NotificationIconWithBadge(), // Use the new widget
         ],
       ),
       body: Padding(

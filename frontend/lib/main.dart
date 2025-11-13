@@ -6,7 +6,8 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
-import 'services/push_notification_service.dart';
+import 'services/notification_services/push_notification_service.dart';
+import 'services/notification_services/unread_notification_service.dart'; // 新增导入
 
 
 void main() async {
@@ -56,17 +57,28 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 2;
+  final UnreadNotificationService _unreadNotificationService = UnreadNotificationService();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _unreadNotificationService.refreshUnreadStatus(); // Initial refresh
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _unreadNotificationService.refreshUnreadStatus(); // Refresh when app resumes
+    }
   }
 
   final List<Widget> _pages = [

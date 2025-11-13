@@ -1,9 +1,10 @@
 class NotificationModel {
   final DateTime creationTime;
-  final bool isRead;
+  bool isRead;
   final String content;
   final int? taskId;
   final int? logId;
+  final int notificationId;
 
   NotificationModel({
     required this.creationTime,
@@ -11,6 +12,7 @@ class NotificationModel {
     required this.content,
     this.taskId,
     this.logId,
+    required this.notificationId,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class NotificationModel {
       content: json['content'] as String,
       taskId: json['taskId'] as int?,
       logId: json['logId'] as int?,
+      notificationId: json['notificationId'] as int,
     );
   }
 
@@ -30,6 +33,7 @@ class NotificationModel {
       'content': content,
       'taskId': taskId,
       'logId': logId,
+      'notificationId': notificationId,
     };
   }
 }

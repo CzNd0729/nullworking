@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:nullworking/services/api/auth_service.dart';
 import 'package:nullworking/services/business/user_business.dart'; // Import UserBusiness
-import 'package:nullworking/services/push_notification_service.dart';
+import 'package:nullworking/services/notification_services/push_notification_service.dart';
 
 class AuthBusiness {
   final UserApi _userApi = UserApi();

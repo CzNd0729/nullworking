@@ -6,6 +6,7 @@ import 'package:nullworking/pages/log/log_detail_page.dart';
 import 'package:nullworking/pages/task/task_detail_page.dart';
 import 'package:nullworking/services/business/notification_business.dart';
 import 'package:nullworking/services/business/task_business.dart';
+import 'package:nullworking/services/notification_services/unread_notification_service.dart'; // 新增导入
 
 class NotificationListPage extends StatefulWidget {
   const NotificationListPage({super.key});
@@ -58,6 +59,15 @@ class _NotificationListPageState extends State<NotificationListPage> {
               LogDetailPage(logId: notification.logId!.toString()),
         ),
       );
+    }
+
+    if (!notification.isRead) {
+      await _notificationBusiness.markNotificationAsRead(notification.notificationId.toString());
+      setState(() {
+        notification.isRead = true;
+      });
+      // Refresh global unread status after marking a notification as read
+      UnreadNotificationService().refreshUnreadStatus();
     }
   }
 

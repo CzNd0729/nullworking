@@ -7,6 +7,7 @@ import 'views/month_view.dart';
 import 'views/week_view.dart';
 import 'views/day_view.dart';
 import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 // 定义视图模式枚举
 enum ViewMode { list, month, week, day }
@@ -325,17 +326,7 @@ class _LogPageState extends State<LogPage> {
                   },
                 ),
                 actions: [
-                  IconButton(
-                    onPressed: () {
-                      _forceSearchUnfocus();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationListPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.notifications_outlined),
-                  ),
+                  const NotificationIconWithBadge(), // Use the new widget
                 ],
                 floating: true,
                 forceElevated: innerBoxIsScrolled,

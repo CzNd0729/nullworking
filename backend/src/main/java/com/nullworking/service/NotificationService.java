@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collections;
 import java.util.Objects; // 导入 Objects
+import java.util.Optional;
 
 @Service
 public class NotificationService {
@@ -131,11 +132,11 @@ public class NotificationService {
     public ApiResponse<List<Map<String, Object>>> getUserNotifications(Integer userId) {
         List<Notification> rawNotifications = notificationRepository.findByReceiverIdOrderByCreationTimeDesc(userId);
 
-        List<Notification> notificationsToUpdate = new ArrayList<>();
         List<Map<String, Object>> allNotifications = new ArrayList<>();
 
         for (Notification notification : rawNotifications) {
             Map<String, Object> notificationData = new HashMap<>();
+            notificationData.put("notificationId",notification.getId());
             notificationData.put("content", notification.getContent());
             notificationData.put("isRead", notification.getIsRead());
             notificationData.put("creationTime", notification.getCreationTime());
@@ -149,5 +150,45 @@ public class NotificationService {
             allNotifications.add(notificationData);
         }
         return ApiResponse.success(allNotifications);
+    }
+
+    /**
+     * 将指定通知标记为已读
+     * @param notificationId 通知ID
+     * @param userId 当前用户ID，用于权限校验
+     * @return 操作结果
+     */
+    @Transactional
+    public ApiResponse<Void> markNotificationAsRead(Integer notificationId, Integer userId) {
+        // 查找通知
+        Optional<Notification> notificationOptional = notificationRepository.findById(Objects.requireNonNull(notificationId));
+        if (notificationOptional.isEmpty()) {
+            return ApiResponse.error(404, "通知未找到");
+        }
+
+        Notification notification = notificationOptional.get();
+
+        // 检查用户是否有权限修改该通知
+        if (!Objects.requireNonNull(notification.getReceiverId()).equals(userId)) {
+            return ApiResponse.error(403, "无权限修改该通知");
+        }
+
+        // 标记为已读
+        notification.setIsRead(true);
+        notificationRepository.save(notification);
+
+        return ApiResponse.success();
+    }
+
+    /**
+     * 查询当前用户是否有未读通知
+     * @param userId 用户ID
+     * @return 包含是否有未读通知的响应
+     */
+    public ApiResponse<Map<String, Boolean>> hasUnreadNotifications(Integer userId) {
+        Map<String, Boolean> data = new HashMap<>();
+        boolean hasUnread = notificationRepository.existsByReceiverIdAndIsReadFalse(Objects.requireNonNull(userId));
+        data.put("hasUnread", hasUnread);
+        return ApiResponse.success(data);
     }
 }

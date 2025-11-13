@@ -4,6 +4,7 @@ import 'task_detail_page.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
 import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -332,17 +333,7 @@ class _TasksPageState extends State<TasksPage> {
                 elevation: 0,
                 centerTitle: true,
                 actions: [
-                  IconButton(
-                    onPressed: () {
-                      _forceSearchUnfocus();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationListPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.notifications_outlined),
-                  ),
+                  const NotificationIconWithBadge(), // Use the new widget
                 ],
                 floating: true,
                 pinned: false,
