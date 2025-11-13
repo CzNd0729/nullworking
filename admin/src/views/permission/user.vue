@@ -1,6 +1,15 @@
 <template>
   <div class="app-container">
     <div class="filter-container">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索用户（真实姓名、手机号、邮箱）"
+        class="filter-item"
+        style="width: 300px; margin-right: 10px;"
+        clearable
+        prefix-icon="el-icon-search"
+        @input="handleSearch"
+      />
       <el-button 
         class="filter-item" 
         type="primary" 
@@ -187,6 +196,7 @@ export default {
       treeAllExpanded: false, // 部门树是否全部展开
       selectedDeptId: null, // 当前选中的部门ID
       selectedDeptUserIds: [], // 当前选中部门及其子部门的用户ID列表
+      searchKeyword: '', // 搜索关键词
       temp: {
         userId: undefined,
         userName: '',
@@ -214,20 +224,42 @@ export default {
     }
   },
   computed: {
-    // 根据选中的部门过滤用户列表
+    // 根据选中的部门和搜索关键词过滤用户列表
     filteredList() {
-      // 如果没有选中部门，显示所有用户
-      if (!this.selectedDeptId) {
-        return this.allUsersList
+      let filtered = this.allUsersList
+      
+      // 先按部门过滤
+      if (this.selectedDeptId) {
+        // 如果选中了部门，即使该部门没有用户，也返回空列表（而不是显示所有用户）
+        if (this.selectedDeptUserIds.length === 0) {
+          filtered = []
+        } else {
+          // 只显示选中部门及其子部门的用户
+          filtered = filtered.filter(user => 
+            this.selectedDeptUserIds.includes(user.userId)
+          )
+        }
       }
-      // 如果选中了部门，即使该部门没有用户，也返回空列表（而不是显示所有用户）
-      if (this.selectedDeptUserIds.length === 0) {
-        return []
+      
+      // 再按搜索关键词过滤
+      if (this.searchKeyword && this.searchKeyword.trim()) {
+        const keyword = this.searchKeyword.trim().toLowerCase()
+        filtered = filtered.filter(user => {
+          // 搜索真实姓名
+          const realNameMatch = user.realName && 
+            user.realName.toLowerCase().includes(keyword)
+          // 搜索手机号
+          const phoneMatch = (user.phoneNumber || user.phone) && 
+            (user.phoneNumber || user.phone).toLowerCase().includes(keyword)
+          // 搜索邮箱
+          const emailMatch = user.email && 
+            user.email.toLowerCase().includes(keyword)
+          
+          return realNameMatch || phoneMatch || emailMatch
+        })
       }
-      // 只显示选中部门及其子部门的用户
-      return this.allUsersList.filter(user => 
-        this.selectedDeptUserIds.includes(user.userId)
-      )
+      
+      return filtered
     }
   },
   async created() {
@@ -550,6 +582,10 @@ export default {
       }).catch(() => {
         this.$message.info('已取消删除')
       })
+    },
+    handleSearch() {
+      // 搜索功能通过computed属性filteredList自动处理
+      // 这里可以添加其他搜索相关的逻辑，比如清空搜索时重置等
     }
   }
 }
