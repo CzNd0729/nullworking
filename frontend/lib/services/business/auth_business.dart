@@ -12,6 +12,46 @@ class AuthBusiness {
   final PushNotificationService _pushNotificationService =
       PushNotificationService();
 
+  Future<String?> sendVerificationCode(String email) async {
+    try {
+      final response = await _authService.sendEmailCode(email);
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['code'] == 200) {
+          return null;
+        } else {
+          return responseData['message'] ?? '发送验证码失败';
+        }
+      } else {
+        return '网络请求失败，请稍后重试';
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> resetPassword(
+      {required String email,
+      required String code,
+      required String newPassword}) async {
+    try {
+      final response =
+          await _authService.resetPassword(email, code, newPassword);
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['code'] == 200) {
+          return null;
+        } else {
+          return responseData['message'] ?? '重置密码失败';
+        }
+      } else {
+        return '网络请求失败，请稍后重试';
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<String?> login(String username, String password) async {
     try {
       final response = await _userApi.login(username, password);

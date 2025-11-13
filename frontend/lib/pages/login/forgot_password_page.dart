@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:nullworking/services/business/auth_business.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -15,6 +16,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
+
+  final AuthBusiness _authBusiness = AuthBusiness();
 
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
@@ -46,7 +49,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _sendVerificationCode() async {
     if (_usernameController.text.trim().isEmpty) {
       setState(() {
-        _errorMessage = '请先输入用户名';
+        _errorMessage = '请先输入邮箱';
       });
       return;
     }
@@ -57,26 +60,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      // TODO: 调用发送验证码的API
-      // await authBusiness.sendVerificationCode(_usernameController.text.trim());
+      final error =
+          await _authBusiness.sendVerificationCode(_usernameController.text.trim());
 
-      // 模拟API调用
-      await Future.delayed(const Duration(seconds: 1));
+      if (error == null) {
+        if (mounted) {
+          setState(() {
+            _countdown = 60;
+            _isSendingCode = false;
+          });
 
-      if (mounted) {
-        setState(() {
-          _countdown = 60;
-          _isSendingCode = false;
-        });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('验证码已发送到您的邮箱'),
+              backgroundColor: Color(0xFF2CB7B3),
+            ),
+          );
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('验证码已发送到您的邮箱'),
-            backgroundColor: Color(0xFF2CB7B3),
-          ),
-        );
-
-        _startCountdown();
+          _startCountdown();
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = error;
+            _isSendingCode = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -103,7 +112,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _resetPassword() async {
     if (_usernameController.text.trim().isEmpty) {
       setState(() {
-        _errorMessage = '请输入用户名';
+        _errorMessage = '请输入邮箱';
       });
       return;
     }
@@ -150,24 +159,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      // TODO: 调用重置密码的API
-      // await authBusiness.resetPassword(
-      //   username: _usernameController.text.trim(),
-      //   verificationCode: _verificationCodeController.text.trim(),
-      //   newPassword: _newPasswordController.text.trim(),
-      // );
+      final error = await _authBusiness.resetPassword(
+        email: _usernameController.text.trim(),
+        code: _verificationCodeController.text.trim(),
+        newPassword: _newPasswordController.text.trim(),
+      );
 
-      // 模拟API调用
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('密码重置成功，请使用新密码登录'),
-            backgroundColor: Color(0xFF2CB7B3),
-          ),
-        );
-        Navigator.of(context).pop();
+      if (error == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('密码重置成功，请使用新密码登录'),
+              backgroundColor: Color(0xFF2CB7B3),
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _errorMessage = '密码重置失败: $error';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -221,7 +234,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 const Text(
                   '忘记密码',
                   style: TextStyle(
@@ -230,12 +243,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '请输入您的用户名和邮箱验证码',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // 错误提示
                 if (_errorMessage != null)
@@ -259,7 +267,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '用户名',
+                    '邮箱',
                     style: TextStyle(
                       color: primaryTeal,
                       fontSize: 14,
@@ -273,7 +281,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   style: const TextStyle(color: Colors.black),
                   onChanged: (_) => _clearError(),
                   decoration: InputDecoration(
-                    hintText: '请输入用户名',
+                    hintText: '请输入邮箱',
                     hintStyle: TextStyle(color: Colors.grey.shade500),
                     filled: true,
                     fillColor: const Color(0xFFE9EDF2),
