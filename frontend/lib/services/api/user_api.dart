@@ -72,4 +72,12 @@ class UserApi {
     final body = {'pushToken': pushToken};
     return await _baseApi.put('api/users/push-token', body: body);
   }
+
+  Future<http.Response> changePassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
+    final body = {'oldPassword': oldPassword, 'newPassword': newPassword};
+    return await _baseApi.put('api/users/change-password', body: body);
+  }
 }

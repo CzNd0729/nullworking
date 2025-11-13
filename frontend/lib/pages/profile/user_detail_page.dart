@@ -221,6 +221,10 @@ class _UserDetailPageState extends State<UserDetailPage> {
                         },
                       ),
                     ),
+                    onChanged: (value) {
+                      // 实时校验确认密码
+                      setDialogState(() {});
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return '请再次输入新密码';
@@ -269,11 +273,17 @@ class _UserDetailPageState extends State<UserDetailPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 调用密码修改接口（需要根据实际 API 调整）
-      // await _authBusiness.changePassword(oldPassword, newPassword);
+      final result = await _userBusiness.changePassword(
+        oldPassword,
+        newPassword,
+      );
 
       if (mounted) {
-        _showSnackBar('密码修改成功');
+        if (result['success'] == true) {
+          _showSnackBar(result['message'] ?? '密码修改成功');
+        } else {
+          _showSnackBar(result['message'] ?? '密码修改失败');
+        }
       }
     } catch (e) {
       if (mounted) {
