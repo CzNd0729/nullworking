@@ -87,6 +87,7 @@ class LogBusiness {
 Future<List<Log>> listLogs({String? startTime, String? endTime}) async {
   try {
     final http.Response res = await _logApi.listLogs(startTime: startTime, endTime: endTime);
+    print(startTime);
     if (res.statusCode == 200) {
       final Map<String, dynamic> resp = jsonDecode(res.body);
       if (resp['code'] == 200) {

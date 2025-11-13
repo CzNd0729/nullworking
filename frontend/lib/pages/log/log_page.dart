@@ -6,7 +6,7 @@ import 'log_detail_page.dart';
 import 'views/month_view.dart';
 import 'views/week_view.dart';
 import 'views/day_view.dart';
-import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+// import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
 import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 // 定义视图模式枚举
@@ -128,16 +128,6 @@ class _LogPageState extends State<LogPage> {
       setState(() => _endDate = picked);
       _loadLogs();
     }
-  }
-
-  void _clearFilters() {
-    _forceSearchUnfocus();
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-      _searchController.clear();
-    });
-    _loadLogs();
   }
 
   Widget _buildTimeFilterButton(String text, VoidCallback onPressed) {
@@ -420,7 +410,6 @@ class _LogPageState extends State<LogPage> {
       // log_page.dart 中 _buildCurrentView 方法的月视图部分
       case ViewMode.month:
         return MonthView(
-          logs: _filteredLogs,
           currentMonth: _currentMonth,
           onMonthChanged: (newMonth) {
             setState(() {
@@ -441,10 +430,10 @@ class _LogPageState extends State<LogPage> {
           },
         );
       case ViewMode.week:
-        return WeekView(logs: _filteredLogs);
+        return WeekView(
+        );
       case ViewMode.day:
         return DayView(
-          logs: _filteredLogs,
           initialDate: _startDate ?? DateTime.now(),
           // 新增：日期变更回调（关键）
           onDateChanged: (newDate) {
@@ -689,15 +678,15 @@ class _LogPageState extends State<LogPage> {
 
 class _SliverFilterBarDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-  final double height;
+  // final double height;
 
-  _SliverFilterBarDelegate({required this.child, this.height = 150.0});
-
-  @override
-  double get minExtent => height;
+  _SliverFilterBarDelegate({required this.child, /* this.height = 150.0 */});
 
   @override
-  double get maxExtent => height;
+  double get minExtent => 150.0;
+
+  @override
+  double get maxExtent => 150.0;
 
   @override
   Widget build(

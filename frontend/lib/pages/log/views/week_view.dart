@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../../../models/log.dart';
+import '../../../services/business/log_business.dart'; // Import LogBusiness
 import '../log_detail_page.dart';
 
 class WeekView extends StatefulWidget {
-  final List<Log> logs;
+  // final List<Log> logs; // 移除logs参数
 
-  const WeekView({super.key, required this.logs});
+  const WeekView({super.key /*, required this.logs*/});
 
   @override
   State<WeekView> createState() => _WeekViewState();
@@ -15,6 +16,9 @@ class WeekView extends StatefulWidget {
 class _WeekViewState extends State<WeekView> {
   late DateTime _currentWeek;
   final List<String> _weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  final LogBusiness _logBusiness = LogBusiness(); // 新增LogBusiness实例
+  List<Log> _logs = []; // 新增本地日志列表
+  bool _isLoading = false; // 新增加载状态
 
   @override
   void initState() {
@@ -22,6 +26,11 @@ class _WeekViewState extends State<WeekView> {
     // 设置当前周的起始日期（周日）
     final now = DateTime.now();
     _currentWeek = now.subtract(Duration(days: now.weekday % 7));
+    _fetchLogs(); // 调用获取日志的方法
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   // 获取一周的日期列表
@@ -31,11 +40,39 @@ class _WeekViewState extends State<WeekView> {
 
   // 获取指定日期的所有日志
   List<Log> _getLogsForDate(DateTime date) {
-    return widget.logs.where((log) {
+    return _logs.where((log) {
       return log.logDate.year == date.year &&
           log.logDate.month == date.month &&
           log.logDate.day == date.day;
     }).toList();
+  }
+
+  // 新增：获取日志的方法
+  Future<void> _fetchLogs() async {
+    setState(() {
+      _isLoading = true;
+      _logs = []; // 清空之前的日志，显示加载状态
+    });
+
+    try {
+      final startOfWeek = _currentWeek;
+      final endOfWeek = _currentWeek.add(const Duration(days: 6));
+
+      final fetchedLogs = await _logBusiness.listLogs(
+        startTime: _formatDate(startOfWeek),
+        endTime: _formatDate(endOfWeek),
+      );
+      setState(() {
+        _logs = fetchedLogs;
+      });
+    } catch (e) {
+      debugPrint('Error fetching logs: $e');
+      // 可以添加错误提示
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // 计算日志时间位置
@@ -235,6 +272,7 @@ class _WeekViewState extends State<WeekView> {
                         const Duration(days: 7),
                       );
                     });
+                    _fetchLogs(); // 重新获取日志
                   },
                 ),
                 Text(
@@ -251,6 +289,7 @@ class _WeekViewState extends State<WeekView> {
                     setState(() {
                       _currentWeek = _currentWeek.add(const Duration(days: 7));
                     });
+                    _fetchLogs(); // 重新获取日志
                   },
                 ),
               ],
@@ -322,66 +361,45 @@ class _WeekViewState extends State<WeekView> {
                     ),
 
                     // 时间网格和日志展示
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: SizedBox(
-                          height: 60 * 24, // 24小时 * 每小时60逻辑像素
-                          child: Stack(
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 时间轴
-                                  SizedBox(
-                                    width: 60,
-                                    child: Column(
-                                      children: List.generate(24, (hour) {
-                                        return SizedBox(
-                                          height: 60,
-                                          child: Center(
-                                            child: Text(
-                                              '${hour.toString().padLeft(2, '0')}:00',
-                                              style: const TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 12,
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator()) // 显示加载指示器
+                        : Expanded(
+                            // Re-adding the Expanded wrapper
+                            child: SingleChildScrollView(
+                              child: SizedBox(
+                                height: 60 * 24, // 24小时 * 每小时60逻辑像素
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // 时间轴
+                                    SizedBox(
+                                      width: 60,
+                                      child: Column(
+                                        children: List.generate(24, (hour) {
+                                          return SizedBox(
+                                            height: 60,
+                                            child: Center(
+                                              child: Text(
+                                                '${hour.toString().padLeft(2, '0')}:00',
+                                                style: const TextStyle(
+                                                  color: Colors.white54,
+                                                  fontSize: 12,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      }),
+                                          );
+                                        }),
+                                      ),
                                     ),
-                                  ),
-                                  // 每天的日志网格
-                                  ...weekDays.map(
-                                    (date) => _buildDayGrid(date, dayWidth),
-                                  ),
-                                ],
-                              ),
-
-                              // 当前时间线
-                              if (weekDays.any(
-                                (date) =>
-                                    date.year == DateTime.now().year &&
-                                    date.month == DateTime.now().month &&
-                                    date.day == DateTime.now().day,
-                              ))
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  top:
-                                      (TimeOfDay.now().hour * 60 +
-                                          TimeOfDay.now().minute.toDouble()) *
-                                      1.0,
-                                  child: Container(
-                                    height: 1,
-                                    color: const Color(0xFF2CB7B3),
-                                  ),
+                                    // 每天的日志网格
+                                    ...weekDays.map(
+                                      (date) => _buildDayGrid(date, dayWidth),
+                                    ),
+                                  ],
                                 ),
-                            ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
