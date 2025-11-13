@@ -52,19 +52,57 @@ class _UserDetailPageState extends State<UserDetailPage> {
     String currentValue,
     String fieldName,
   ) async {
+    final formKey = GlobalKey<FormState>();
     final controller = TextEditingController(text: currentValue);
 
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('编辑$title'),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: title,
-            border: const OutlineInputBorder(),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: InputDecoration(
+              labelText: title,
+              border: const OutlineInputBorder(),
+            ),
+            autofocus: true,
+            keyboardType: fieldName == 'phoneNumber'
+                ? TextInputType.phone
+                : (fieldName == 'email'
+                      ? TextInputType.emailAddress
+                      : TextInputType.text),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return '请输入$title';
+              }
+
+              // 邮箱格式校验
+              if (fieldName == 'email') {
+                if (!value.contains('@')) {
+                  return '邮箱格式不正确，必须包含@';
+                }
+                // 检查是否包含常见邮箱后缀
+                final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+                if (!emailRegex.hasMatch(value)) {
+                  return '邮箱格式不正确';
+                }
+              }
+
+              // 电话号码校验
+              if (fieldName == 'phoneNumber') {
+                if (value.length != 11) {
+                  return '电话号码必须为11位';
+                }
+                if (!RegExp(r'^1[3-9]\d{9}$').hasMatch(value)) {
+                  return '请输入有效的手机号码';
+                }
+              }
+
+              return null;
+            },
           ),
-          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -72,7 +110,11 @@ class _UserDetailPageState extends State<UserDetailPage> {
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context, controller.text);
+              }
+            },
             child: const Text('确定'),
           ),
         ],
