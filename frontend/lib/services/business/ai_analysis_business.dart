@@ -15,8 +15,8 @@ class AiAnalysisBusiness {
         final responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200) {
           return responseBody['data'].toString();
-        } else {
-          return null;
+        } else if(responseBody['code'] == 403){
+          return "permission_denied";
         }
       } else {
         return null;

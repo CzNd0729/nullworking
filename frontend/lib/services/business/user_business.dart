@@ -18,10 +18,10 @@ class UserBusiness {
       }
 
       final response = await _userApi.getCurrentUserInfo(currentUserId);
-      
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        
+
         if (responseData['code'] == 200) {
           final userData = responseData['data'];
           if (userData != null) {
@@ -33,7 +33,7 @@ class UserBusiness {
       } else {
         print('网络请求失败: ${response.statusCode}');
       }
-      
+
       // 如果 API 调用失败，尝试从 SharedPreferences 获取基本信息
       final userId = prefs.getString('userId');
       final userName = prefs.getString('userName');
@@ -44,7 +44,7 @@ class UserBusiness {
       final deptName = prefs.getString('deptName');
       final roleId = prefs.getString('roleId');
       final roleName = prefs.getString('roleName');
-      
+
       if (userId != null && userName != null) {
         return User(
           userId: int.tryParse(userId),
@@ -58,11 +58,11 @@ class UserBusiness {
           roleName: roleName,
         );
       }
-      
+
       return null;
     } catch (e) {
       print('获取当前用户信息失败: $e');
-      
+
       // 出错时尝试从 SharedPreferences 获取基本信息
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -75,7 +75,7 @@ class UserBusiness {
         final deptName = prefs.getString('deptName');
         final roleId = prefs.getString('roleId');
         final roleName = prefs.getString('roleName');
-        
+
         if (userId != null && userName != null) {
           return User(
             userId: int.tryParse(userId),
@@ -92,7 +92,7 @@ class UserBusiness {
       } catch (e) {
         print('从本地获取用户信息也失败: $e');
       }
-      
+
       return null;
     }
   }
@@ -133,7 +133,10 @@ class UserBusiness {
       await prefs.setString('realName', user.realName!);
     }
     if (user.phoneNumber != null) {
-      await prefs.setString('phoneNumber', user.phoneNumber!); // Note: Changed from phone to phoneNumber
+      await prefs.setString(
+        'phoneNumber',
+        user.phoneNumber!,
+      ); // Note: Changed from phone to phoneNumber
     }
     if (user.email != null) {
       await prefs.setString('email', user.email!);
@@ -169,7 +172,7 @@ class UserBusiness {
   Future<List<User>> getSubordinateUsers() async {
     try {
       final response = await _userApi.getSubordinateUsers();
-      
+
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
 
@@ -208,6 +211,31 @@ class UserBusiness {
     } catch (e) {
       print('更新用户信息异常: $e');
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
+    try {
+      final response = await _userApi.changePassword(oldPassword, newPassword);
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['code'] == 200) {
+          return {'success': true, 'message': '密码修改成功'};
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? '密码修改失败',
+          };
+        }
+      } else {
+        return {'success': false, 'message': '网络请求失败: ${response.statusCode}'};
+      }
+    } catch (e) {
+      print('修改密码异常: $e');
+      return {'success': false, 'message': '修改密码异常: $e'};
     }
   }
 }
