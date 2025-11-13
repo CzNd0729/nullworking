@@ -64,9 +64,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   List<Log> _getFilteredLogs() {
     final maxCompleted = _getMaxCompletedProgress();
     return _taskLogs.where((log) {
-      if (log.logStatus == 1) return true;
-      return (log.taskProgress ?? 0) > maxCompleted;
-    }).toList()
+        if (log.logStatus == 1) return true;
+        return (log.taskProgress ?? 0) > maxCompleted;
+      }).toList()
       ..sort((a, b) => (a.taskProgress ?? 0).compareTo(b.taskProgress ?? 0));
   }
 
@@ -101,7 +101,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
 
     final filteredLogs = _getFilteredLogs();
-    
+
     if (filteredLogs.isEmpty) {
       return const Center(
         child: Padding(
@@ -122,7 +122,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         final isTop = index == 0;
         final isBottom = index == reversedLogs.length - 1;
         final prevLog = index > 0 ? reversedLogs[index - 1] : null;
-        
+
         return _buildTimelineItem(
           log: log,
           isTop: isTop,
@@ -153,9 +153,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return InkWell(
       onTap: () {
         Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => LogDetailPage(logId: log.logId)));
+          context,
+          MaterialPageRoute(
+            builder: (context) => LogDetailPage(logId: log.logId),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 32),
@@ -171,8 +173,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     decoration: BoxDecoration(
                       color: dotColor,
                       shape: BoxShape.circle,
-                      border:
-                          Border.all(color: const Color(0xFF1E1E1E), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFF1E1E1E),
+                        width: 1,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -186,7 +190,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                         ),
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
               const SizedBox(width: 16),
@@ -222,7 +226,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                             fontSize: 12,
                           ),
                         ),
-                        if (log.userName != null && log.userName!.isNotEmpty) ...[
+                        if (log.userName != null &&
+                            log.userName!.isNotEmpty) ...[
                           const SizedBox(width: 8),
                           Text(
                             log.userName!,
@@ -240,7 +245,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               // 进度值独立显示在右侧
               if (log.taskProgress != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: log.logStatus == 1 ? Colors.green : Colors.grey,
                     borderRadius: BorderRadius.circular(10),
@@ -262,18 +270,24 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     final title = widget.task.taskTitle;
     final description = widget.task.taskContent;
     final assignee = widget.task.executorNames.join(', ');
-    final creationDate =
-        widget.task.creationTime.toLocal().toString().split(' ')[0];
+    final creationDate = widget.task.creationTime.toLocal().toString().split(
+      ' ',
+    )[0];
     final creationTime = widget.task.creationTime
         .toLocal()
         .toString()
         .split(' ')[1]
         .substring(0, 5);
     final dueDate = widget.task.deadline.toLocal().toString().split(' ')[0];
-    final dueTime =
-        widget.task.deadline.toLocal().toString().split(' ')[1].substring(0, 5);
-    final completionDate =
-        widget.task.completionTime?.toLocal().toString().split(' ')[0];
+    final dueTime = widget.task.deadline
+        .toLocal()
+        .toString()
+        .split(' ')[1]
+        .substring(0, 5);
+    final completionDate = widget.task.completionTime
+        ?.toLocal()
+        .toString()
+        .split(' ')[0];
     final completionTime = widget.task.completionTime
         ?.toLocal()
         .toString()
@@ -375,11 +389,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                     widget.task.creatorName,
                   ),
                   const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.person_outline,
-                    '负责人',
-                    assignee,
-                  ),
+                  _buildInfoRow(Icons.person_outline, '负责人', assignee),
                   const SizedBox(height: 8),
                   _buildInfoRow(
                     Icons.calendar_today,
@@ -429,33 +439,34 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('添加日志'),
-                        onPressed: () async {
-                          final newLog = await Navigator.push<Log?>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreateLogPage(
-                                preSelectedTask: widget.task,
+                      // 只有当用户是任务的负责人（参与者）时，才显示添加日志按钮
+                      if (widget.task.isParticipated)
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('添加日志'),
+                          onPressed: () async {
+                            final newLog = await Navigator.push<Log?>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    CreateLogPage(preSelectedTask: widget.task),
                               ),
+                            );
+                            if (newLog != null) {
+                              _loadTaskLogs();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
                             ),
-                          );
-                          if (newLog != null) {
-                            _loadTaskLogs();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -488,10 +499,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E1E),
-          title: const Text(
-            '确认删除',
-            style: TextStyle(color: Colors.white),
-          ),
+          title: const Text('确认删除', style: TextStyle(color: Colors.white)),
           content: const Text(
             '您确定要删除此任务吗？',
             style: TextStyle(color: Colors.white70),
