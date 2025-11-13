@@ -3,10 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 导入 shared_preferences
+import 'package:geolocator/geolocator.dart'; // Add geolocator import
+import 'package:webview_flutter/webview_flutter.dart'; // Add webview_flutter import here
+
 import '../../models/task.dart';
 import '../../models/log.dart';
 import '../../services/business/log_business.dart';
 import '../task/create_task_page.dart';
+// import '../baidu_map_page.dart'; // Remove BaiduMapPage import
 
 class CreateLogPage extends StatefulWidget {
   final Task? preSelectedTask;
@@ -38,6 +42,14 @@ class _CreateLogPageState extends State<CreateLogPage> {
   bool _isUploadingImages = false;
   final ImagePicker _imagePicker = ImagePicker();
 
+  // 定位相关变量
+  double? _latitude;
+  double? _longitude;
+  bool _isGettingLocation = false;
+  String? _address; // Add address variable
+
+  WebViewController? _mapController; // Add WebViewController
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +59,30 @@ class _CreateLogPageState extends State<CreateLogPage> {
     }
     // 加载用户ID和名称
     _loadCurrentUser();
+
+    _mapController = WebViewController();
+    _mapController!.loadFlutterAsset('assets/map.html').then((value) {
+      if (_latitude != null && _longitude != null) {
+        _updateMapLocation(_latitude!, _longitude!); // Update map if location already available
+      }
+    });
+    _mapController!.setJavaScriptMode(JavaScriptMode.unrestricted);
+    _mapController!.setNavigationDelegate(NavigationDelegate(
+      onPageFinished: (String url) {
+        if (_latitude != null && _longitude != null) {
+          _updateMapLocation(_latitude!, _longitude!); // Update map if location already available
+        }
+      },
+    ));
+
+    _mapController!.addJavaScriptChannel(
+      'FlutterMapChannel',
+      onMessageReceived: (message) {
+        setState(() {
+          _address = message.message;
+        });
+      },
+    );
 
     if (widget.logToEdit != null) {
       // 编辑模式下预填充表单，不保留任务关联信息
@@ -509,6 +545,78 @@ class _CreateLogPageState extends State<CreateLogPage> {
     );
   }
 
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+    });
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('位置权限被拒绝')),
+            );
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('位置权限被永久拒绝，请在设置中启用')),
+          );
+        }
+        return;
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('定位信息获取成功！'),
+              backgroundColor: Color(0xFF4CAF50),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('获取定位信息失败: ${e.toString()}')),
+        );
+      }
+      debugPrint('获取定位信息失败: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+          // Call updateMapLocation after getting location
+          if (_latitude != null && _longitude != null) {
+            _updateMapLocation(_latitude!, _longitude!);
+          }
+        });
+      }
+    }
+  }
+
+  // Function to update the map location in the WebView
+  void _updateMapLocation(double latitude, double longitude) {
+    _mapController?.runJavaScript(
+        'updateLocation($latitude, $longitude)');
+  }
+
   Future<void> _onSubmit() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
@@ -599,6 +707,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
             '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}',
         logDate: _plannedDate,
         fileIds: fileIdsToAttach, // 将图片ID列表附加到日志中
+        latitude: _latitude, // Add latitude
+        longitude: _longitude, // Add longitude
       );
 
       final bool isUpdate = widget.logToEdit != null;
@@ -628,6 +738,8 @@ class _CreateLogPageState extends State<CreateLogPage> {
               userId: int.tryParse(_currentUserId ?? ''), // 从 shared_preferences 获取并转换为 int
               userName: _currentUserName, // 从 shared_preferences 获取
               fileIds: logToProcess.fileIds,
+              latitude: _latitude, // Add latitude
+              longitude: _longitude, // Add longitude
             );
             Navigator.of(context).pop(newLog); // 返回新创建的日志对象
           } else {
@@ -878,7 +990,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                   ),
                                   SizedBox(height: 8),
                                   Text(
-                                    '处理中...',
+                                    '处理中...', // Processing...
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 16,
@@ -896,7 +1008,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                   ),
                                   SizedBox(height: 8),
                                   Text(
-                                    '点击上传照片',
+                                    '点击上传照片', // Tap to upload photos
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 16,
@@ -904,7 +1016,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    '支持 jpg、png 格式',
+                                    '支持 jpg、png 格式', // Supports jpg, png formats
                                     style: TextStyle(
                                       color: Colors.white38,
                                       fontSize: 14,
@@ -914,6 +1026,99 @@ class _CreateLogPageState extends State<CreateLogPage> {
                               ),
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            // 上传定位信息卡片
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF232325),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '上传定位信息',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _isGettingLocation ? null : _getCurrentLocation,
+                      icon: _isGettingLocation
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.location_on),
+                      label: _isGettingLocation
+                          ? const Text('获取中...')
+                          : const Text('获取当前位置'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // const SizedBox(height: 12), // Remove this
+                  // Center( // Remove this block for map button
+                  //   child: ElevatedButton.icon(
+                  //     onPressed: () {
+                  //       Navigator.push(
+                  //         context,
+                  //         MaterialPageRoute(builder: (context) => const BaiduMapPage()),
+                  //       );
+                  //     },
+                  //     icon: const Icon(Icons.map),
+                  //     label: const Text('查看地图'),
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: const Color(0xFF2196F3), // Blue color for map button
+                  //       padding: const EdgeInsets.symmetric(
+                  //         vertical: 12,
+                  //         horizontal: 24,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
+                  const SizedBox(height: 12),
+                  // Baidu Map WebView Widget
+                  SizedBox(
+                    height: 200, // Adjust height as needed
+                    child: _mapController != null
+                        ? WebViewWidget(
+                            controller: _mapController!,
+                          )
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '经度: ${_longitude != null ? _longitude!.toStringAsFixed(6) : '未获取'}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '纬度: ${_latitude != null ? _latitude!.toStringAsFixed(6) : '未获取'}',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '地址: ${_address ?? '未获取'}'
                   ),
                 ],
               ),

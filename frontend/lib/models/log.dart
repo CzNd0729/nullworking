@@ -12,6 +12,8 @@ class Log {
   final List<int>? fileIds;
   final int? userId;
   final String? userName;
+  final double? latitude;
+  final double? longitude;
 
   Log({
     required this.logId,
@@ -27,6 +29,8 @@ class Log {
     this.fileIds,
     this.userId,
     this.userName,
+    this.latitude,
+    this.longitude,
   });
 
   Map<String, dynamic> toJson() {
@@ -42,6 +46,8 @@ class Log {
       'endTime': endTime,
       'logDate': '${logDate.year}-${logDate.month.toString().padLeft(2, '0')}-${logDate.day.toString().padLeft(2, '0')}',
       'fileIds': fileIds ?? [],
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -78,6 +84,8 @@ class Log {
       userId:
           json['userId'] != null ? int.tryParse(json['userId'].toString()) : null,
       userName: json['userName']?.toString(),
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
     );
   }
 }
