@@ -47,6 +47,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
   double? _longitude;
   bool _isGettingLocation = false;
   String? _address; // Add address variable
+  bool _showLocationInfo = false; // Add this state variable
 
   WebViewController? _mapController; // Add WebViewController
 
@@ -606,6 +607,7 @@ class _CreateLogPageState extends State<CreateLogPage> {
           if (_latitude != null && _longitude != null) {
             _updateMapLocation(_latitude!, _longitude!);
           }
+          _showLocationInfo = true; // Set _showLocationInfo to true here
         });
       }
     }
@@ -1052,26 +1054,29 @@ class _CreateLogPageState extends State<CreateLogPage> {
                   ),
                   const SizedBox(height: 18),
                   Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _isGettingLocation ? null : _getCurrentLocation,
-                      icon: _isGettingLocation
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.location_on),
-                      label: _isGettingLocation
-                          ? const Text('获取中...')
-                          : const Text('获取当前位置'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 24,
+                    child: SizedBox(
+                      width: 200, // Match the width of '选择现有任务' button
+                      child: ElevatedButton.icon(
+                        onPressed: _isGettingLocation ? null : _getCurrentLocation,
+                        icon: _isGettingLocation
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.location_on), // Ensure icon color is white
+                        label: _isGettingLocation
+                            ? const Text('获取中...')
+                            : const Text('获取当前位置'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF000000), // Change background color to black
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            // Removed horizontal padding to match
+                          ),
                         ),
                       ),
                     ),
@@ -1097,29 +1102,33 @@ class _CreateLogPageState extends State<CreateLogPage> {
                   //   ),
                   // ),
                   const SizedBox(height: 12),
-                  // Baidu Map WebView Widget
-                  SizedBox(
-                    height: 200, // Adjust height as needed
-                    child: _mapController != null
-                        ? WebViewWidget(
-                            controller: _mapController!,
-                          )
-                        : const Center(child: CircularProgressIndicator()),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '经度: ${_longitude != null ? _longitude!.toStringAsFixed(6) : '未获取'}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '纬度: ${_latitude != null ? _latitude!.toStringAsFixed(6) : '未获取'}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '地址: ${_address ?? '未获取'}'
-                  ),
+                  if (_showLocationInfo) // Conditionally render location info
+                    ...[
+                      // Baidu Map WebView Widget
+                      SizedBox(
+                        height: 200, // Adjust height as needed
+                        child: _mapController != null
+                            ? WebViewWidget(
+                                controller: _mapController!,
+                              )
+                            : const Center(child: CircularProgressIndicator()),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '经度: ${_longitude != null ? _longitude!.toStringAsFixed(6) : '未获取'}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '纬度: ${_latitude != null ? _latitude!.toStringAsFixed(6) : '未获取'}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '地址: ${_address ?? '未获取'}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
                 ],
               ),
             ),
