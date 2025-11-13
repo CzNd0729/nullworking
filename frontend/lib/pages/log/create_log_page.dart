@@ -583,14 +583,6 @@ class _CreateLogPageState extends State<CreateLogPage> {
           _latitude = position.latitude;
           _longitude = position.longitude;
         });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('定位信息获取成功！'),
-              backgroundColor: Color(0xFF4CAF50),
-            ),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {

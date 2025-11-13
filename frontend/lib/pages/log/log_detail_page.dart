@@ -6,7 +6,8 @@ import '../../services/business/log_business.dart';
 import '../../services/business/comment_business.dart';
 import 'create_log_page.dart';
 import 'dart:typed_data';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Add shared_preferences import
+import 'package:webview_flutter/webview_flutter.dart'; // Add webview_flutter import
 import '../../widgets/comment_list.dart';
 import '../../widgets/comment_input.dart';
 
@@ -28,6 +29,11 @@ class _LogDetailPageState extends State<LogDetailPage> {
   bool _isLoading = true;
   int? _currentUserId;
   Comment? _replyToComment;
+  WebViewController? _mapController; // Add WebViewController
+  double? _latitude; // Add latitude
+  double? _longitude; // Add longitude
+  String? _address; // Add address variable
+  bool _showLocationInfo = false; // Add this state variable
 
   @override
   void initState() {
@@ -35,6 +41,11 @@ class _LogDetailPageState extends State<LogDetailPage> {
     _fetchLogData();
     _loadCurrentUser();
     _loadComments();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   Future<void> _loadCurrentUser() async {
@@ -58,6 +69,12 @@ class _LogDetailPageState extends State<LogDetailPage> {
     }
   }
 
+  // Function to update the map location in the WebView
+  void _updateMapLocation(double latitude, double longitude) {
+    _mapController?.runJavaScript(
+        'updateLocation($latitude, $longitude)');
+  }
+
   Future<void> _fetchLogData() async {
     try {
       setState(() => _isLoading = true);
@@ -65,6 +82,30 @@ class _LogDetailPageState extends State<LogDetailPage> {
       if (log != null) {
         setState(() {
           _logDetails = log;
+          _latitude = log.latitude;
+          _longitude = log.longitude;
+          if (log.latitude != null && log.longitude != null) {
+            _showLocationInfo = true;
+            _mapController = WebViewController();
+            _mapController!.loadFlutterAsset('assets/map.html').then((value) {
+              _updateMapLocation(_latitude!, _longitude!); // Update map if location already available
+            });
+            _mapController!.setJavaScriptMode(JavaScriptMode.unrestricted);
+            _mapController!.setNavigationDelegate(NavigationDelegate(
+              onPageFinished: (String url) {
+                _updateMapLocation(_latitude!, _longitude!); // Update map if location already available
+              },
+            ));
+
+            _mapController!.addJavaScriptChannel(
+              'FlutterMapChannel',
+              onMessageReceived: (message) {
+                setState(() {
+                  _address = message.message;
+                });
+              },
+            );
+          }
         });
 
         if (log.fileIds != null && log.fileIds!.isNotEmpty) {
@@ -386,6 +427,53 @@ class _LogDetailPageState extends State<LogDetailPage> {
                                 );
                               },
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  if (_showLocationInfo && _latitude != null && _longitude != null) // Conditionally render location info
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E1E1E),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '定位信息',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 200, // Adjust height as needed
+                            child: _mapController != null
+                                ? WebViewWidget(
+                                    controller: _mapController!,
+                                  )
+                                : const Center(child: CircularProgressIndicator()),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            '经度: ${_longitude!.toStringAsFixed(6)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '纬度: ${_latitude!.toStringAsFixed(6)}',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '地址: ${_address ?? '未获取'}',
+                            style: const TextStyle(color: Colors.white70),
                           ),
                         ],
                       ),

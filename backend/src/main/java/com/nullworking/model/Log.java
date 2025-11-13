@@ -60,6 +60,12 @@ public class Log {
     @Column(name = "Update_Time", nullable = false)
     private LocalDateTime updateTime;
 
+    @Column(name = "Latitude")
+    private Double latitude;
+
+    @Column(name = "Longitude")
+    private Double longitude;
+
     // Getters and Setters
     public Integer getLogId() {
         return logId;
@@ -157,4 +163,19 @@ public class Log {
         this.endTime = endTime;
     }
 
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
 }

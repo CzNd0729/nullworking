@@ -98,6 +98,9 @@ public class LogService {
         log.setLogStatus(request.getLogStatus());
         log.setTaskProgress(request.getTaskProgress());
 
+        log.setLatitude(request.getLatitude());
+        log.setLongitude(request.getLongitude());
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
         log.setStartTime(LocalTime.parse(request.getStartTime(), formatter));
         log.setEndTime(LocalTime.parse(request.getEndTime(), formatter));
@@ -336,6 +339,8 @@ public class LogService {
         data.put("fileIds", fileIds);
         data.put("userName",Objects.requireNonNull(log.getUser()).getRealName());
         data.put("userId",Objects.requireNonNull(log.getUser()).getUserId());
+        data.put("latitude", log.getLatitude());
+        data.put("longitude", log.getLongitude());
 
         return ApiResponse.success(data);
     }
