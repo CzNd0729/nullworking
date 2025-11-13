@@ -741,7 +741,13 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
 
       if (mounted) {
         if (resultId != null) {
-          Navigator.of(context).pop();
+          if (resultId == "permission_denied") {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('权限不足，请联系管理员')),
+            );
+          } else {
+            Navigator.of(context).pop();
+          }
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('分析请求失败，请稍后再试')),
