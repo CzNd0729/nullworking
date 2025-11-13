@@ -12,6 +12,10 @@ import com.nullworking.repository.AIAnalysisResultRepository;
 import com.nullworking.repository.UserRepository;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskRepository;
+import com.nullworking.service.PermissionService;
+import com.nullworking.service.UserService;
+import com.nullworking.service.LogFileService;
+import com.nullworking.repository.LogFileRepository;
 import okhttp3.ConnectionPool;
 import okhttp3.Dispatcher;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,14 @@ import com.nullworking.model.Task;
 import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
 import com.nullworking.common.ApiResponse;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
 @Service
 public class AIService {
 
@@ -48,6 +60,10 @@ public class AIService {
     private final TaskRepository taskRepository;
     private final String systemPrompt;
     private final ObjectMapper objectMapper;
+    private final PermissionService permissionService;
+    private final UserService userService;
+    private final LogFileService logFileService;
+    private final LogFileRepository logFileRepository;
 
     @Lazy
     @Autowired
@@ -62,7 +78,11 @@ public class AIService {
             LogRepository logRepository,
             TaskRepository taskRepository,
             @Value("${ark.system.prompt}") String systemPrompt,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            PermissionService permissionService,
+            UserService userService,
+            LogFileService logFileService,
+            LogFileRepository logFileRepository) {
         ConnectionPool connectionPool = new ConnectionPool(5, 1, TimeUnit.SECONDS);
         Dispatcher dispatcher = new Dispatcher();
         this.arkService = ArkService.builder().dispatcher(dispatcher).connectionPool(connectionPool).baseUrl(baseUrl).apiKey(apiKey).build();
@@ -74,6 +94,10 @@ public class AIService {
         this.objectMapper = objectMapper;
         this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块
         this.objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // 忽略null字段
+        this.permissionService = permissionService;
+        this.userService = userService;
+        this.logFileService = logFileService;
+        this.logFileRepository = logFileRepository;
     }
 
     public String getAIResponse(String text, String imageUrl) {
@@ -108,6 +132,11 @@ public class AIService {
     }
 
     public ApiResponse<Integer> startAIAnalysis(AIAnalysisRequest request, Integer mode, Integer userId) {
+        // 0. 权限检查
+        if (!permissionService.hasPermission(userId, "AI_ANALYSIS")) {
+            return ApiResponse.error(403, "权限不足：您没有进行AI分析的权限。");
+        }
+
         // 1. 数据完整性检查
         if (mode == null) {
             return ApiResponse.error(400, "分析模式 (mode) 不能为空。");
