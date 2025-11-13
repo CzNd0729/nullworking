@@ -16,6 +16,7 @@ import com.nullworking.common.ApiResponse;
 import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
 import com.nullworking.model.dto.UserProfileUpdateRequest;
+import com.nullworking.model.dto.ChangePasswordRequest;
 import com.nullworking.service.UserService;
 import com.nullworking.util.JwtUtil;
 
@@ -133,5 +134,23 @@ public class UserController {
         }
         String pushToken = payload.get("pushToken");
         return userService.updateUserPushToken(currentUserId, pushToken);
+    }
+
+    @Operation(summary = "用户修改密码", description = "用户需要输入正确的旧密码，才能设置新密码")
+    @PutMapping("/change-password")
+    public ApiResponse<Void> changePassword(@RequestBody ChangePasswordRequest request, HttpServletRequest httpRequest) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未授权，请登录");
+        }
+
+        String oldPassword = request.getOldPassword();
+        String newPassword = request.getNewPassword();
+
+        if (oldPassword == null || newPassword == null) {
+            return ApiResponse.error(400, "旧密码和新密码不能为空");
+        }
+
+        return userService.changePassword(currentUserId, oldPassword, newPassword);
     }
 }
