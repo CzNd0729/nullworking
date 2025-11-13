@@ -437,4 +437,34 @@ public class UserService {
                 .orElse(null);
     }
 
+    /**
+     * 修改用户密码
+     * @param userId 用户ID
+     * @param oldPassword 旧密码
+     * @param newPassword 新密码
+     * @return 修改结果
+     */
+    public ApiResponse<Void> changePassword(Integer userId, String oldPassword, String newPassword) {
+        try {
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isEmpty()) {
+                return ApiResponse.error(404, "用户不存在");
+            }
+
+            User user = userOptional.get();
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+            if (!encoder.matches(oldPassword, user.getPassword())) {
+                return ApiResponse.error(400, "原密码不正确");
+            }
+
+            user.setPassword(encoder.encode(newPassword));
+            userRepository.save(user);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            return ApiResponse.error(500, "修改密码失败: " + e.getMessage());
+        }
+    }
+
 }

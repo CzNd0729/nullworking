@@ -14,7 +14,7 @@
   <script type="text/javascript">
     var map = new BMap.Map("allmap");
     map.centerAndZoom(new BMap.Point(116.404, 39.915), 15); // Default center
-    map.enableScrollWheelZoom(true);
+    map.enableScrollWheelZoom(false);
 
     var currentMarker = null;
 
@@ -31,7 +31,7 @@
           var point = data.points[0];
           currentMarker = new BMap.Marker(point);
           map.addOverlay(currentMarker);
-          map.panTo(point);
+          map.setCenter(point);
           map.setZoom(15);
 
           // Reverse geocoding
