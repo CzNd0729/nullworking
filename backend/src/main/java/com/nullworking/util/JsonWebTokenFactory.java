@@ -8,6 +8,7 @@ import io.jsonwebtoken.lang.Maps;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -32,31 +33,33 @@ public class JsonWebTokenFactory {
         if (url == null) {
             throw new NullPointerException("File not exist");
         }
-        JsonNode rootNode = mapper.readTree(new File(url.getPath()));
+        try (InputStream is = url.openStream()) {
+            JsonNode rootNode = mapper.readTree(is);
 
-        RSAPrivateKey privateKey = (RSAPrivateKey) generatePrivateKey(rootNode.get("private_key").asText()
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s", ""));
-        long iat = System.currentTimeMillis() / 1000;
-        long exp = iat + 3600;
+            RSAPrivateKey privateKey = (RSAPrivateKey) generatePrivateKey(rootNode.get("private_key").asText()
+                    .replace("-----BEGIN PRIVATE KEY-----", "")
+                    .replace("-----END PRIVATE KEY-----", "")
+                    .replaceAll("\\s", ""));
+            long iat = System.currentTimeMillis() / 1000;
+            long exp = iat + 3600;
 
-        Map<String, Object> header = Maps.<String, Object>of(JwsHeader.KEY_ID, rootNode.get("key_id").asText())
-                .and(JwsHeader.TYPE, JwsHeader.JWT_TYPE)
-                .and(JwsHeader.ALGORITHM, SignatureAlgorithm.PS256.getValue())
-                .build();
+            Map<String, Object> header = Maps.<String, Object>of(JwsHeader.KEY_ID, rootNode.get("key_id").asText())
+                    .and(JwsHeader.TYPE, JwsHeader.JWT_TYPE)
+                    .and(JwsHeader.ALGORITHM, SignatureAlgorithm.PS256.getValue())
+                    .build();
 
-        Map<String, Object> payload = Maps.<String, Object>of(Claims.ISSUER, rootNode.get("sub_account").asText())
-                .and(Claims.ISSUED_AT, iat)
-                .and(Claims.EXPIRATION, exp)
-                .and(Claims.AUDIENCE, AUD)
-                .build();
+            Map<String, Object> payload = Maps.<String, Object>of(Claims.ISSUER, rootNode.get("sub_account").asText())
+                    .and(Claims.ISSUED_AT, iat)
+                    .and(Claims.EXPIRATION, exp)
+                    .and(Claims.AUDIENCE, AUD)
+                    .build();
 
-        return Jwts.builder()
-                .setHeader(header)
-                .setClaims(payload)
-                .signWith(privateKey, SignatureAlgorithm.PS256)
-                .compact();
+            return Jwts.builder()
+                    .setHeader(header)
+                    .setClaims(payload)
+                    .signWith(privateKey, SignatureAlgorithm.PS256)
+                    .compact();
+        }
     }
 
     private static PrivateKey generatePrivateKey(String base64Key) throws NoSuchAlgorithmException, InvalidKeySpecException {
