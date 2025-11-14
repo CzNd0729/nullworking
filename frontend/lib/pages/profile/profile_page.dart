@@ -39,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = await _userBusiness.getCurrentUser();
       final subUsers = await _userBusiness.getSubordinateUsers();
+      final hasUnread = await _notificationBusiness.hasUnreadNotifications(); // Add this line
 
       setState(() {
         _currentUser = user;

@@ -6,13 +6,12 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
+import 'services/notification_services/push_notification_service.dart';
 import 'services/notification_services/unread_notification_service.dart'; // 新增导入
-import 'services/notification_services/notification_service.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  NotificationService().init();
   runApp(const MyApp());
 }
 
