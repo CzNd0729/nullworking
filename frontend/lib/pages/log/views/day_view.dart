@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../models/log.dart';
+import '../../../services/business/log_business.dart'; // Import LogBusiness
 import '../log_detail_page.dart';
 
 class DayView extends StatefulWidget {
-  final List<Log> logs;
+  // final List<Log> logs; // 移除logs参数
   final DateTime? initialDate;
   // 新增：日期变更回调，用于通知父组件
   final Function(DateTime) onDateChanged;
 
   const DayView({
     super.key,
-    required this.logs,
+    // required this.logs, // 移除logs参数
     this.initialDate,
     required this.onDateChanged,
   });
@@ -22,6 +23,10 @@ class DayView extends StatefulWidget {
 class _DayViewState extends State<DayView> {
   late DateTime _selectedDate;
   final ScrollController _scrollController = ScrollController();
+
+  final LogBusiness _logBusiness = LogBusiness(); // 新增LogBusiness实例
+  List<Log> _logs = []; // 新增本地日志列表
+  bool _isLoading = false; // 新增加载状态
 
   @override
   void initState() {
@@ -36,7 +41,38 @@ class _DayViewState extends State<DayView> {
       widget.onDateChanged(_selectedDate);
     }
   }); // 确保这个回调函数的括号闭合
+  _fetchLogs(); // 调用获取日志的方法
 } // 确保 initState 方法的括号闭合
+
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+  
+  // 新增：获取日志的方法
+  Future<void> _fetchLogs() async {
+    setState(() {
+      _isLoading = true;
+      _logs = []; // 清空之前的日志，显示加载状态
+    });
+
+    try {
+      final dateString = _formatDate(_selectedDate);
+      final fetchedLogs = await _logBusiness.listLogs(
+        startTime: dateString,
+        endTime: dateString,
+      );
+      setState(() {
+        _logs = fetchedLogs;
+      });
+    } catch (e) {
+      debugPrint('Error fetching logs: $e');
+      // 可以添加错误提示
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -46,7 +82,7 @@ class _DayViewState extends State<DayView> {
 
   // 获取指定日期的所有日志
   List<Log> _getLogsForDate() {
-    return widget.logs.where((log) {
+    return _logs.where((log) {
       return log.logDate.year == _selectedDate.year &&
           log.logDate.month == _selectedDate.month &&
           log.logDate.day == _selectedDate.day;
@@ -124,7 +160,7 @@ class _DayViewState extends State<DayView> {
     final maxColumns = _getMaxColumns(logs);
     final availableWidth =
         MediaQuery.of(context).size.width -
-        108; // 60 for timeline + 32 for padding + 16 for margins
+        124; // 60 for timeline + 32 for padding + 32 for margins (increased from 16)
     final columnWidth = availableWidth / maxColumns;
 
     return Stack(
@@ -288,6 +324,7 @@ class _DayViewState extends State<DayView> {
     });
     // 通知父组件日期变更
     widget.onDateChanged(_selectedDate);
+    _fetchLogs(); // 重新获取日志
   }
 
   // 切换到后一周
@@ -297,6 +334,7 @@ class _DayViewState extends State<DayView> {
     });
     // 通知父组件日期变更
     widget.onDateChanged(_selectedDate);
+    _fetchLogs(); // 重新获取日志
   }
 
   // 构建日期选择器
@@ -377,6 +415,7 @@ class _DayViewState extends State<DayView> {
                   setState(() => _selectedDate = date);
                   // 通知父组件日期变更
                   widget.onDateChanged(date);
+                  _fetchLogs(); // 重新获取日志
                 },
                 child: Container(
                   width: 40,
@@ -435,12 +474,14 @@ class _DayViewState extends State<DayView> {
           const SizedBox(height: 16),
           const Divider(color: Colors.white24),
           const SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: _buildTimeGrid(logsForDate),
-            ),
-          ),
+          _isLoading
+              ? const CircularProgressIndicator() // 显示加载指示器
+              : Expanded(
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    child: _buildTimeGrid(logsForDate),
+                  ),
+                ),
         ],
       ),
     );

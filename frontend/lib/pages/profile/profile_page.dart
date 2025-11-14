@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import '../login/login_page.dart';
+import 'user_detail_page.dart';
+import 'subordinate_detail_page.dart';
 import '../../services/business/auth_business.dart';
 import '../../services/business/user_business.dart';
 import '../../models/user.dart';
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../services/business/notification_business.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,6 +19,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final AuthBusiness _authBusiness = AuthBusiness();
   final UserBusiness _userBusiness = UserBusiness();
+  final NotificationBusiness _notificationBusiness = NotificationBusiness(); // 新增实例
 
   User? _currentUser;
   List<User> _subDeptUsers = [];
@@ -33,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = await _userBusiness.getCurrentUser();
       final subUsers = await _userBusiness.getSubordinateUsers();
+      final hasUnread = await _notificationBusiness.hasUnreadNotifications(); // Add this line
 
       setState(() {
         _currentUser = user;
@@ -56,24 +63,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的'),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            onPressed: () async {
-              await _authBusiness.logout();
-
-              // 跳转到登录页面并移除所有之前的路由
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
-              }
-            },
-            icon: const Icon(Icons.logout, color: Colors.white),
-          ),
+          const NotificationIconWithBadge(), // Use the new widget
         ],
       ),
       body: _isLoading
@@ -92,6 +86,37 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     // 下级员工列表
                     _buildSubDeptUsersSection(),
+                    const SizedBox(height: 24),
+
+                    // 退出登录按钮
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await _authBusiness.logout();
+
+                          // 跳转到登录页面并移除所有之前的路由
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const LoginPage()),
+                              (Route<dynamic> route) => false,
+                            );
+                          }
+                        },
+                        child: const Text(
+                          '退出登录',
+                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -103,46 +128,59 @@ class _ProfilePageState extends State<ProfilePage> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // 头像
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.blue.shade200,
-              child: Text(
-                _currentUser?.realName?.substring(0, 1) ??
-                    _currentUser?.userName?.substring(0, 1).toUpperCase() ??
-                    '用',
+      child: InkWell(
+        onTap: () {
+          if (_currentUser != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserDetailPage(user: _currentUser!),
+              ),
+            ).then((_) => _loadData()); // 返回时刷新数据
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              // 头像
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: const Color(0xFF00D9A3),
+                child: Text(
+                  _currentUser?.realName?.substring(0, 1) ??
+                      _currentUser?.userName?.substring(0, 1).toUpperCase() ??
+                      '用',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 用户名
+              Text(
+                _currentUser?.realName ?? '未登录',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-            // 用户名
-            Text(
-              _currentUser?.realName ?? _currentUser?.userName ?? '未登录',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 其他信息
-            if (_currentUser?.phoneNumber != null)
-              _buildInfoRow(Icons.phone, _currentUser!.phoneNumber!),
-            if (_currentUser?.email != null)
-              _buildInfoRow(Icons.email, _currentUser!.email!),
-            if (_currentUser?.deptName != null)
-              _buildInfoRow(Icons.business, _currentUser!.deptName!),
-          ],
+              // 其他信息
+              if (_currentUser?.phoneNumber != null)
+                _buildInfoRow(Icons.phone, _currentUser!.phoneNumber!),
+              if (_currentUser?.email != null)
+                _buildInfoRow(Icons.email, _currentUser!.email!),
+              if (_currentUser?.deptName != null)
+                _buildInfoRow(Icons.business, _currentUser!.deptName!),
+            ],
+          ),
         ),
       ),
     );
@@ -174,7 +212,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const Icon(Icons.people, color: Colors.white70),
             const SizedBox(width: 8),
             Text(
-              '同部门下级员工 (${_subDeptUsers.length})',
+              '我的下属 (${_subDeptUsers.length})',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -206,65 +244,71 @@ class _ProfilePageState extends State<ProfilePage> {
               final user = _subDeptUsers[index];
               return Card(
                 margin: const EdgeInsets.only(bottom: 8.0),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.blue.shade200,
-                    child: Text(
-                      user.realName?.substring(0, 1) ??
-                          user.userName?.substring(0, 1).toUpperCase() ??
-                          '?',
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SubordinateDetailPage(userId: user.userId.toString()),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: const Color(0xFF00D9A3),
+                      child: Text(
+                        user.realName?.substring(0, 1) ??
+                            user.userName?.substring(0, 1).toUpperCase() ??
+                            '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      user.realName ?? user.userName ?? '未知用户',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                  ),
-                  title: Text(
-                    user.realName ?? user.userName ?? '未知用户',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (user.deptName != null)
+                          Text(
+                            '部门: ${user.deptName}',
+                            style: TextStyle(color: Colors.grey.shade400),
+                          ),
+                      ],
                     ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (user.userName != null)
-                        Text(
-                          '用户名: ${user.userName}',
-                          style: TextStyle(color: Colors.grey.shade400),
-                        ),
-                      if (user.deptName != null)
-                        Text(
-                          '部门: ${user.deptName}',
-                          style: TextStyle(color: Colors.grey.shade400),
-                        ),
-                    ],
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (user.phoneNumber != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.phone,
-                              size: 14,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              user.phoneNumber!,
-                              style: TextStyle(
-                                fontSize: 12,
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (user.phoneNumber != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.phone,
+                                size: 14,
                                 color: Colors.grey.shade400,
                               ),
-                            ),
-                          ],
-                        ),
-                    ],
+                              const SizedBox(width: 4),
+                              Text(
+                                user.phoneNumber!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );

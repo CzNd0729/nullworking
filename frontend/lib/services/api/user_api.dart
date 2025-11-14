@@ -56,11 +56,28 @@ class UserApi {
     return await _baseApi.get('api/health');
   }
 
-  Future<http.Response> getCurrentUserInfo() async {
-    return await _baseApi.get('api/users/profile');
+  Future<http.Response> getCurrentUserInfo(String userId) async {
+    return await _baseApi.get('api/users/profile/$userId');
   }
 
   Future<http.Response> getSubordinateUsers() async {
     return await _baseApi.get('api/users/subordinateUsers');
+  }
+
+  Future<http.Response> updateUserProfile(Map<String, String> data) async {
+    return await _baseApi.put('api/users/profile', body: data);
+  }
+
+  Future<http.Response> updatePushToken(String pushToken) async {
+    final body = {'pushToken': pushToken};
+    return await _baseApi.put('api/users/push-token', body: body);
+  }
+
+  Future<http.Response> changePassword(
+    String oldPassword,
+    String newPassword,
+  ) async {
+    final body = {'oldPassword': oldPassword, 'newPassword': newPassword};
+    return await _baseApi.put('api/users/change-password', body: body);
   }
 }

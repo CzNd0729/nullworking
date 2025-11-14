@@ -50,6 +50,9 @@ public class Task {
     @Column(name = "Completion_Time")
     private LocalDateTime completionTime;
 
+    @Column(name = "Is_Deadline_Notified", nullable = false, columnDefinition = "boolean default false")
+    private Boolean isDeadlineNotified = false;
+
     // Getters and Setters
     public Integer getTaskId() {
         return taskId;
@@ -130,5 +133,13 @@ public class Task {
 
     public LocalDateTime getEndTime() {
         return deadline;
+    }
+    
+    public Boolean getIsDeadlineNotified() {
+        return isDeadlineNotified;
+    }
+
+    public void setIsDeadlineNotified(Boolean isDeadlineNotified) {
+        this.isDeadlineNotified = isDeadlineNotified;
     }
 }

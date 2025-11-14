@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <style type="text/css">
+    html, body, #allmap {width: 100%; height: 100%; margin: 0; font-family: "微软雅黑";}
+  </style>
+  <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=TtyedSKP6umaE86VQqLbcE1sHS0f65A8"></script>
+  <title>百度地图示例</title>
+</head>
+<body>
+  <div id="allmap"></div>
+  <script type="text/javascript">
+    var map = new BMap.Map("allmap");
+    map.centerAndZoom(new BMap.Point(116.404, 39.915), 15); // Default center
+    map.enableScrollWheelZoom(false);
+
+    var currentMarker = null;
+
+    function updateLocation(latitude, longitude) {
+      if (currentMarker) {
+        map.removeOverlay(currentMarker);
+      }
+      var gpsPoint = new BMap.Point(longitude, latitude);
+      var convertor = new BMap.Convertor();
+      var pointArr = [];
+      pointArr.push(gpsPoint);
+      convertor.translate(pointArr, 1, 5, function(data){
+        if(data.status === 0) {
+          var point = data.points[0];
+          currentMarker = new BMap.Marker(point);
+          map.addOverlay(currentMarker);
+          map.setCenter(point);
+          map.setZoom(15);
+
+          // Reverse geocoding
+          var geocoder = new BMap.Geocoder();
+          geocoder.getLocation(point, function(rs){
+            if(rs && rs.address){
+              // Send address back to Flutter
+              if (window.FlutterMapChannel) {
+                window.FlutterMapChannel.postMessage(rs.address);
+              } else {
+                console.log("FlutterMapChannel not found.");
+              }
+            } else {
+              if (window.FlutterMapChannel) {
+                window.FlutterMapChannel.postMessage("未能获取到详细地址");
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // Initial call if location is available on load
+    // var geolocation = new BMap.Geolocation();
+    // geolocation.getCurrentPosition(function(r){
+    //   if(this.getStatus() == BMAP_STATUS_SUCCESS){
+    //     updateLocation(r.point.lat, r.point.lng);
+    //   }
+    // });
+  </script>
+</body>
+</html>

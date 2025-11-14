@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled; 
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Task;
@@ -27,8 +28,10 @@ import com.nullworking.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit; 
 import com.nullworking.model.Log;
 import com.nullworking.repository.LogRepository;
+import com.nullworking.service.NotificationService;
 
 @Service
 public class TaskService {
@@ -48,7 +51,41 @@ public class TaskService {
     @Autowired
     private LogRepository logRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     // 所有的业务逻辑将在这里实现
+
+    @Scheduled(fixedRate = 60000) 
+    @Transactional
+    public void scheduleDeadlineNotifications() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneHourLater = now.plus(1, ChronoUnit.HOURS);
+
+        List<Task> approachingDeadlineTasks = taskRepository.findByDeadlineBetweenAndIsDeadlineNotifiedFalseAndTaskStatusNot(
+            now, oneHourLater, (byte) 3
+        );
+
+        for (Task task : approachingDeadlineTasks) {
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(task.getTaskId());
+            Set<Integer> notifiedUsers = new HashSet<>();
+
+            for (Integer executorId : executorIds) {
+                if (!notifiedUsers.contains(executorId)) {
+                    String notificationContent = String.format("您参与的任务\"%s\"距离截止时间不足一小时，请尽快处理。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                    notifiedUsers.add(executorId);
+                }
+            }
+            task.setIsDeadlineNotified(true);
+            taskRepository.save(task);
+        }
+    }
 
     @Transactional
     public ApiResponse<String> deleteTask(Integer taskId, Integer userId) {
@@ -66,6 +103,24 @@ public class TaskService {
             }
             task.setTaskStatus((byte)3);
             taskRepository.save(task);
+
+            // 获取所有执行者并发送通知
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(taskId);
+            Set<Integer> notifiedUsers = new HashSet<>();
+            // 通知所有执行者
+            for (Integer executorId : executorIds) {
+                if (!notifiedUsers.contains(executorId)) { // 避免重复通知创建者
+                    String notificationContent = String.format("您参与的任务\"%s\"已被关闭。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                    notifiedUsers.add(executorId);
+                }
+            }
+
             return ApiResponse.success("任务删除成功");
         } catch (Exception e) {
             return ApiResponse.error(500, "任务删除失败: " + e.getMessage());
@@ -225,6 +280,17 @@ public class TaskService {
                 log.setUpdateTime(LocalDateTime.now());
                 
                 logRepository.save(log);
+
+                // 如果执行者不是创建者，则创建通知
+                if (!executorId.equals(creatorId)) {
+                    String notificationContent = String.format("您收到了新任务：\"%s\"", savedTask.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        savedTask.getTaskId()
+                    );
+                }
             }
             
             Map<String, Object> data = new HashMap<>();
@@ -274,6 +340,21 @@ public class TaskService {
 
             // 保存更新后的任务
             taskRepository.save(task);
+
+            // 获取所有执行者并发送通知
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(taskId);
+            for (Integer executorId : executorIds) {
+                if (!executorId.equals(userId)) { // 不通知更新任务的本人
+                    String notificationContent = String.format("您参与的任务\"%s\"已被更新。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                }
+            }
+
             Map<String, Object> data = new HashMap<>();
             data.put("taskId", task.getTaskId());
             return ApiResponse.success(data);

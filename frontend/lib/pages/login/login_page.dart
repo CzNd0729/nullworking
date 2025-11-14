@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/business/auth_business.dart';
+import 'forgot_password_page.dart';
+import '../../services/notification_services/push_notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -60,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (mounted) {
         if (errorMessage == null) {
+          await PushNotificationService().init();
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
           setState(() {
@@ -256,10 +259,15 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: () {
-                    Navigator.of(context).pushNamed('/register');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordPage(),
+                      ),
+                    );
                   },
                   child: Text(
-                    '没有账户？注册',
+                    '忘记密码？',
                     style: TextStyle(
                       color: primaryTeal,
                       fontSize: 16,

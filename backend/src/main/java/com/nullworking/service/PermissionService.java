@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class PermissionService {
@@ -47,6 +49,33 @@ public class PermissionService {
         String requiredPermissionName = "ASSIGN_TASK_TO_" + targetUser.getRole().getRoleName().toUpperCase();
         Optional<Permission> requiredPermission = permissionRepository.findByPermissionName(requiredPermissionName);
 
+        if (requiredPermission.isEmpty()) {
+            return false; // 如果所需权限不存在，则认为无权
+        }
+
+        // 检查当前用户是否拥有该权限
+        return rolePermissionRelationRepository.findByRole_RoleId(currentUser.getRole().getRoleId())
+                .stream()
+                .anyMatch(relation -> relation.getPermission().getPermissionId().equals(requiredPermission.get().getPermissionId()));
+    }
+
+    /**
+     * 检查用户是否拥有特定权限。
+     * @param userId 当前用户ID
+     * @param permissionName 权限名称
+     * @return 如果拥有权限返回 true，否则返回 false
+     */
+    public boolean hasPermission(Integer userId, String permissionName) {
+        if (userId == null || permissionName == null || permissionName.isEmpty()) {
+            return false;
+        }
+
+        User currentUser = userRepository.findById(userId).orElse(null);
+        if (currentUser == null || currentUser.getRole() == null) {
+            return false;
+        }
+
+        Optional<Permission> requiredPermission = permissionRepository.findByPermissionName(permissionName);
         if (requiredPermission.isEmpty()) {
             return false; // 如果所需权限不存在，则认为无权
         }

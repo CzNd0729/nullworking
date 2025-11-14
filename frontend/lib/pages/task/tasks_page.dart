@@ -3,6 +3,8 @@ import 'create_task_page.dart';
 import 'task_detail_page.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
+import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -78,7 +80,11 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   List<Task> _filterTasks(List<Task> tasks) {
-    return _taskBusiness.filterTasks(tasks, _searchController.text, _selectedStatusFilters);
+    return _taskBusiness.filterTasks(
+      tasks,
+      _searchController.text,
+      _selectedStatusFilters,
+    );
   }
 
   void _toggleStatusFilter(String status) {
@@ -194,7 +200,8 @@ class _TasksPageState extends State<TasksPage> {
     final assignee = task.executorNames.join(', ');
     final deadline = task.deadline.toLocal().toString().substring(0, 16);
     final priority = 'P${task.taskPriority}';
-    final progress = task.taskProgress / 100.0; // Assuming taskProgress is 0-100
+    final progress =
+        task.taskProgress / 100.0; // Assuming taskProgress is 0-100
 
     Color progressColor;
     if (task.taskProgress == 100) {
@@ -217,15 +224,15 @@ class _TasksPageState extends State<TasksPage> {
           borderRadius: BorderRadius.circular(12.0),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12.0), // Ensure InkWell has rounded corners
+          borderRadius: BorderRadius.circular(
+            12.0,
+          ), // Ensure InkWell has rounded corners
           onTap: () {
             _forceSearchUnfocus();
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => TaskDetailPage(
-                  task: task,
-                ),
+                builder: (context) => TaskDetailPage(task: task),
               ),
             ).then((result) {
               _forceSearchUnfocus();
@@ -242,14 +249,20 @@ class _TasksPageState extends State<TasksPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor,
                         borderRadius: BorderRadius.circular(4.0),
                       ),
                       child: Text(
                         statusTag,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -270,7 +283,8 @@ class _TasksPageState extends State<TasksPage> {
                         (task.taskStatus == '2' || task.taskStatus == '3')) ...[
                       const SizedBox(height: 4),
                       Text(
-                          '完成时间: ${task.completionTime!.toLocal().toString().substring(0, 16)}'),
+                        '完成时间: ${task.completionTime!.toLocal().toString().substring(0, 16)}',
+                      ),
                     ],
                     const SizedBox(height: 4),
                     Text(
@@ -329,13 +343,9 @@ class _TasksPageState extends State<TasksPage> {
                 title: const Text('任务列表'),
                 backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 elevation: 0,
+                centerTitle: true,
                 actions: [
-                  IconButton(
-                    onPressed: () {
-                      _forceSearchUnfocus();
-                    },
-                    icon: const Icon(Icons.notifications),
-                  ),
+                  const NotificationIconWithBadge(), // Use the new widget
                 ],
                 floating: true,
                 pinned: false,
@@ -344,7 +354,7 @@ class _TasksPageState extends State<TasksPage> {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
+                  padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 16.0),
                   child: TextField(
                     focusNode: _searchFocusNode,
                     controller: _searchController,
@@ -384,7 +394,9 @@ class _TasksPageState extends State<TasksPage> {
           body: _isLoading
               ? const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2CB7B3),
+                    ),
                   ),
                 )
               : ListView(
@@ -412,14 +424,20 @@ class _TasksPageState extends State<TasksPage> {
                                     _assignedTasks.isEmpty
                                         ? '暂无派发的任务'
                                         : '没有符合筛选条件的派发任务',
-                                    style: const TextStyle(color: Colors.white54),
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                    ),
                                   ),
                                 ),
                               ]
                             : filteredTasks
-                                .map((task) =>
-                                    _buildTaskCard(task, isAssignedTask: true))
-                                .toList();
+                                  .map(
+                                    (task) => _buildTaskCard(
+                                      task,
+                                      isAssignedTask: true,
+                                    ),
+                                  )
+                                  .toList();
                       }(),
                     ),
                     const SizedBox(height: 16),
@@ -445,14 +463,20 @@ class _TasksPageState extends State<TasksPage> {
                                     _myTasks.isEmpty
                                         ? '暂无我的任务'
                                         : '没有符合筛选条件的我的任务',
-                                    style: const TextStyle(color: Colors.white54),
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                    ),
                                   ),
                                 ),
                               ]
                             : filteredTasks
-                                .map((task) =>
-                                    _buildTaskCard(task, isAssignedTask: false))
-                                .toList();
+                                  .map(
+                                    (task) => _buildTaskCard(
+                                      task,
+                                      isAssignedTask: false,
+                                    ),
+                                  )
+                                  .toList();
                       }(),
                     ),
                   ],

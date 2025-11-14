@@ -27,6 +27,7 @@ import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
+import java.util.Objects;
 
 @Service
 public class LogService {
@@ -45,6 +46,9 @@ public class LogService {
 
     @Autowired
     private TaskExecutorRelationRepository taskExecutorRelationRepository;
+
+    @Autowired
+    private NotificationService notificationService; // 注入 NotificationService
 
     public ApiResponse<Map<String, Object>> listLogs(Integer userId, LocalDate startDate, LocalDate endDate) {
         List<Log> logs = logRepository.findByUserUserIdAndLogDateBetween(userId, startDate, endDate);
@@ -94,6 +98,9 @@ public class LogService {
         log.setLogStatus(request.getLogStatus());
         log.setTaskProgress(request.getTaskProgress());
 
+        log.setLatitude(request.getLatitude());
+        log.setLongitude(request.getLongitude());
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm");
         log.setStartTime(LocalTime.parse(request.getStartTime(), formatter));
         log.setEndTime(LocalTime.parse(request.getEndTime(), formatter));
@@ -106,7 +113,7 @@ public class LogService {
         logRepository.save(log);
 
         if (fileIds != null && !fileIds.isEmpty()) {
-            logFileService.updateLogIdForFiles(fileIds, log.getLogId());
+            logFileService.updateLogIdForFiles(fileIds, Objects.requireNonNull(log.getLogId()));
         }
 
         // If task progress is 100% and log status is 1 (completed)
@@ -115,11 +122,15 @@ public class LogService {
             task.setTaskStatus((byte)2);
             taskRepository.save(task);
 
+            // 发送任务完成通知
+            String notificationContent = String.format("您发布的任务‘%s’已完成！", task.getTaskTitle());
+            notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
+
             // Clear all pending logs associated with this task
             logRepository.deleteByTaskTaskIdAndLogStatus(request.getTaskId(), 0); // 0 for pending
         }
 
-        return ApiResponse.success(log.getLogId());
+        return ApiResponse.success(Objects.requireNonNull(log.getLogId()));
     }
 
     @Transactional
@@ -176,6 +187,10 @@ public class LogService {
             task.setCompletionTime(LocalDateTime.now());
             task.setTaskStatus((byte)2);
             taskRepository.save(task);
+
+            // 发送任务完成通知
+            String notificationContent = String.format("您发布的任务‘%s’已完成！", task.getTaskTitle());
+            notificationService.createNotification(Objects.requireNonNull(task.getCreator().getUserId()), notificationContent, "task", Objects.requireNonNull(task.getTaskId()));
             
             // 清除该任务的所有待处理日志
             logRepository.deleteByTaskTaskIdAndLogStatus(task.getTaskId(), 0);
@@ -195,6 +210,7 @@ public class LogService {
         Log log = logOptional.get();
         
         // 删除日志
+        Objects.requireNonNull(log); // 确保 log 非空
         logRepository.delete(log);
         
         return ApiResponse.success();
@@ -255,6 +271,24 @@ public class LogService {
         }
 
         Map<String, Object> data = new HashMap<>();
+        data.put("taskId", task.getTaskId());
+        data.put("taskTitle", task.getTaskTitle());
+        data.put("taskContent", task.getTaskContent());
+        data.put("creatorName", Objects.requireNonNull(task.getCreator()).getRealName());
+        data.put("creationTime", task.getCreationTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        data.put("endTime", task.getEndTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        data.put("taskPriority", task.getPriority());
+        data.put("taskStatus", task.getTaskStatus());
+        data.put("deadline", task.getDeadline());
+
+        // 获取所有执行者的姓名
+        List<String> executorNames = taskExecutorRelationRepository.findByTask_TaskId(taskId)
+                .stream()
+                .map(relation -> relation.getExecutor().getRealName())
+                .collect(Collectors.toList());
+        data.put("executorNames", executorNames);
+        data.put("isParticipated", isCreator || isExecutor); // 添加 isParticipated 字段
+
         data.put("logs", items);
 
         return ApiResponse.success(data);
@@ -303,8 +337,10 @@ public class LogService {
         data.put("endTime", log.getEndTime().toString());
         data.put("logDate", log.getLogDate().toString());
         data.put("fileIds", fileIds);
-        data.put("userName",log.getUser().getRealName());
-        data.put("userId",log.getUser().getUserId());
+        data.put("userName",Objects.requireNonNull(log.getUser()).getRealName());
+        data.put("userId",Objects.requireNonNull(log.getUser()).getUserId());
+        data.put("latitude", log.getLatitude());
+        data.put("longitude", log.getLongitude());
 
         return ApiResponse.success(data);
     }

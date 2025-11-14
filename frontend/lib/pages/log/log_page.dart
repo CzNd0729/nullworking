@@ -6,6 +6,8 @@ import 'log_detail_page.dart';
 import 'views/month_view.dart';
 import 'views/week_view.dart';
 import 'views/day_view.dart';
+// import 'package:nullworking/pages/notification/notification_list_page.dart'; // 新增导入
+import '../../widgets/notification_icon_with_badge.dart'; // 新增导入
 
 // 定义视图模式枚举
 enum ViewMode { list, month, week, day }
@@ -126,16 +128,6 @@ class _LogPageState extends State<LogPage> {
       setState(() => _endDate = picked);
       _loadLogs();
     }
-  }
-
-  void _clearFilters() {
-    _forceSearchUnfocus();
-    setState(() {
-      _startDate = null;
-      _endDate = null;
-      _searchController.clear();
-    });
-    _loadLogs();
   }
 
   Widget _buildTimeFilterButton(String text, VoidCallback onPressed) {
@@ -324,10 +316,7 @@ class _LogPageState extends State<LogPage> {
                   },
                 ),
                 actions: [
-                  IconButton(
-                    onPressed: _forceSearchUnfocus,
-                    icon: const Icon(Icons.notifications),
-                  ),
+                  const NotificationIconWithBadge(), // Use the new widget
                 ],
                 floating: true,
                 forceElevated: innerBoxIsScrolled,
@@ -335,26 +324,21 @@ class _LogPageState extends State<LogPage> {
               if (_currentViewMode == ViewMode.list)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      children: [
-                        TextField(
-                          focusNode: _searchFocusNode,
-                          controller: _searchController,
-                          onChanged: (value) => _applyFilters(),
-                          decoration: InputDecoration(
-                            hintText: '按标题或日志内容搜索',
-                            prefixIcon: const Icon(Icons.search),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
-                          onTapOutside: (event) => _forceSearchUnfocus(),
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (value) => _forceSearchUnfocus(),
+                    padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 16.0),
+                    child: TextField(
+                      focusNode: _searchFocusNode,
+                      controller: _searchController,
+                      onChanged: (value) => _applyFilters(),
+                      decoration: InputDecoration(
+                        hintText: '按标题或日志内容搜索',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
                         ),
-                        const SizedBox(height: 16),
-                      ],
+                      ),
+                      onTapOutside: (event) => _forceSearchUnfocus(),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (value) => _forceSearchUnfocus(),
                     ),
                   ),
                 ),
@@ -376,14 +360,19 @@ class _LogPageState extends State<LogPage> {
           body: _isLoading
               ? const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2CB7B3)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF2CB7B3),
+                    ),
                   ),
                 )
               : _filteredLogs.isEmpty && _currentViewMode == ViewMode.list
               ? const Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 40.0),
-                    child: Text('暂无日志', style: TextStyle(color: Colors.white54)),
+                    child: Text(
+                      '暂无日志',
+                      style: TextStyle(color: Colors.white54),
+                    ),
                   ),
                 )
               : Padding(
@@ -421,7 +410,6 @@ class _LogPageState extends State<LogPage> {
       // log_page.dart 中 _buildCurrentView 方法的月视图部分
       case ViewMode.month:
         return MonthView(
-          logs: _filteredLogs,
           currentMonth: _currentMonth,
           onMonthChanged: (newMonth) {
             setState(() {
@@ -442,10 +430,10 @@ class _LogPageState extends State<LogPage> {
           },
         );
       case ViewMode.week:
-        return WeekView(logs: _filteredLogs);
+        return WeekView(
+        );
       case ViewMode.day:
         return DayView(
-          logs: _filteredLogs,
           initialDate: _startDate ?? DateTime.now(),
           // 新增：日期变更回调（关键）
           onDateChanged: (newDate) {
@@ -690,15 +678,15 @@ class _LogPageState extends State<LogPage> {
 
 class _SliverFilterBarDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
-  final double height;
+  // final double height;
 
-  _SliverFilterBarDelegate({required this.child, this.height = 150.0});
-
-  @override
-  double get minExtent => height;
+  _SliverFilterBarDelegate({required this.child, /* this.height = 150.0 */});
 
   @override
-  double get maxExtent => height;
+  double get minExtent => 150.0;
+
+  @override
+  double get maxExtent => 150.0;
 
   @override
   Widget build(

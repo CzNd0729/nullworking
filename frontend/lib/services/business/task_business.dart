@@ -183,4 +183,20 @@ class TaskBusiness {
       return false;
     }
   }
+
+  Future<Task?> getTaskById(String taskId) async {
+    try {
+      final response = await _taskApi.getTaskById(taskId);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        print(responseBody);
+        if (responseBody['code'] == 200 && responseBody['data'] != null) {
+          return Task.fromJson(responseBody['data']);
+        }
+      }
+    } catch (e) {
+      print('Error getting task by id: $e');
+    }
+    return null;
+  }
 }

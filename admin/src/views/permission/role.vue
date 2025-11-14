@@ -37,12 +37,25 @@
       </el-table-column>
       <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
-          <el-button type="primary" size="mini" @click="handleUpdate(row)">
+          <el-button 
+            v-if="!isAdminRole(row)" 
+            type="primary" 
+            size="mini" 
+            @click="handleUpdate(row)"
+          >
             编辑
           </el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
+          <el-button 
+            v-if="!isAdminRole(row)" 
+            size="mini" 
+            type="danger" 
+            @click="handleDelete(row,$index)"
+          >
             删除
           </el-button>
+          <span v-if="isAdminRole(row)" style="color: #909399; font-size: 12px;">
+            系统默认角色，不可编辑
+          </span>
         </template>
       </el-table-column>
     </el-table>
@@ -50,22 +63,47 @@
       <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible" width="500px">
       <el-form ref="dataForm" :rules="rules" :model="temp" label-position="left" label-width="100px">
         <el-form-item label="角色名称" prop="roleName">
-          <el-input v-model="temp.roleName" placeholder="请输入角色名称" />
+          <el-input 
+            v-model="temp.roleName" 
+            placeholder="请输入角色名称" 
+            :disabled="isAdminRole(temp)"
+          />
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input v-model="temp.description" type="textarea" :rows="3" placeholder="请输入角色描述" />
+          <el-input 
+            v-model="temp.description" 
+            type="textarea" 
+            :rows="3" 
+            placeholder="请输入角色描述"
+            :disabled="isAdminRole(temp)"
+          />
         </el-form-item>
         <el-form-item label="权限" prop="permissions">
-          <el-checkbox-group v-model="selectedPermissions">
+          <el-checkbox-group 
+            v-model="selectedPermissions"
+            :disabled="isAdminRole(temp)"
+          >
             <el-checkbox v-for="permission in permissionsList" :key="permission.permissionId" :label="permission.permissionName">{{ permission.permissionDescription }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
+        <el-alert
+          v-if="isAdminRole(temp) && dialogStatus === 'update'"
+          title="管理员角色为系统默认角色，不可修改"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-top: 10px;"
+        />
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">
           取消
         </el-button>
-        <el-button type="primary" @click="dialogStatus==='create'?createData():updateData()">
+        <el-button 
+          type="primary" 
+          @click="dialogStatus==='create'?createData():updateData()"
+          :disabled="isAdminRole(temp) && dialogStatus === 'update'"
+        >
           确认
         </el-button>
       </div>
@@ -105,6 +143,10 @@ export default {
     this.getList()
   },
   methods: {
+    // 判断是否为管理员角色（roleId为1或roleName为"管理员"）
+    isAdminRole(row) {
+      return row.roleId === 1 || row.roleName === '管理员'
+    },
     getList() {
       this.listLoading = true
       listRoles().then(response => {
@@ -129,14 +171,15 @@ export default {
         description: ''
       }
     },
-    handleCreate() {
+    async handleCreate() {
       this.resetTemp()
+      // 确保权限列表已加载
+      await this.getPermissionsList()
       this.dialogStatus = 'create'
       this.dialogFormVisible = true
       this.$nextTick(() => {
         this.$refs['dataForm'].clearValidate()
       })
-      this.getPermissionsList()
     },
     createData() {
       this.$refs['dataForm'].validate((valid) => {
@@ -160,7 +203,12 @@ export default {
         }
       })
     },
-    handleUpdate(row) {
+    async handleUpdate(row) {
+      // 防止编辑管理员角色
+      if (this.isAdminRole(row)) {
+        this.$message.warning('管理员角色不可编辑')
+        return
+      }
       const latestRole = this.list.find(r => r.roleId === row.roleId) || row;
       this.temp = Object.assign({}, latestRole);
 
@@ -168,6 +216,10 @@ export default {
         this.temp.description = latestRole.roleDescription;
       }
 
+      // 先加载权限列表，确保权限列表已加载完成
+      await this.getPermissionsList();
+
+      // 权限列表加载完成后再设置选中的权限
       const rolePermissionIds = latestRole.permissionIds || [];
       this.selectedPermissions = this.permissionsList
         .filter(permission => rolePermissionIds.includes(permission.permissionId))
@@ -178,9 +230,14 @@ export default {
       this.$nextTick(() => {
         this.$refs['dataForm'].clearValidate();
       });
-      this.getPermissionsList();
     },
     updateData() {
+      // 防止更新管理员角色
+      if (this.isAdminRole(this.temp)) {
+        this.$message.warning('管理员角色不可编辑')
+        this.dialogFormVisible = false
+        return
+      }
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
           const tempData = {
@@ -209,6 +266,11 @@ export default {
       })
     },
     handleDelete(row, index) {
+      // 防止删除管理员角色
+      if (this.isAdminRole(row)) {
+        this.$message.warning('管理员角色不可删除')
+        return
+      }
       this.$confirm('确定删除该角色吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -226,7 +288,12 @@ export default {
       })
     },
     getPermissionsList() {
-      listPermissions().then(response => {
+      // 如果权限列表已经加载过，直接返回 Promise.resolve
+      if (this.permissionsList && this.permissionsList.length > 0) {
+        return Promise.resolve()
+      }
+      // 否则加载权限列表
+      return listPermissions().then(response => {
         if (response.data && response.data.permissions) {
           this.permissionsList = response.data.permissions
         } else {
@@ -235,6 +302,7 @@ export default {
       }).catch(error => {
         console.error("Error fetching permissions:", error)
         this.$message.error('获取权限列表失败')
+        throw error // 抛出错误以便调用者处理
       })
     }
   }

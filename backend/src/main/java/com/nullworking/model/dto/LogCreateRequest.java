@@ -28,4 +28,10 @@ public class LogCreateRequest {
     private String logDate; // Format: YYYY-MM-DD
     @Schema(description = "关联的文件ID列表", example = "[1, 2]")
     private List<Integer> fileIds;
+
+    @Schema(description = "纬度", example = "34.052235")
+    private Double latitude;
+
+    @Schema(description = "经度", example = "-118.243683")
+    private Double longitude;
 }
