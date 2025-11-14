@@ -140,7 +140,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     // 全局获取所有非'x'的键作为y轴参数
     final Set<String> allYKeys = {};
     for (final item in data) {
-      item.keys.where((key) => key != 'x').forEach(allYKeys.add);
+      item.keys.where((key) => key != 'x').forEach((key) {
+        if (item[key] is num) { // 校验是否为数值类型
+          allYKeys.add(key);
+        }
+      });
     }
     final List<String> yKeys = allYKeys.toList();
 
@@ -328,7 +332,11 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     // 全局获取所有非'x'的键作为y轴参数
     final Set<String> allYKeys = {};
     for (final item in data) {
-      item.keys.where((key) => key != 'x').forEach(allYKeys.add);
+      item.keys.where((key) => key != 'x').forEach((key) {
+        if (item[key] is num) { // 校验是否为数值类型
+          allYKeys.add(key);
+        }
+      });
     }
     final List<String> yKeys = allYKeys.toList();
 
