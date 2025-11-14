@@ -35,11 +35,6 @@ class CommentList extends StatelessWidget {
                 '暂无评论',
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '快来发表第一条评论吧~',
-                style: TextStyle(color: Colors.grey[700], fontSize: 12),
-              ),
             ],
           ),
         ),

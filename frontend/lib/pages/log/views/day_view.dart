@@ -160,7 +160,7 @@ class _DayViewState extends State<DayView> {
     final maxColumns = _getMaxColumns(logs);
     final availableWidth =
         MediaQuery.of(context).size.width -
-        108; // 60 for timeline + 32 for padding + 16 for margins
+        124; // 60 for timeline + 32 for padding + 32 for margins (increased from 16)
     final columnWidth = availableWidth / maxColumns;
 
     return Stack(
