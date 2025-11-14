@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled; 
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Task;
@@ -27,6 +28,7 @@ import com.nullworking.repository.UserRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit; 
 import com.nullworking.model.Log;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.service.NotificationService;
@@ -53,6 +55,37 @@ public class TaskService {
     private NotificationService notificationService;
 
     // 所有的业务逻辑将在这里实现
+
+    @Scheduled(fixedRate = 60000) 
+    @Transactional
+    public void scheduleDeadlineNotifications() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime oneHourLater = now.plus(1, ChronoUnit.HOURS);
+
+        List<Task> approachingDeadlineTasks = taskRepository.findByDeadlineBetweenAndIsDeadlineNotifiedFalseAndTaskStatusNot(
+            now, oneHourLater, (byte) 3
+        );
+
+        for (Task task : approachingDeadlineTasks) {
+            List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(task.getTaskId());
+            Set<Integer> notifiedUsers = new HashSet<>();
+
+            for (Integer executorId : executorIds) {
+                if (!notifiedUsers.contains(executorId)) {
+                    String notificationContent = String.format("您参与的任务\"%s\"距离截止时间不足一小时，请尽快处理。", task.getTaskTitle());
+                    notificationService.createNotification(
+                        executorId,
+                        notificationContent,
+                        "task",
+                        task.getTaskId()
+                    );
+                    notifiedUsers.add(executorId);
+                }
+            }
+            task.setIsDeadlineNotified(true);
+            taskRepository.save(task);
+        }
+    }
 
     @Transactional
     public ApiResponse<String> deleteTask(Integer taskId, Integer userId) {
