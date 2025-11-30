@@ -53,7 +53,26 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
   }
 
   Future<void> _loadRemoteData() async {
-    // 加载人员（同级及下级部门用户）
+    final names = <String>[];
+    final map = <String, int>{};
+
+    // 1. Load current user from SharedPreferences.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserIdStr = prefs.getString('userId');
+      final currentUserName = prefs.getString('realName') ?? '';
+      if (currentUserName.isNotEmpty && currentUserIdStr != null) {
+        final currentUserId = int.tryParse(currentUserIdStr);
+        if (currentUserId != null) {
+          names.add(currentUserName);
+          map[currentUserName] = currentUserId;
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to load current user from SharedPreferences: $e');
+    }
+
+    // 2. Load subordinate users from the API.
     try {
       final userResp = await _userApi.getSubordinateUsers();
       if (userResp.statusCode == 200) {
@@ -61,71 +80,52 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
         if (body['code'] == 200 && body['data'] != null) {
           final users = body['data']['users'] as List<dynamic>?;
           if (users != null) {
-            // 保留全部选项在头部，同时记录 name->id 映射
-            final names = <String>[];
-            final map = <String, int>{};
-
-            // 获取当前用户并添加到列表
-            final prefs = await SharedPreferences.getInstance();
-            final currentUserIdStr = prefs.getString('userId');
-            final currentUserName = prefs.getString('realName') ?? '';
-            if (currentUserName.isNotEmpty && currentUserIdStr != null) {
-              names.add(currentUserName);
-              try {
-                map[currentUserName] = int.parse(currentUserIdStr);
-              } catch (_) {
-                // ignore parse
-              }
-            }
-            // 处理下级用户
-            final subordinateNames = <String>[];
-            final subordinateMap = <String, int>{};
             for (var u in users) {
               final id = u['userId'];
               final name = u['realName']?.toString() ?? '';
-              if (name.isNotEmpty) {
-                subordinateNames.add(name);
-                if (id != null) {
-                  try {
-                    subordinateMap[name] = int.parse(id.toString());
-                  } catch (_) {
-                    // ignore parse
+              if (name.isNotEmpty && id != null) {
+                // Avoid adding duplicates (current user might be in the list).
+                if (!map.containsKey(name)) {
+                  final userId = int.tryParse(id.toString());
+                  if (userId != null) {
+                    names.add(name);
+                    map[name] = userId;
                   }
                 }
               }
             }
-            setState(() {
-              _people = ['全部', ...names, ...subordinateNames];
-              _peopleMap = {...map, ...subordinateMap};
-            });
           }
         }
       }
     } catch (e) {
-      // 忽略，页面会继续使用现有数据
       debugPrint('加载用户失败: $e');
     }
 
-    // 加载任务（当前用户创建与参与的任务）
+    // 3. Load tasks.
+    List<Map<String, String>> combinedTasks = [];
     try {
       final taskList = await _taskApi.listTasks();
       if (taskList != null) {
-        final combined = <Map<String, String>>[];
         for (var t in taskList.createdTasks) {
-          combined.add({'id': t.taskId, 'title': t.taskTitle});
+          combinedTasks.add({'id': t.taskId, 'title': t.taskTitle});
         }
         for (var t in taskList.participatedTasks) {
-          // 避免重复任务ID
-          if (!combined.any((e) => e['id'] == t.taskId)) {
-            combined.add({'id': t.taskId, 'title': t.taskTitle});
+          if (!combinedTasks.any((e) => e['id'] == t.taskId)) {
+            combinedTasks.add({'id': t.taskId, 'title': t.taskTitle});
           }
         }
-        setState(() {
-          _tasks = combined;
-        });
       }
     } catch (e) {
       debugPrint('加载任务失败: $e');
+    }
+
+    // 4. Update the state with all collected data.
+    if (mounted) {
+      setState(() {
+        _people = ['全部', ...names];
+        _peopleMap = map;
+        _tasks = combinedTasks;
+      });
     }
   }
 
