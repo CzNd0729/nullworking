@@ -136,7 +136,7 @@ public class UserService {
      * @param request 创建用户请求
      * @return 创建结果
      */
-    public ApiResponse<Void> addUser(UserCreateRequest request) {
+    public ApiResponse<Integer> addUser(UserCreateRequest request) {
         try {
             // 角色与部门为必填
             if (request.getRoleId() == null) {
@@ -197,7 +197,7 @@ public class UserService {
             // 保存用户
             userRepository.save(user);
             
-            return ApiResponse.success();
+            return ApiResponse.success(user.getUserId());
         } catch (Exception e) {
             return ApiResponse.error(500, "添加用户失败: " + e.getMessage());
         }

@@ -96,7 +96,7 @@ public class DepartmentController {
      */
     @Operation(summary = "创建部门", description = "创建新部门，可以指定父部门，返回code：200成功，400参数错误，404父部门不存在，500失败")
     @PostMapping("")
-    public ApiResponse<String> createDept(
+    public ApiResponse<Integer> createDept(
             @Parameter(description = "部门创建信息") @RequestBody DepartmentCreateRequest request,
             HttpServletRequest httpRequest) {
         // 检查是否为管理员

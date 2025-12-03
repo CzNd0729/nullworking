@@ -191,7 +191,7 @@ public class DepartmentService {
      * @return 响应结果
      */
     @Transactional
-    public ApiResponse<String> createDept(DepartmentCreateRequest request) {
+    public ApiResponse<Integer> createDept(DepartmentCreateRequest request) {
         try {
             // 验证部门名称
             if (request.getDeptName() == null || request.getDeptName().trim().isEmpty()) {
@@ -223,7 +223,7 @@ public class DepartmentService {
             department.setUpdateTime(LocalDateTime.now());
 
             departmentRepository.save(department);
-            return ApiResponse.success("部门创建成功");
+            return ApiResponse.success(department.getDepartmentId());
         } catch (Exception e) {
             return ApiResponse.error(500, "创建部门失败: " + e.getMessage());
         }

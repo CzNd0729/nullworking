@@ -64,7 +64,7 @@ public class UserController {
 
     @Operation(summary = "添加新用户", description = "创建新用户，包括用户名、密码、角色、部门、真实姓名、电话号码和邮箱")
     @PostMapping("")
-    public ApiResponse<Void> addUser(@RequestBody UserCreateRequest request, HttpServletRequest httpRequest) {
+    public ApiResponse<Integer> addUser(@RequestBody UserCreateRequest request, HttpServletRequest httpRequest) {
         // 检查是否为管理员
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (currentUserId == null || currentUserId != 0) {
