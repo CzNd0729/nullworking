@@ -289,6 +289,11 @@ public class UserService {
             
             User user = userOptional.get();
 
+            // 已软删除的用户无需重复删除
+            if (user.getStatus() != null && user.getStatus() == (byte) 1) {
+                return ApiResponse.error(400, "该用户已离职，无需重复删除");
+            }
+
             // 软删除：标记状态为已删除，并将部门挪到总公司（Dept_ID = 1）
             user.setStatus((byte) 1);
 
