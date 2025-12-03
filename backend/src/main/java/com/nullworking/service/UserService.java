@@ -2,18 +2,16 @@ package com.nullworking.service;
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Department;
-import com.nullworking.model.Log;
 import com.nullworking.model.Role;
-import com.nullworking.model.Task;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.UserCreateRequest;
 import com.nullworking.model.dto.UserUpdateRequest;
 import com.nullworking.model.dto.UserProfileUpdateRequest;
 import com.nullworking.repository.DepartmentRepository;
-import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.RoleRepository;
-import com.nullworking.repository.TaskExecutorRelationRepository;
-import com.nullworking.repository.TaskRepository;
+// import com.nullworking.repository.LogRepository;
+// import com.nullworking.repository.TaskExecutorRelationRepository;
+// import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
@@ -37,14 +35,15 @@ public class UserService {
     @Autowired
     private RoleRepository roleRepository;
 
-    @Autowired
-    private TaskRepository taskRepository;
+    // 以下仓库目前未在软删除模式下使用，如后续有业务需要可再启用
+    // @Autowired
+    // private TaskRepository taskRepository;
 
-    @Autowired
-    private LogRepository logRepository;
+    // @Autowired
+    // private LogRepository logRepository;
 
-    @Autowired
-    private TaskExecutorRelationRepository taskExecutorRelationRepository;
+    // @Autowired
+    // private TaskExecutorRelationRepository taskExecutorRelationRepository;
 
     @Autowired
     private PermissionService permissionService;
@@ -72,8 +71,8 @@ public class UserService {
         Set<Integer> departmentIdsInHierarchy = new HashSet<>();
         collectDepartmentHierarchy(currentDepartmentId, departmentIdsInHierarchy);
 
-        // 3. 查询这些部门下的所有用户（排除当前用户自己）
-        List<User> usersInHierarchy = userRepository.findByDepartmentDepartmentIdIn(departmentIdsInHierarchy)
+        // 3. 查询这些部门下的所有用户（排除当前用户自己，且仅包含未删除用户）
+        List<User> usersInHierarchy = userRepository.findByDepartmentDepartmentIdInAndStatus(departmentIdsInHierarchy, (byte) 0)
                 .stream()
                 .filter(user -> !user.getUserId().equals(currentUserId)) // 排除当前用户自己
                 .filter(user -> permissionService.canAssignTaskToUser(Objects.requireNonNull(currentUserId), user)) // 过滤掉无权分配任务的用户
@@ -99,7 +98,8 @@ public class UserService {
      */
     public ApiResponse<Map<String, Object>> listUsers() {
         try {
-            List<User> users = userRepository.findAll();
+            // 仅查询未被软删除的用户
+            List<User> users = userRepository.findByStatus((byte) 0);
             
             List<Map<String, Object>> userList = new ArrayList<>();
             for (User user : users) {
@@ -187,6 +187,8 @@ public class UserService {
             user.setPhoneNumber(request.getPhone().trim());
             user.setEmail(request.getEmail());
             user.setCreationTime(LocalDateTime.now());
+            // 默认状态：0=正常
+            user.setStatus((byte) 0);
             
             // 设置角色
             user.setRole(roleOptional.get());
@@ -286,28 +288,16 @@ public class UserService {
             }
             
             User user = userOptional.get();
-            
-            // 检查用户是否有关联的任务（作为创建者）
-            List<Task> createdTasks = taskRepository.findByCreator_UserId(userId);
-            if (!createdTasks.isEmpty()) {
-                return ApiResponse.error(400, "该用户创建了 " + createdTasks.size() + " 个任务，无法删除。请先处理相关任务。");
-            }
-            
-            // 检查用户是否有关联的任务（作为执行者）
-            boolean isExecutor = taskExecutorRelationRepository.existsByExecutor_UserId(userId);
-            if (isExecutor) {
-                return ApiResponse.error(400, "该用户正在执行任务，无法删除。请先从相关任务中移除该用户。");
-            }
-            
-            // 检查用户是否有关联的日志
-            List<Log> userLogs = logRepository.findByUserUserId(userId);
-            if (!userLogs.isEmpty()) {
-                return ApiResponse.error(400, "该用户有 " + userLogs.size() + " 条日志记录，无法删除。请先处理相关日志。");
-            }
-            
-            // 删除用户
-            userRepository.delete(Objects.requireNonNull(user));
-            
+
+            // 软删除：标记状态为已删除，并将部门挪到总公司（Dept_ID = 1）
+            user.setStatus((byte) 1);
+
+            // 将部门设置为总公司（假定 ID=1 为总公司）
+            Department headDepartment = departmentRepository.findById(1).orElse(null);
+            user.setDepartment(headDepartment);
+
+            userRepository.save(user);
+
             return ApiResponse.success();
         } catch (Exception e) {
             return ApiResponse.error(500, "删除用户失败: " + e.getMessage());

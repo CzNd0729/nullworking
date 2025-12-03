@@ -40,12 +40,22 @@ public class AuthService {
     public ApiResponse<Map<String, Object>> login(String userName, String password) {
         Map<String, Object> data = new HashMap<>();
         try {
+            // 先根据用户名查询用户，区分“用户不存在/密码错误”和“已离职(软删除)”的场景
+            User user = userRepository.findByUserName(userName);
+            if (user == null) {
+                // 用户名不存在：保持原有提示，防止信息泄露
+                return ApiResponse.error(401, "用户名或密码错误");
+            }
+
+            // 如果用户已被软删除（离职），直接返回“已离职”提示
+            if (user.getStatus() != null && user.getStatus() == (byte) 1) {
+                return ApiResponse.error(403, "该账号已离职，无法登录");
+            }
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(userName, password)
             );
             // 如果认证成功
-
-            User user = userRepository.findByUserName(userName);
             String jwt = jwtUtil.generateToken(user.getUserId(), user.getUserName());
 
             data.put("token", jwt);
@@ -77,6 +87,8 @@ public class AuthService {
         user.setPhoneNumber(request.getPhone());
         user.setEmail(request.getEmail());
         user.setCreationTime(LocalDateTime.now());
+        // 默认状态：0=正常
+        user.setStatus((byte) 0);
         // 角色和部门可根据实际业务设置，这里默认 null
         userRepository.save(user);
         return ApiResponse.success("注册成功");

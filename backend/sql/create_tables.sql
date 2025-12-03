@@ -36,22 +36,24 @@ CREATE TABLE `permission` (
 
 -- 4. 用户表（依赖角色表和部门表）
 CREATE TABLE `user` (
-  `User_ID` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `Role_ID` INT(11) DEFAULT NULL COMMENT '外键，关联角色表，可为空',
-  `Dept_ID` INT(11) DEFAULT NULL COMMENT '外键，关联部门表，可为空',
-  `User_Name` VARCHAR(64) NOT NULL COMMENT '用户名（唯一）',
-  `Real_Name` VARCHAR(64) NOT NULL COMMENT '真实姓名',
-  `Password` VARCHAR(128) DEFAULT NULL COMMENT '密码（加密储存）',
-  `Phone_Number` VARCHAR(16) NOT NULL COMMENT '手机号',
-  `Email` VARCHAR(64) DEFAULT NULL COMMENT '邮箱（可选）',
-  `Creation_Time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (`User_ID`),
-  UNIQUE KEY `idx_username` (`User_Name`),
-  KEY `fk_user_role` (`Role_ID`),
-  KEY `fk_user_dept` (`Dept_ID`),
-  CONSTRAINT `fk_user_role` FOREIGN KEY (`Role_ID`) REFERENCES `role` (`Role_ID`),
-  CONSTRAINT `fk_user_dept` FOREIGN KEY (`Dept_ID`) REFERENCES `department` (`Department_ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
+    `User_ID` int NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+    `Role_ID` int DEFAULT NULL COMMENT '外键，关联角色表',
+    `Dept_ID` int DEFAULT NULL COMMENT '外键，关联部门表',
+    `User_Name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '用户名（唯一）',
+    `Password` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '密码（加密储存）',
+    `Phone_Number` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '手机号',
+    `Email` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '邮箱（可选）',
+    `Creation_Time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `Real_Name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+    `huawei_push_token` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `Status` tinyint NOT NULL DEFAULT '0' COMMENT '用于用户删除(软删除)，新增用户默认为0，被删除用户置为1',
+    PRIMARY KEY (`User_ID`),
+    UNIQUE KEY `idx_username` (`User_Name`),
+    KEY `fk_user_role` (`Role_ID`),
+    KEY `fk_user_dept` (`Dept_ID`),
+    CONSTRAINT `fk_user_dept` FOREIGN KEY (`Dept_ID`) REFERENCES `department` (`Department_ID`),
+    CONSTRAINT `fk_user_role` FOREIGN KEY (`Role_ID`) REFERENCES `role` (`Role_ID`)
+) ENGINE = InnoDB AUTO_INCREMENT = 49 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表'
 
 -- 5. 角色-权限关联表（依赖角色表和权限表）
 CREATE TABLE `role_permission_relation` (
