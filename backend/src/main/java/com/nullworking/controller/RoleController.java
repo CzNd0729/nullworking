@@ -74,7 +74,7 @@ public class RoleController {
         if (currentUserId == null || currentUserId != 0) {
             return ApiResponse.error(403, "只有管理员可以更新角色");
         }
-        return roleService.updateRole(request);
+        return roleService.updateRole(roleId, request);
     }
 
     /**

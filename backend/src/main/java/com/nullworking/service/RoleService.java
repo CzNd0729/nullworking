@@ -158,12 +158,12 @@ public class RoleService {
      * @return 响应结果
      */
     @Transactional
-    public ApiResponse<String> updateRole(RoleUpdateRequest request) {
+    public ApiResponse<String> updateRole(Integer roleId, RoleUpdateRequest request) {
         try {
-            if (request.getRoleId() == null) {
+            if (roleId == null) {
                 return ApiResponse.error(400, "角色ID不能为空");
             }
-            Role role = roleRepository.findById(Objects.requireNonNull(request.getRoleId())).orElse(null);
+            Role role = roleRepository.findById(Objects.requireNonNull(roleId)).orElse(null);
             if (role == null) {
                 return ApiResponse.error(404, "角色不存在");
             }
@@ -173,7 +173,7 @@ public class RoleService {
                 // 检查角色名称是否与其他角色重复
                 List<Role> existingRoles = roleRepository.findAll();
                 for (Role r : existingRoles) {
-                    if (r.getRoleId() != null && !r.getRoleId().equals(request.getRoleId()) 
+                    if (r.getRoleId() != null && !r.getRoleId().equals(roleId) 
                         && r.getRoleName().equals(request.getRoleName())) {
                         return ApiResponse.error(400, "角色名称已存在");
                     }
@@ -203,7 +203,7 @@ public class RoleService {
             // 更新权限关联
             if (request.getPermissionIds() != null) {
                 // 删除旧的权限关联 (只删除不在请求中的权限)
-                List<RolePermissionRelation> oldRelations = rolePermissionRelationRepository.findByRole_RoleId(Objects.requireNonNull(request.getRoleId()));
+                List<RolePermissionRelation> oldRelations = rolePermissionRelationRepository.findByRole_RoleId(roleId);
                 Set<Integer> newPermissionIds = new HashSet<>(request.getPermissionIds());
 
                 for (RolePermissionRelation relation : oldRelations) {
