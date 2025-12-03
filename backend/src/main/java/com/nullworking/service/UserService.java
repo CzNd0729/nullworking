@@ -287,6 +287,10 @@ public class UserService {
                 return ApiResponse.error(404, "用户不存在");
             }
             
+            if (userId==0){
+                return ApiResponse.error(400, "不允许删除管理员");
+            }
+
             User user = userOptional.get();
 
             // 已软删除的用户无需重复删除
