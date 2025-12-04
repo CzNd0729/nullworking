@@ -41,6 +41,7 @@ public class NotificationController {
         }
     }
 
+    @Deprecated
     @Operation(summary = "发送华为推送通知示例", description = "接收华为推送标准JSON消息体，并调用华为推送服务发送通知")
     @PostMapping("/send-huawei-push-example")
     public ApiResponse<String> sendPushNotificationExample(@RequestBody Map<String, Object> huaweiPushPayload) {

@@ -46,7 +46,8 @@ public class CommentController {
         }
     }
 
-    @PutMapping("/{id}")
+    @Deprecated
+    @PutMapping("/{commentId}")
     public ResponseEntity<ApiResponse<Void>> updateComment(@PathVariable("id") Integer id, @RequestBody CommentUpdateRequest request, HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
@@ -63,7 +64,7 @@ public class CommentController {
         }
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable("id") Integer id, HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
