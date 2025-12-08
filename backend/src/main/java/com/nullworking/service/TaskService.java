@@ -25,6 +25,7 @@ import com.nullworking.model.dto.TaskUpdateRequest;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
+import com.nullworking.service.PermissionService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -53,6 +54,9 @@ public class TaskService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private PermissionService permissionService;
 
     // 所有的业务逻辑将在这里实现
 
@@ -236,11 +240,21 @@ public class TaskService {
                 return ApiResponse.error(404, "创建者不存在");
             }
 
+            List<Integer> executorIds = request.getExecutorIds();
+            if (executorIds.size() > 1 && executorIds.contains(creatorId)) {
+                return ApiResponse.error(400, "不能上下级同时执行任务");
+            }
+
+            boolean selfAssignOnly = executorIds.size() == 1 && executorIds.get(0).equals(creatorId);
+
             // 验证执行者是否都存在
             for (Integer executorId : request.getExecutorIds()) {
                 Optional<User> executorOpt = userRepository.findById(executorId);
                 if (executorOpt.isEmpty()) {
                     return ApiResponse.error(404, "执行者ID " + executorId + " 不存在");
+                }
+                if (!selfAssignOnly && !permissionService.canAssignTaskToUser(creatorId, executorOpt.get())) {
+                    return ApiResponse.error(403, "无权限分配任务给 " + executorOpt.get().getRealName());
                 }
             }
 

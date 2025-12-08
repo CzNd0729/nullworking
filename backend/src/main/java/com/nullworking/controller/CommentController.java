@@ -48,13 +48,13 @@ public class CommentController {
 
     @Deprecated
     @PutMapping("/{commentId}")
-    public ResponseEntity<ApiResponse<Void>> updateComment(@PathVariable("id") Integer id, @RequestBody CommentUpdateRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<Void>> updateComment(@PathVariable("commentId") Integer commentId, @RequestBody CommentUpdateRequest request, HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
             return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
         }
 
-        ApiResponse<Void> response = commentService.updateComment(id, request, userId);
+        ApiResponse<Void> response = commentService.updateComment(commentId, request, userId);
         if (response.getCode() == 200) {
             return ResponseEntity.ok(response);
         } else if (response.getCode() == 404) {
@@ -65,13 +65,13 @@ public class CommentController {
     }
 
     @DeleteMapping("/{commentId}")
-    public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable("id") Integer id, HttpServletRequest httpRequest) {
+    public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable("commentId") Integer commentId, HttpServletRequest httpRequest) {
         Integer userId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (userId == null) {
             return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
         }
 
-        ApiResponse<Void> response = commentService.deleteComment(id, userId);
+        ApiResponse<Void> response = commentService.deleteComment(commentId, userId);
         if (response.getCode() == 200) {
             return ResponseEntity.ok(response);
         } else if (response.getCode() == 404) {

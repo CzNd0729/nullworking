@@ -27,6 +27,7 @@ public class AIController {
         this.jwtUtil = jwtUtil;
     }
 
+    @Deprecated
     @PostMapping("/chat")
     public ApiResponse<AIChatResponse> chatWithAI(@RequestBody AIChatRequest request) {
         try {
