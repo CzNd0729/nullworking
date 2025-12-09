@@ -12,9 +12,6 @@ import com.nullworking.repository.AIAnalysisResultRepository;
 import com.nullworking.repository.UserRepository;
 import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskRepository;
-import com.nullworking.service.PermissionService;
-import com.nullworking.service.UserService;
-import com.nullworking.service.LogFileService;
 import com.nullworking.repository.LogFileRepository;
 import okhttp3.ConnectionPool;
 import okhttp3.Dispatcher;
@@ -27,10 +24,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.annotation.JsonInclude;
-
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -41,14 +39,8 @@ import com.nullworking.model.Log;
 import com.nullworking.model.Task;
 import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
 import com.nullworking.common.ApiResponse;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import com.nullworking.model.dto.AITaskCreationResponse;
+import java.util.Objects; // 导入 Objects 类
 
 @Service
 public class AIService {
@@ -61,9 +53,9 @@ public class AIService {
     private final String systemPrompt;
     private final ObjectMapper objectMapper;
     private final PermissionService permissionService;
-    private final UserService userService;
-    private final LogFileService logFileService;
-    private final LogFileRepository logFileRepository;
+    // private final UserService userService;
+    // private final LogFileService logFileService;
+    // private final LogFileRepository logFileRepository;
 
     @Lazy
     @Autowired
@@ -92,12 +84,18 @@ public class AIService {
         this.taskRepository = taskRepository;
         this.systemPrompt = systemPrompt;
         this.objectMapper = objectMapper;
-        this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块
+
+        // 配置ObjectMapper以正确处理LocalDateTime
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        this.objectMapper.registerModule(javaTimeModule);
+        // this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块 (如果已经注册了JavaTimeModule，这个可能不是必需的)
+
         this.objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // 忽略null字段
         this.permissionService = permissionService;
-        this.userService = userService;
-        this.logFileService = logFileService;
-        this.logFileRepository = logFileRepository;
+        // this.userService = userService;
+        // this.logFileService = logFileService;
+        // this.logFileRepository = logFileRepository;
     }
 
     public String getAIResponse(String text, String imageUrl) {
@@ -129,6 +127,38 @@ public class AIService {
         StringBuilder response = new StringBuilder();
         arkService.createChatCompletion(chatCompletionRequest).getChoices().forEach(choice -> response.append(choice.getMessage().getContent()));
         return response.toString();
+    }
+
+    public AITaskCreationResponse createTaskFromAI(String userText) {
+        final List<ChatMessage> messages = new ArrayList<>();
+        // 添加系统级提示词，要求AI返回JSON格式的任务信息
+        String taskCreationSystemPrompt = "你是一个任务创建助手，请根据用户提供的文本，生成一个任务。任务信息应包含：任务标题 (taskTitle)，任务内容 (taskContent)，截止时间 (deadline，格式为yyyy-MM-dd HH:mm:ss，如果未指定则为当天23:59:59)，以及优先级 (priority，可选值：High, Medium, Low，默认为Medium)。请以JSON格式返回结果，例如：{\"taskTitle\": \"示例任务标题\", \"taskContent\": \"示例任务内容\", \"deadline\": \"2025-12-31 23:59:59\", \"priority\": \"High\"}";
+        messages.add(ChatMessage.builder().role(ChatMessageRole.SYSTEM).content(taskCreationSystemPrompt).build());
+
+        final List<ChatCompletionContentPart> multiParts = new ArrayList<>();
+        multiParts.add(ChatCompletionContentPart.builder().type("text").text(userText).build());
+
+        final ChatMessage userMessage = ChatMessage.builder().role(ChatMessageRole.USER)
+                .multiContent(multiParts).build();
+        messages.add(userMessage);
+
+        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
+                .model("doubao-1-5-lite-32k-250115") // 指定您创建的方舟推理接入点 ID
+                .messages(messages)
+                .reasoningEffort("medium")
+                .build();
+
+        StringBuilder response = new StringBuilder();
+        arkService.createChatCompletion(chatCompletionRequest).getChoices().forEach(choice -> response.append(choice.getMessage().getContent()));
+        
+        try {
+            // 尝试解析AI的响应为AITaskCreationResponse对象
+            System.out.println(response.toString());
+            return objectMapper.readValue(response.toString(), AITaskCreationResponse.class);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to parse AI response for task creation.", e);
+        }
     }
 
     public ApiResponse<Integer> startAIAnalysis(AIAnalysisRequest request, Integer mode, Integer userId) {
@@ -170,7 +200,7 @@ public class AIService {
         // 设置初始状态为0（分析中）
         analysisResult.setStatus(0);
         // 设置分析模式
-        analysisResult.setMode(mode);
+        analysisResult.setMode(Objects.requireNonNullElse(mode, 0));
         // 将整个request对象转换为JSON字符串并存储到prompt字段
         try {
             String requestJson = objectMapper.writeValueAsString(request);
@@ -218,7 +248,7 @@ public class AIService {
                 // 构建users JSON
                 List<Map<String, Object>> userList = users.stream().map(user -> {
                     Map<String, Object> userMap = new HashMap<>();
-                    userMap.put("userId", user.getUserId());
+                    userMap.put("userId", Objects.requireNonNullElse(user.getUserId(), 0));
                     userMap.put("userName", user.getRealName());
                     return userMap;
                 }).collect(Collectors.toList());
@@ -303,7 +333,7 @@ public class AIService {
                 // 构建users JSON
                 List<Map<String, Object>> userList = users.stream().map(user -> {
                     Map<String, Object> userMap = new HashMap<>();
-                    userMap.put("userId", user.getUserId());
+                    userMap.put("userId", Objects.requireNonNullElse(user.getUserId(), 0));
                     userMap.put("userName", user.getRealName());
                     return userMap;
                 }).collect(Collectors.toList());
@@ -398,7 +428,7 @@ public class AIService {
                     } else {
                         promptMap = new HashMap<>();
                     }
-                    return new AIAnalysisResultSummaryDTO(result.getResultId(), result.getAnalysisTime(), promptMap, result.getStatus(), result.getMode());
+                    return new AIAnalysisResultSummaryDTO(Objects.requireNonNullElse(result.getResultId(), 0), result.getAnalysisTime(), promptMap, Objects.requireNonNullElse(result.getStatus(), 0), Objects.requireNonNullElse(result.getMode(), 0));
                 })
                 .collect(Collectors.toList());
     }

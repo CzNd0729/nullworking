@@ -5,6 +5,7 @@ import com.nullworking.model.dto.AIChatRequest;
 import com.nullworking.model.dto.AIChatResponse;
 import com.nullworking.model.dto.AIAnalysisRequest;
 import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
+import com.nullworking.model.dto.AITaskCreationResponse;
 import com.nullworking.service.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +14,11 @@ import java.util.List;
 import com.nullworking.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 @RestController
 @RequestMapping("/api")
@@ -25,6 +31,31 @@ public class AIController {
     public AIController(AIService aiService, JwtUtil jwtUtil) {
         this.aiService = aiService;
         this.jwtUtil = jwtUtil;
+    }
+
+    @Operation(summary = "通过AI创建任务", description = "根据用户提供的文本，通过AI生成任务信息")
+    @RequestBody(description = "用户输入的文本", required = true, 
+                 content = @Content(mediaType = "application/json", 
+                                    schema = @Schema(implementation = Map.class), 
+                                    examples = @ExampleObject(name = "创建任务示例", 
+                                                             value = "{\"text\": \"帮我创建一个明天下午三点前完成，关于编写一个用户管理模块的任务，优先级高\"}")))
+    @PostMapping("/ai/task")
+    public ApiResponse<AITaskCreationResponse> createTaskWithAI(@org.springframework.web.bind.annotation.RequestBody Map<String, String> requestBody, HttpServletRequest httpRequest) {
+        Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
+        if (currentUserId == null) {
+            return ApiResponse.error(401, "未授权");
+        }
+        String userText = requestBody.get("text");
+        if (userText == null || userText.isEmpty()) {
+            return ApiResponse.error(400, "用户输入文本不能为空。");
+        }
+        try {
+            AITaskCreationResponse response = aiService.createTaskFromAI(userText);
+            return ApiResponse.success(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error(500, "AI任务创建失败: " + e.getMessage());
+        }
     }
 
     @Deprecated
