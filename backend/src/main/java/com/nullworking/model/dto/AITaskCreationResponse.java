@@ -1,10 +1,12 @@
 package com.nullworking.model.dto;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 public class AITaskCreationResponse {
     private String taskTitle;
     private String taskContent;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime deadline;
     private String priority; // 可以是 "High", "Medium", "Low"
 

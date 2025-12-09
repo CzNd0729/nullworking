@@ -24,8 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,6 +54,7 @@ public class AIService {
     // private final UserService userService;
     // private final LogFileService logFileService;
     // private final LogFileRepository logFileRepository;
+    private final String taskCreationSystemPromptTemplate; // 新增属性，用于存储从配置读取的提示词模板
 
     @Lazy
     @Autowired
@@ -74,7 +73,8 @@ public class AIService {
             PermissionService permissionService,
             UserService userService,
             LogFileService logFileService,
-            LogFileRepository logFileRepository) {
+            LogFileRepository logFileRepository,
+            @Value("${ark.task-creation.system.prompt}") String taskCreationSystemPromptTemplate) { // 注入新的属性
         ConnectionPool connectionPool = new ConnectionPool(5, 1, TimeUnit.SECONDS);
         Dispatcher dispatcher = new Dispatcher();
         this.arkService = ArkService.builder().dispatcher(dispatcher).connectionPool(connectionPool).baseUrl(baseUrl).apiKey(apiKey).build();
@@ -86,13 +86,14 @@ public class AIService {
         this.objectMapper = objectMapper;
 
         // 配置ObjectMapper以正确处理LocalDateTime
-        JavaTimeModule javaTimeModule = new JavaTimeModule();
-        javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        this.objectMapper.registerModule(javaTimeModule);
-        // this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块 (如果已经注册了JavaTimeModule，这个可能不是必需的)
+        // JavaTimeModule javaTimeModule = new JavaTimeModule();
+        // javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        // this.objectMapper.registerModule(javaTimeModule);
+        this.objectMapper.findAndRegisterModules(); // 注册Java 8 Date/Time模块 (如果已经注册了JavaTimeModule，这个可能不是必需的)
 
         this.objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL); // 忽略null字段
         this.permissionService = permissionService;
+        this.taskCreationSystemPromptTemplate = taskCreationSystemPromptTemplate; // 赋值
         // this.userService = userService;
         // this.logFileService = logFileService;
         // this.logFileRepository = logFileRepository;
@@ -132,8 +133,14 @@ public class AIService {
     public AITaskCreationResponse createTaskFromAI(String userText) {
         final List<ChatMessage> messages = new ArrayList<>();
         // 添加系统级提示词，要求AI返回JSON格式的任务信息
-        String taskCreationSystemPrompt = "你是一个任务创建助手，请根据用户提供的文本，生成一个任务。任务信息应包含：任务标题 (taskTitle)，任务内容 (taskContent)，截止时间 (deadline，格式为yyyy-MM-dd HH:mm:ss，如果未指定则为当天23:59:59)，以及优先级 (priority，可选值：High, Medium, Low，默认为Medium)。请以JSON格式返回结果，例如：{\"taskTitle\": \"示例任务标题\", \"taskContent\": \"示例任务内容\", \"deadline\": \"2025-12-31 23:59:59\", \"priority\": \"High\"}";
-        messages.add(ChatMessage.builder().role(ChatMessageRole.SYSTEM).content(taskCreationSystemPrompt).build());
+        // String taskCreationSystemPrompt = "你是一个任务创建助手，请根据用户提供的文本，生成一个任务。任务信息应包含：任务标题 (taskTitle)，任务内容 (taskContent)，截止时间 (deadline，格式为yyyy-MM-dd HH:mm:ss，如果未指定则为当天23:59:59)，以及优先级 (priority，可选值：High, Medium, Low，默认为Medium)。请以JSON格式返回结果，例如：{\"taskTitle\": \"示例任务标题\", \"taskContent\": \"示例任务内容\", \"deadline\": \"2025-12-31 23:59:59\", \"priority\": \"High\"}";
+        
+        // 获取当前系统时间并格式化
+        String currentDateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        // 结合配置的模板和当前时间构建最终提示词
+        String finalTaskCreationSystemPrompt = taskCreationSystemPromptTemplate + "\n当前系统时间是：" + currentDateTime;
+        
+        messages.add(ChatMessage.builder().role(ChatMessageRole.SYSTEM).content(finalTaskCreationSystemPrompt).build());
 
         final List<ChatCompletionContentPart> multiParts = new ArrayList<>();
         multiParts.add(ChatCompletionContentPart.builder().type("text").text(userText).build());
