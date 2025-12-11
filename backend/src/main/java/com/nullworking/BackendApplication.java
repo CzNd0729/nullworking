@@ -16,6 +16,10 @@ public class BackendApplication {
 
 	public static void main(String[] args) {
 		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
+
+		// 在代码中设置端口
+		System.setProperty("server.port", "8082");
+
 		SpringApplication.run(BackendApplication.class, args);
 	}
 
