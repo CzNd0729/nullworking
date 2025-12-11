@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'speech_result_page.dart'; // Add this line
 
 class CreateTaskPage extends StatefulWidget {
   final Task? taskToEdit;
@@ -35,15 +35,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   String? _currentUserId;
   String? _currentUserName;
 
-  late stt.SpeechToText _speech;
-  bool _isListening = false;
-  String _text = '';
-  double _confidence = 1.0;
-
   @override
   void initState() {
     super.initState();
-    _speech = stt.SpeechToText();
     _priorityController.text = _selectedPriority;
     _loadCurrentUserData();
     _fetchTeamMembers();
@@ -127,32 +121,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   }
 
   void _listen() async {
-    if (!_isListening) {
-      bool available = await _speech.initialize(
-          onStatus: (val) => print('onStatus: $val'),
-          onError: (val) => print('onError: $val'));
-      if (available) {
-        setState(() {
-          _isListening = true;
-        });
-        _speech.listen(
-            onResult: (val) => setState(() {
-                  _text = val.recognizedWords;
-                  if (val.hasConfidenceRating && val.confidence > 0) {
-                    _confidence = val.confidence;
-                  }
-                  _descriptionController.text = _text; // Update the description controller
-                }));
-      } else {
-        setState(() {
-          _isListening = false;
-          _speech.stop();
-        });
-      }
-    } else {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SpeechResultPage(),
+      ),
+    );
+    if (result != null && result.isNotEmpty) {
       setState(() {
-        _isListening = false;
-        _speech.stop();
+        _descriptionController.text = result;
       });
     }
   }
@@ -736,6 +713,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              // _isListening ? Icons.mic : Icons.mic_none, // Removed speech recognition icon
+              Icons.mic_none, // Always show mic_none
+              color: Colors.white,
+            ),
+            onPressed: _listen,
+          ),
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -771,13 +758,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       }
                       return null;
                     },
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isListening ? Icons.mic : Icons.mic_none,
-                        color: _isListening ? Colors.red : Colors.white,
-                      ),
-                      onPressed: _listen,
-                    ),
                   ),
                 ],
               ),
@@ -991,7 +971,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     required FocusNode focusNode,
     String? hintText,
     String? Function(String?)? validator,
-    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1017,7 +996,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
             contentPadding: const EdgeInsets.all(12),
             alignLabelWithHint: true,
-            suffixIcon: suffixIcon,
           ),
           validator: validator,
           onTapOutside: (event) {

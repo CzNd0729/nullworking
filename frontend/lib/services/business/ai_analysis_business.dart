@@ -11,6 +11,7 @@ class AiAnalysisBusiness {
   Future<String?> logAnalysis(int mode, Map<String, dynamic> body) async {
     try {
       final response = await _aiAnalysisApi.logAnalysis(mode, body);
+      print(body);
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200) {
