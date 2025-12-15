@@ -1,49 +1,65 @@
 package com.nullworking.service;
 
+import com.nullworking.config.CosConfig;
 import com.nullworking.model.LogFile;
 import com.nullworking.repository.LogFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.model.ObjectMetadata;
+import com.qcloud.cos.model.PutObjectRequest;
+import com.qcloud.cos.model.COSObject;
+import com.qcloud.cos.model.GetObjectRequest;
+import com.qcloud.cos.model.GeneratePresignedUrlRequest;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.InputStreamResource;
+import com.nullworking.model.dto.FileDownloadInfo;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import com.nullworking.model.dto.FileDownloadInfo;
+import java.net.URL;
 
 @Service
 public class LogFileService {
 
-    @Value("${file.upload-dir}")
-    private String uploadDir;
-
     @Autowired
     private LogFileRepository logFileRepository;
 
+    @Autowired
+    private COSClient cosClient;
+
+    @Autowired
+    private CosConfig cosConfig; // 注入 CosConfig 以获取 bucketName
+
     public LogFile storeFile(MultipartFile file) throws IOException {
-        // Normalize file name
         String originalFilename = file.getOriginalFilename();
-        String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+        String fileExtension = "";
+        int dotIndex = originalFilename.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < originalFilename.length() - 1) {
+            fileExtension = originalFilename.substring(dotIndex);
+        }
+        String fileName = UUID.randomUUID().toString() + fileExtension;
 
-        // Resolve upload directory
-        Path uploadPath = Paths.get(uploadDir + "/log_files/").toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath); // Create directories if they don't exist
+        // 构建 COS 存储路径 (log_files/2025/12/example.log)
+        String datePath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
+        String cosKey = "log_files/" + datePath + "/" + fileName;
 
-        Path targetLocation = uploadPath.resolve(fileName);
-        Files.copy(file.getInputStream(), targetLocation);
+        // 上传到 COS
+        ObjectMetadata objectMetadata = new ObjectMetadata();
+        objectMetadata.setContentLength(file.getSize());
+        objectMetadata.setContentType(file.getContentType());
+
+        PutObjectRequest putObjectRequest = new PutObjectRequest(cosConfig.getBucketName(), cosKey, file.getInputStream(), objectMetadata);
+        cosClient.putObject(putObjectRequest);
 
         LogFile logFile = new LogFile();
-        // logFile.setLogId(logId); // 移除 logId 的设置，使其默认为 null
         logFile.setOriginalName(originalFilename);
-        logFile.setStoragePath("/log_files/" + fileName); // Store relative path
+        logFile.setStoragePath(cosKey); // 存储 COS Key
         logFile.setFileType(file.getContentType());
         logFile.setFileSize(file.getSize());
         logFile.setUploadTime(LocalDateTime.now());
@@ -55,14 +71,21 @@ public class LogFileService {
         LogFile logFile = logFileRepository.findById(fileId)
                 .orElseThrow(() -> new IOException("文件未找到，ID：" + fileId));
 
-        Path filePath = Paths.get(uploadDir + logFile.getStoragePath()).toAbsolutePath().normalize();
-        Resource resource = new UrlResource(filePath.toUri());
+        String cosKey = logFile.getStoragePath();
+        String bucketName = cosConfig.getBucketName();
 
-        if (resource.exists()) {
-            return new FileDownloadInfo(resource, logFile.getOriginalName(), logFile.getFileType());
-        } else {
-            throw new IOException("文件未找到：" + logFile.getOriginalName());
-        }
+        // 方式一：生成预签名 URL (适合直接下载链接)
+        // GeneratePresignedUrlRequest req = new GeneratePresignedUrlRequest(bucketName, cosKey);
+        // Date expiration = new Date(System.currentTimeMillis() + 30 * 60 * 1000); // 30分钟有效期
+        // req.setExpiration(expiration);
+        // URL url = cosClient.generatePresignedUrl(req);
+        // return new FileDownloadInfo(new UrlResource(url), logFile.getOriginalName(), logFile.getFileType());
+
+        // 方式二：直接从 COS 读取为 InputStreamResource (适合流式传输)
+        COSObject cosObject = cosClient.getObject(new GetObjectRequest(bucketName, cosKey));
+        Resource resource = new InputStreamResource(cosObject.getObjectContent());
+
+        return new FileDownloadInfo(resource, logFile.getOriginalName(), logFile.getFileType());
     }
 
     public void updateLogIdForFiles(List<Integer> fileIds, Integer logId) {
@@ -87,5 +110,10 @@ public class LogFileService {
             logFile.setLogId(null);
         }
         logFileRepository.saveAll(logFiles);
+    }
+
+    // 可选：添加删除 COS 对象的方法
+    public void deleteFileFromCos(String cosKey) {
+        cosClient.deleteObject(cosConfig.getBucketName(), cosKey);
     }
 }
