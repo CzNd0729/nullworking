@@ -1,7 +1,209 @@
 import 'package:flutter/material.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
-import 'speech_result_page.dart'; // Add this line
+import '../../services/business/speech_service.dart';
+
+class _AiAssistantSheetContent extends StatefulWidget {
+  final SpeechService aiSpeechService;
+  final TextEditingController descriptionController;
+  final String initialAiAssistantText;
+  final Function(String) onUpdateExternalText; 
+  final Function(bool) onListeningStatusChanged;
+  final ScrollController scrollController;
+
+  const _AiAssistantSheetContent({
+    required this.aiSpeechService,
+    required this.descriptionController,
+    required this.initialAiAssistantText,
+    required this.onUpdateExternalText,
+    required this.scrollController,
+    required this.onListeningStatusChanged,
+  });
+
+  @override
+  _AiAssistantSheetContentState createState() => _AiAssistantSheetContentState();
+}
+
+class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
+  late String sheetAiAssistantText;
+  late TextEditingController textController;
+  // **修复点：将类型从 'late Function' 修改为 'Function(String)?'**
+  late Function(String)? originalOnResult;
+
+  @override
+  void initState() {
+    super.initState();
+    sheetAiAssistantText = widget.initialAiAssistantText;
+    
+    textController = TextEditingController(text: sheetAiAssistantText);
+    textController.addListener(_handleTextChange);
+
+    // 赋值时不再报错
+    originalOnResult = widget.aiSpeechService.onResult;
+    
+    widget.aiSpeechService.onResult = _handleSpeechResult;
+  }
+  
+  void _handleSpeechResult(String result) {
+    if (mounted) {
+      setState(() {
+        sheetAiAssistantText = result;
+        textController.text = result; 
+        widget.onUpdateExternalText(result); 
+      });
+    }
+  }
+  
+  void _handleTextChange() {
+    if (mounted) {
+      setState(() {
+        sheetAiAssistantText = textController.text;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.aiSpeechService.isListening) {
+      widget.aiSpeechService.stopListening();
+    }
+    
+    // 在恢复时，需要处理 originalOnResult 可能为 null 的情况
+    // 假设 SpeechService.onResult 接受 null
+    widget.aiSpeechService.onResult = originalOnResult;
+    
+    textController.removeListener(_handleTextChange);
+    textController.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isListening = widget.aiSpeechService.isListening;
+    final hasContent = sheetAiAssistantText.trim().isNotEmpty;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E), 
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10.0,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + 32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(
+            child: SizedBox(
+              width: 40,
+              height: 4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.all(Radius.circular(2)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'AI 助手',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: TextFormField(
+                controller: textController,
+                maxLines: null,
+                scrollController: widget.scrollController,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: '对我说点什么吧，或者直接在这里输入...',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+          ),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: 60,
+                width: 60,
+                child: FloatingActionButton(
+                  heroTag: 'mic_assist_button',
+                  onPressed: () {
+                    if (!mounted) return;
+                    setState(() {
+                      if (isListening) {
+                        widget.aiSpeechService.stopListening();
+                      } else {
+                        sheetAiAssistantText = '';
+                        textController.text = ''; 
+                        widget.aiSpeechService.startListening();
+                      }
+                    });
+                  },
+                  backgroundColor: isListening
+                      ? Colors.red 
+                      : const Color(0xFF00D9A3),
+                  elevation: 5,
+                  child: Icon(
+                    isListening ? Icons.mic : Icons.mic_none,
+                    color: Colors.black,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 40),
+              SizedBox(
+                height: 60,
+                width: 60,
+                child: FloatingActionButton(
+                  heroTag: 'check_assist_button',
+                  onPressed: hasContent ? () { 
+                    widget.descriptionController.text = sheetAiAssistantText;
+                    Navigator.pop(context);
+                  } : null,
+                  backgroundColor: hasContent
+                      ? const Color(0xFF8B5CF6)
+                      : Colors.grey.shade700,
+                  elevation: 5,
+                  child: const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class CreateTaskPage extends StatefulWidget {
   final Task? taskToEdit;
@@ -30,8 +232,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   bool _isAssigned = false;
   List<Map<String, dynamic>> _selectedAssignees = [];
   List<Map<String, dynamic>> _teamMembers = [];
-
   final TaskBusiness _taskBusiness = TaskBusiness();
+  String _aiAssistantText = '';
+  bool _isAiAssistantListening = false;
+  late SpeechService _aiSpeechService;
   String? _currentUserId;
   String? _currentUserName;
 
@@ -41,6 +245,25 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.text = _selectedPriority;
     _loadCurrentUserData();
     _fetchTeamMembers();
+
+    _aiSpeechService = SpeechService(
+      onResult: (result) {
+        setState(() {
+          _aiAssistantText = result;
+        });
+      },
+      onError: (error) {
+        setState(() {
+          _aiAssistantText = '错误: $error';
+        });
+      },
+      onListeningStatusChanged: (status) {
+        setState(() {
+          _isAiAssistantListening = status;
+        });
+      },
+    );
+    _aiSpeechService.initialize(appIdIos: '6a5ecb24', appIdAndroid: '6a5ecb24');
 
     if (widget.taskToEdit != null) {
       _titleController.text = widget.taskToEdit!.taskTitle;
@@ -93,6 +316,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedAssignees = [];
       _isAssigned = false;
       _updateAssigneeText();
+      _aiAssistantText = '';
     });
     _forceUnfocus();
   }
@@ -117,21 +341,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.dispose();
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
+    _aiSpeechService.stopListening();
     super.dispose();
-  }
-
-  void _listen() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SpeechResultPage(),
-      ),
-    );
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _descriptionController.text = result;
-      });
-    }
   }
 
   Future<void> _selectDate() async {
@@ -194,7 +405,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 小时选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -240,7 +450,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // 分钟选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -644,7 +853,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           );
           _resetFormState();
-          Navigator.pop(context, resultTask); // 修改为返回 true
+          Navigator.pop(context, resultTask);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -695,12 +904,49 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  void _showAiAssistantSheet() {
+    _forceUnfocus();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent, 
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6, 
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return _AiAssistantSheetContent(
+            aiSpeechService: _aiSpeechService,
+            descriptionController: _descriptionController,
+            initialAiAssistantText: _aiAssistantText,
+            scrollController: scrollController,
+            onUpdateExternalText: (newText) {
+              if (mounted) {
+                setState(() {
+                  _aiAssistantText = newText;
+                });
+              }
+            },
+            onListeningStatusChanged: (status) {
+              if (mounted) {
+                setState(() {
+                  _isAiAssistantListening = status;
+                });
+              }
+            },
+          );
+        },
+      ),
+    ); 
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 90.0), // 调整此处的bottom值来控制上移距离
+        padding: const EdgeInsets.only(bottom: 90.0),
         child: FloatingActionButton(
           onPressed: _showAiAssistantSheet,
           backgroundColor: const Color(0xFF8B5CF6),
@@ -723,14 +969,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           },
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              // _isListening ? Icons.mic : Icons.mic_none, // Removed speech recognition icon
-              Icons.mic_none, // Always show mic_none
-              color: Colors.white,
-            ),
-            onPressed: _listen,
-          ),
         ],
       ),
       body: Form(
@@ -889,70 +1127,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showAiAssistantSheet() {
-    _forceUnfocus();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.4,
-        minChildSize: 0.25,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Center(
-                  child: SizedBox(
-                    width: 40,
-                    height: 4,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.all(Radius.circular(2)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'AI 助手',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    children: [
-                      // 这里可以放置AI助手的内容
-                      Center(
-                        child: Text(
-                          'AI助手内容区域',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
