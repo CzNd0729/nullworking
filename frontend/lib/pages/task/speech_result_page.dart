@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:xfvoice2/xfvoice2.dart';
 
@@ -23,7 +24,6 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
     _xfVoice.init(appIdIos: '6a5ecb24', appIdAndroid: '6a5ecb24'); 
     final param = XFVoiceParam();
     param.domain = 'iat';
-    param.result_type = 'json';
     final map = param.toMap();
     map['dwa'] = 'wpgs';
     _xfVoice.setParameter(map);
@@ -36,11 +36,31 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
     _xfVoice.start(
       listener: XFVoiceListener(
         onVolumeChanged: (volume) {
-          print('音量：$volume');
+          // print('音量：$volume');
         },
         onResults: (String result, isLast) {
+          String text = '';
+          if (result.isNotEmpty) {
+            final Map<String, dynamic> jsonResult = json.decode(result);
+            if (jsonResult['ws'] != null) {
+              for (var wsItem in jsonResult['ws']) {
+                if (wsItem['cw'] != null) {
+                  for (var cwItem in wsItem['cw']) {
+                    if (cwItem['w'] != null) {
+                      text += cwItem['w'];
+                    }
+                  }
+                }
+              }
+            }
+          }
           setState(() {
-            _recognizedText = result;
+            if (text=='.'||text=='。') {
+              _recognizedText += text;
+            }
+            else{
+              _recognizedText = text;
+            }
           });
         },
         onCompleted: (Map<dynamic, dynamic> errInfo, String filePath) {
