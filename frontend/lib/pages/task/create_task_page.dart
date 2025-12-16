@@ -699,6 +699,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 90.0), // 调整此处的bottom值来控制上移距离
+        child: FloatingActionButton(
+          onPressed: _showAiAssistantSheet,
+          backgroundColor: const Color(0xFF8B5CF6),
+          child: const Icon(Icons.assistant, color: Colors.white),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       appBar: AppBar(
         title: Text(
           widget.taskToEdit == null ? '新建任务' : '编辑任务',
@@ -880,6 +889,70 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAiAssistantSheet() {
+    _forceUnfocus();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: SizedBox(
+                    width: 40,
+                    height: 4,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.all(Radius.circular(2)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'AI 助手',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    children: [
+                      // 这里可以放置AI助手的内容
+                      Center(
+                        child: Text(
+                          'AI助手内容区域',
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

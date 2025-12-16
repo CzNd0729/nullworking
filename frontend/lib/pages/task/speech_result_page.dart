@@ -10,13 +10,22 @@ class SpeechResultPage extends StatefulWidget {
 }
 
 class _SpeechResultPageState extends State<SpeechResultPage> {
+  late TextEditingController _textEditingController;
   String _recognizedText = '点击按钮开始语音识别';
+  bool _isListening = false; // Add this line
   final XFVoice _xfVoice = XFVoice.shared;
 
   @override
   void initState() {
     super.initState();
+    _textEditingController = TextEditingController(text: _recognizedText); // Add this line
     _initSpeechRecognizer();
+  }
+
+  @override // Add this block
+  void dispose() {
+    _textEditingController.dispose();
+    super.dispose();
   }
 
   void _initSpeechRecognizer() {
@@ -32,6 +41,8 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
   void _startListening() {
     setState(() {
       _recognizedText = '正在聆听...';
+      _textEditingController.text = _recognizedText; // Update controller text
+      _isListening = true; // Set listening state
     });
     _xfVoice.start(
       listener: XFVoiceListener(
@@ -55,23 +66,27 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
             }
           }
           setState(() {
-            if (text=='.'||text=='。') {
-              _recognizedText += text;
+            if (text == '.' || text == '。') {
+              _recognizedText += text; // Append if it's a period
+            } else {
+              _recognizedText = text; // Otherwise, replace
             }
-            else{
-              _recognizedText = text;
-            }
+            _textEditingController.text = _recognizedText; // Update controller text
+            _textEditingController.selection = TextSelection.fromPosition( // Move cursor to end
+                TextPosition(offset: _textEditingController.text.length));
           });
         },
         onCompleted: (Map<dynamic, dynamic> errInfo, String filePath) {
-          if (errInfo['errorCode'] == 0) {
-            print('识别完成');
-          } else {
-            print('识别错误: ${errInfo['errorCode']}');
-            setState(() {
+          setState(() { // Update state when listening completes
+            _isListening = false;
+            if (errInfo['errorCode'] == 0) {
+              print('识别完成');
+            } else {
+              print('识别错误: ${errInfo['errorCode']}');
               _recognizedText = '识别错误: ${errInfo['errorCode']}';
-            });
-          }
+              _textEditingController.text = _recognizedText;
+            }
+          });
         },
       ),
     );
@@ -81,6 +96,8 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
     _xfVoice.stop();
     setState(() {
       _recognizedText = '识别停止';
+      _textEditingController.text = _recognizedText; // Update controller text
+      _isListening = false; // Set listening state
     });
   }
 
@@ -94,20 +111,33 @@ class _SpeechResultPageState extends State<SpeechResultPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              _recognizedText,
-              style: const TextStyle(fontSize: 24),
-              textAlign: TextAlign.center,
+            Card( // Wrap TextField in a Card
+              margin: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding
+              elevation: 4.0, // Add a slight shadow for the card effect
+              child: Padding(
+                padding: const EdgeInsets.all(8.0), // Inner padding for the text field
+                child: TextField(
+                  controller: _textEditingController,
+                  minLines: 5, // Set minimum lines to make it taller
+                  maxLines: null, // Allow multiple lines
+                  keyboardType: TextInputType.multiline, // Enable multiline input
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(), // Keep border
+                    hintText: '点击麦克风开始语音识别',
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 50),
-            ElevatedButton(
-              onPressed: _startListening,
-              child: const Text('开始语音识别'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _stopListening,
-              child: const Text('停止语音识别'),
+            IconButton( // Single microphone button
+              icon: Icon(
+                _isListening ? Icons.mic : Icons.mic_none, // Change icon based on listening state
+                size: 48,
+                color: _isListening ? Colors.red : Colors.blue, // Change color based on listening state
+              ),
+              onPressed: _isListening ? _stopListening : _startListening, // Toggle start/stop
             ),
           ],
         ),
