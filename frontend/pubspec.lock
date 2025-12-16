@@ -733,6 +733,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.1.0"
+  xfvoice2:
+    dependency: "direct main"
+    description:
+      name: xfvoice2
+      sha256: e5ba33206b50eccf01dd3d4b5c92c9fc7b59fb9e880f644b9e1968ca2bc05927
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.0.0"
 sdks:
   dart: ">=3.9.2 <4.0.0"
   flutter: ">=3.35.0"

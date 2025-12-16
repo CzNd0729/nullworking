@@ -6,6 +6,12 @@ plugins {
     id("com.huawei.agconnect")
 }
 
+repositories {
+    flatDir {
+        dirs("libs")
+    }
+}
+
 android {
     namespace = "com.example.nullworking"
     compileSdk = flutter.compileSdkVersion
@@ -51,4 +57,5 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    //implementation(files("libs/Msc.jar"))
 }
