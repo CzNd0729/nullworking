@@ -10,30 +10,44 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/',
+    redirect: '/dashboard'
+  },
+  {
     path: '/404',
     component: () => import('@/views/404'),
     hidden: true
   },
   {
-    path: '/',
+    path: '/dashboard',
     component: () => import('@/layout'),
-    redirect: '/important-items',
     children: [
       {
-        path: 'important-items',
+        path: '',
+        component: () => import('@/views/dashboard/index.vue'),
+        name: 'Dashboard',
+        meta: { title: '首页', icon: 'dashboard' }
+      }
+    ]
+  },
+  {
+    path: '/important-items',
+    component: () => import('@/layout'),
+    children: [
+      {
+        path: '',
         component: () => import('@/views/importantItems/index.vue'),
         name: 'ImportantItems',
-        meta: { title: '重要事项管理', icon: 'todo' }
+        meta: { title: '重要事项', icon: 'todo' }
       }
     ]
   },
   {
     path: '/permission',
     component: () => import('@/layout'),
-    redirect: 'noRedirect',
+    redirect: '/permission/user',
     name: 'Permission',
     meta: { title: '权限管理', icon: 'key' },
-    alwaysShow: true,
     children: [
       {
         path: 'user',
@@ -52,7 +66,7 @@ export const constantRoutes = [
         component: () => import('@/views/permission/role.vue'),
         name: 'RoleManagement',
         meta: { title: '角色管理', icon: 'role' }
-      },
+      }
     ]
   },
   // 404 page must be placed at the end !!!
