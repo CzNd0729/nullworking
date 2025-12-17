@@ -13,10 +13,22 @@ class AiAnalysisApi {
     );
   }
 
-  Future<http.Response> createAiTask(String text) async {
+  Future<http.Response> createAiTask({
+    required String text,
+    String? taskTitle,
+    String? taskContent,
+    String? priority,
+    String? deadline,
+  }) async {
+    final Map<String, dynamic> body = {'text': text};
+    if (taskTitle != null) body['taskTitle'] = taskTitle;
+    if (taskContent != null) body['taskContent'] = taskContent;
+    if (priority != null) body['priority'] = priority;
+    if (deadline != null) body['deadline'] = deadline;
+
     return await _baseApi.post(
       'api/ai/task',
-      body: {'text': text},
+      body: body,
     );
   }
 

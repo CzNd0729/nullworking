@@ -13,6 +13,10 @@ class _AiAssistantSheetContent extends StatefulWidget {
   final Function(bool) onListeningStatusChanged;
   final ScrollController scrollController;
   final Function(AiGeneratedTask) onAiTaskGenerated;
+  final String? taskTitle;
+  final String? taskContent;
+  final String? priority;
+  final DateTime? deadline;
 
   const _AiAssistantSheetContent({
     required this.aiSpeechService,
@@ -22,6 +26,10 @@ class _AiAssistantSheetContent extends StatefulWidget {
     required this.scrollController,
     required this.onListeningStatusChanged,
     required this.onAiTaskGenerated,
+    this.taskTitle,
+    this.taskContent,
+    this.priority,
+    this.deadline,
   });
 
   @override
@@ -193,8 +201,12 @@ class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
                             _isLoading = true;
                           });
                           try {
-                            final aiTask = await _aiAnalysisBusiness
-                                .createAiTask(sheetAiAssistantText);
+                            final aiTask = await _aiAnalysisBusiness.createAiTask(
+                                text: sheetAiAssistantText,
+                                taskTitle: widget.taskTitle,
+                                taskContent: widget.taskContent,
+                                priority: widget.priority != null ? int.parse(widget.priority!.substring(1)).toString() : null,
+                                deadline: widget.deadline?.toIso8601String());
                             if (mounted) {
                               if (aiTask != null) {
                                 widget.onAiTaskGenerated(aiTask);
@@ -1018,6 +1030,18 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             onAiTaskGenerated: (aiTask) {
               _fillFormWithAiTask(aiTask);
             },
+            taskTitle: _titleController.text.isNotEmpty ? _titleController.text : null,
+            taskContent: _descriptionController.text.isNotEmpty ? _descriptionController.text : null,
+            priority: _selectedPriority,
+            deadline: _selectedDate != null && _selectedTime != null
+                ? DateTime(
+                    _selectedDate!.year,
+                    _selectedDate!.month,
+                    _selectedDate!.day,
+                    _selectedTime!.hour,
+                    _selectedTime!.minute,
+                  )
+                : null,
           );
         },
       ),

@@ -37,9 +37,22 @@ class AiAnalysisBusiness {
     }
   }
 
-  Future<AiGeneratedTask?> createAiTask(String text) async {
+  Future<AiGeneratedTask?> createAiTask({
+    required String text,
+    String? taskTitle,
+    String? taskContent,
+    String? priority,
+    String? deadline,
+  }) async {
     try {
-      final response = await _aiAnalysisApi.createAiTask(text);
+      final response = await _aiAnalysisApi.createAiTask(
+        text: text,
+        taskTitle: taskTitle,
+        taskContent: taskContent,
+        priority: priority,
+        deadline: deadline,
+      );
+      print(response.statusCode);
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {

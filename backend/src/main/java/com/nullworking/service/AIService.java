@@ -37,6 +37,7 @@ import com.nullworking.model.Log;
 import com.nullworking.model.Task;
 import com.nullworking.model.dto.AIAnalysisResultSummaryDTO;
 import com.nullworking.common.ApiResponse;
+import com.nullworking.model.dto.AITaskUpdateRequest;
 import com.nullworking.model.dto.AITaskCreationResponse;
 import java.util.Objects; // 导入 Objects 类
 
@@ -128,6 +129,29 @@ public class AIService {
         StringBuilder response = new StringBuilder();
         arkService.createChatCompletion(chatCompletionRequest).getChoices().forEach(choice -> response.append(choice.getMessage().getContent()));
         return response.toString();
+    }
+
+    public AITaskCreationResponse createOrUpdateTaskWithAI(AITaskUpdateRequest request) {
+        String userText = request.getText();
+        Map<String, Object> existingTaskInfo = new HashMap<>();
+        if (request.getTaskTitle() != null) existingTaskInfo.put("taskTitle", request.getTaskTitle());
+        if (request.getTaskContent() != null) existingTaskInfo.put("taskContent", request.getTaskContent());
+        if (request.getPriority() != null) existingTaskInfo.put("priority", request.getPriority());
+        if (request.getExecutorIds() != null) existingTaskInfo.put("executorIds", request.getExecutorIds());
+        if (request.getDeadline() != null) existingTaskInfo.put("deadline", request.getDeadline().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+        String fullUserPrompt = userText;
+        if (!existingTaskInfo.isEmpty()) {
+            try {
+                String existingTaskJson = objectMapper.writeValueAsString(existingTaskInfo);
+                fullUserPrompt += "\n\n请基于以下任务信息进行修改：\n" + existingTaskJson;
+            } catch (JsonProcessingException e) {
+                // 处理序列化异常，或者选择不附加额外信息
+                e.printStackTrace();
+            }
+        }
+        
+        return createTaskFromAI(fullUserPrompt);
     }
 
     public AITaskCreationResponse createTaskFromAI(String userText) {
