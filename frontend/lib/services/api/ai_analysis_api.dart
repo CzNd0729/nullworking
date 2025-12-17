@@ -13,6 +13,13 @@ class AiAnalysisApi {
     );
   }
 
+  Future<http.Response> createAiTask(String text) async {
+    return await _baseApi.post(
+      'api/ai/task',
+      body: {'text': text},
+    );
+  }
+
   Future<AiAnalysisResult?> getResultById(String resultId) async {
     final response = await _baseApi.get('api/analysis/$resultId');
 

@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
 import '../../services/business/speech_service.dart';
+import '../../services/business/ai_analysis_business.dart';
+import '../../models/ai_analysis_result.dart';
 
 class _AiAssistantSheetContent extends StatefulWidget {
   final SpeechService aiSpeechService;
   final TextEditingController descriptionController;
   final String initialAiAssistantText;
-  final Function(String) onUpdateExternalText; 
+  final Function(String) onUpdateExternalText;
   final Function(bool) onListeningStatusChanged;
   final ScrollController scrollController;
+  final Function(AiGeneratedTask) onAiTaskGenerated;
 
   const _AiAssistantSheetContent({
     required this.aiSpeechService,
@@ -18,6 +21,7 @@ class _AiAssistantSheetContent extends StatefulWidget {
     required this.onUpdateExternalText,
     required this.scrollController,
     required this.onListeningStatusChanged,
+    required this.onAiTaskGenerated,
   });
 
   @override
@@ -27,8 +31,9 @@ class _AiAssistantSheetContent extends StatefulWidget {
 class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
   late String sheetAiAssistantText;
   late TextEditingController textController;
-  // **修复点：将类型从 'late Function' 修改为 'Function(String)?'**
   late Function(String)? originalOnResult;
+  final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -182,19 +187,63 @@ class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
                 width: 60,
                 child: FloatingActionButton(
                   heroTag: 'check_assist_button',
-                  onPressed: hasContent ? () { 
-                    widget.descriptionController.text = sheetAiAssistantText;
-                    Navigator.pop(context);
-                  } : null,
-                  backgroundColor: hasContent
+                  onPressed: (hasContent && !_isLoading)
+                      ? () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          try {
+                            final aiTask = await _aiAnalysisBusiness
+                                .createAiTask(sheetAiAssistantText);
+                            if (mounted) {
+                              if (aiTask != null) {
+                                widget.onAiTaskGenerated(aiTask);
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('AI 任务生成失败！'),
+                                      backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('AI 任务生成异常！'),
+                                    backgroundColor: Colors.red),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
+                        }
+                      : null,
+                  backgroundColor: (hasContent && !_isLoading)
                       ? const Color(0xFF8B5CF6)
                       : Colors.grey.shade700,
                   elevation: 5,
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 32,
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                 ),
               ),
             ],
@@ -904,15 +953,46 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  void _fillFormWithAiTask(AiGeneratedTask aiTask) {
+    setState(() {
+      _titleController.text = aiTask.taskTitle;
+      _descriptionController.text = aiTask.taskContent;
+      _selectedDate = aiTask.deadline;
+      _selectedTime = TimeOfDay.fromDateTime(aiTask.deadline);
+      _updateDueDateText();
+
+      // 根据 AI 返回的优先级设置，这里假设 AI 返回的优先级是 P0, P1, P2, P3 中的一个
+      // 如果 AI 返回的优先级格式不同，需要调整这里的逻辑
+      switch (aiTask.priority.toUpperCase()) {
+        case 'P0':
+          _selectedPriority = 'P0';
+          break;
+        case 'P1':
+          _selectedPriority = 'P1';
+          break;
+        case 'P2':
+          _selectedPriority = 'P2';
+          break;
+        case 'P3':
+          _selectedPriority = 'P3';
+          break;
+        default:
+          _selectedPriority = 'P1'; // 默认值
+          break;
+      }
+      _priorityController.text = _selectedPriority;
+    });
+  }
+
   void _showAiAssistantSheet() {
     _forceUnfocus();
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent, 
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6, 
+        initialChildSize: 0.6,
         minChildSize: 0.25,
         maxChildSize: 0.9,
         builder: (context, scrollController) {
@@ -935,10 +1015,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 });
               }
             },
+            onAiTaskGenerated: (aiTask) {
+              _fillFormWithAiTask(aiTask);
+            },
           );
         },
       ),
-    ); 
+    );
   }
 
   @override

@@ -37,6 +37,22 @@ class AiAnalysisBusiness {
     }
   }
 
+  Future<AiGeneratedTask?> createAiTask(String text) async {
+    try {
+      final response = await _aiAnalysisApi.createAiTask(text);
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['code'] == 200 && responseBody['data'] != null) {
+          return AiGeneratedTask.fromJson(responseBody['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('创建 AI 任务请求异常：$e');
+      return null;
+    }
+  }
+
   Future<List<AiAnalysisResult>?> getResultList() async {
     try {
       return await _aiAnalysisApi.getResultList();
