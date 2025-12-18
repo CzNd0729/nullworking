@@ -201,11 +201,12 @@ class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
                             _isLoading = true;
                           });
                           try {
+                            print(widget.priority);
                             final aiTask = await _aiAnalysisBusiness.createAiTask(
                                 text: sheetAiAssistantText,
                                 taskTitle: widget.taskTitle,
                                 taskContent: widget.taskContent,
-                                priority: widget.priority != null ? int.parse(widget.priority!.substring(1)).toString() : null,
+                                priority: widget.priority != '' ? int.parse(widget.priority!.substring(1)).toString() : null,
                                 deadline: widget.deadline?.toIso8601String());
                             if (mounted) {
                               if (aiTask != null) {
@@ -309,18 +310,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
     _aiSpeechService = SpeechService(
       onResult: (result) {
-        if (mounted) {
-          setState(() {
-            _aiAssistantText = result;
-          });
-        }
+        setState(() {
+          _aiAssistantText = result;
+        });
       },
+
       onListeningStatusChanged: (status) {
-        if (mounted) {
-          setState(() {
-            _isAiAssistantListening = status;
-          });
-        }
+        setState(() {
+          _isAiAssistantListening = status;
+        });
       },
     );
     _aiSpeechService.initialize(appIdIos: '6a5ecb24', appIdAndroid: '6a5ecb24');
@@ -369,8 +367,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _descriptionController.clear();
       _assigneeController.clear();
       _dueDateController.clear();
-      _priorityController.text = '';
-      _selectedPriority = '';
+      _priorityController.text = 'P1';
+      _selectedPriority = 'P1';
       _selectedDate = null;
       _selectedTime = null;
       _selectedAssignees = [];
@@ -971,11 +969,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedDate = aiTask.deadline;
       _selectedTime = TimeOfDay.fromDateTime(aiTask.deadline);
       _updateDueDateText();
-
-      // 根据 AI 返回的优先级设置，支持纯数字格式和P0-P3格式
-      // AI 返回的优先级可能是 "0", "1", "2", "3" 或 "P0", "P1", "P2", "P3"
-      String priorityValue = aiTask.priority.toUpperCase();
-      switch (priorityValue) {
+      
+      switch (aiTask.priority.toUpperCase()) {
         case '0':
         case 'P0':
           _selectedPriority = 'P0';
