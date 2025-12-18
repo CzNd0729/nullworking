@@ -286,7 +286,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final FocusNode _titleFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
 
-  String _selectedPriority = 'P1';
+  String _selectedPriority = '';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
@@ -309,19 +309,18 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
     _aiSpeechService = SpeechService(
       onResult: (result) {
-        setState(() {
-          _aiAssistantText = result;
-        });
-      },
-      onError: (error) {
-        setState(() {
-          _aiAssistantText = '错误: $error';
-        });
+        if (mounted) {
+          setState(() {
+            _aiAssistantText = result;
+          });
+        }
       },
       onListeningStatusChanged: (status) {
-        setState(() {
-          _isAiAssistantListening = status;
-        });
+        if (mounted) {
+          setState(() {
+            _isAiAssistantListening = status;
+          });
+        }
       },
     );
     _aiSpeechService.initialize(appIdIos: '6a5ecb24', appIdAndroid: '6a5ecb24');
@@ -370,8 +369,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _descriptionController.clear();
       _assigneeController.clear();
       _dueDateController.clear();
-      _priorityController.text = 'P1';
-      _selectedPriority = 'P1';
+      _priorityController.text = '';
+      _selectedPriority = '';
       _selectedDate = null;
       _selectedTime = null;
       _selectedAssignees = [];
@@ -973,18 +972,23 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedTime = TimeOfDay.fromDateTime(aiTask.deadline);
       _updateDueDateText();
 
-      // 根据 AI 返回的优先级设置，这里假设 AI 返回的优先级是 P0, P1, P2, P3 中的一个
-      // 如果 AI 返回的优先级格式不同，需要调整这里的逻辑
-      switch (aiTask.priority.toUpperCase()) {
+      // 根据 AI 返回的优先级设置，支持纯数字格式和P0-P3格式
+      // AI 返回的优先级可能是 "0", "1", "2", "3" 或 "P0", "P1", "P2", "P3"
+      String priorityValue = aiTask.priority.toUpperCase();
+      switch (priorityValue) {
+        case '0':
         case 'P0':
           _selectedPriority = 'P0';
           break;
+        case '1':
         case 'P1':
           _selectedPriority = 'P1';
           break;
+        case '2':
         case 'P2':
           _selectedPriority = 'P2';
           break;
+        case '3':
         case 'P3':
           _selectedPriority = 'P3';
           break;
@@ -1190,7 +1194,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   _buildSelectableField(
                     label: '优先级',
                     controller: _priorityController,
-                    hintText: 'P1',
+                    hintText: '请选择优先级',
                     icon: Icons.list,
                     onTap: _selectPriority,
                     readOnly: true,

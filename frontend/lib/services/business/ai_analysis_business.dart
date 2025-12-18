@@ -52,7 +52,6 @@ class AiAnalysisBusiness {
         priority: priority,
         deadline: deadline,
       );
-      print(response.statusCode);
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         if (responseBody['code'] == 200 && responseBody['data'] != null) {
