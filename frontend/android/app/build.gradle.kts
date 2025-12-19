@@ -57,5 +57,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    //implementation(files("libs/Msc.jar"))
+    // OpenInstall SDK
+    implementation(files("libs/OpenInstall_v2.9.2.jar"))
+    // 如果使用 Google Play 下载，可以添加此依赖提升参数还原精度
+    implementation("com.android.installreferrer:installreferrer:2.2")
 }
