@@ -1,6 +1,8 @@
 package com.nullworking.service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,12 +12,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.scheduling.annotation.Scheduled; 
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Task;
@@ -23,17 +24,10 @@ import com.nullworking.model.TaskExecutorRelation;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.TaskPublishRequest;
 import com.nullworking.model.dto.TaskUpdateRequest;
+import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
-import com.nullworking.service.PermissionService;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit; 
-import com.nullworking.model.Log;
-import com.nullworking.repository.LogRepository;
-import com.nullworking.service.NotificationService;
 
 @Service
 public class TaskService {
@@ -373,8 +367,7 @@ public class TaskService {
     @Transactional
     public void checkAndUpdateExpiredTasks() {
         LocalDateTime now = LocalDateTime.now();
-        // 状态排除：已完成(2)、已关闭(3)，只处理进行中(0)的任务
-        List<Byte> excludeStatuses = Arrays.asList((byte)2, (byte)3);
+        List<Byte> excludeStatuses = Arrays.asList((byte)1 , (byte)2, (byte)3);
         
         // 查询所有：截止时间已过 + 状态为进行中的任务
         List<Task> expiredTasks = taskRepository.findByDeadlineBeforeAndTaskStatusNotIn(now, excludeStatuses);
