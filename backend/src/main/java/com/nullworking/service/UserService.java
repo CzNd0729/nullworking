@@ -223,6 +223,11 @@ public class UserService {
      */
     public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
         try {
+            // 不允许编辑管理员
+            if (userId == 0) {
+                return ApiResponse.error(400, "不允许编辑管理员");
+            }
+            
             // 查找用户
             Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
             if (userOptional.isEmpty()) {
