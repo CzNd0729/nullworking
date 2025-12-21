@@ -148,14 +148,16 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
 
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LogDetailPage(logId: log.logId),
-          ),
-        );
-      },
+      onTap: log.logId == 0
+          ? null
+          : () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LogDetailPage(logId: log.logId),
+                ),
+              );
+            },
       child: Container(
         margin: const EdgeInsets.only(bottom: 32),
         child: IntrinsicHeight(
