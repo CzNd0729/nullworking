@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.Objects;
 
@@ -52,6 +53,10 @@ public class UserService {
     // private JwtUtil jwtUtil;
 
     // 所有的业务逻辑将在这里实现
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$"
+    );
 
     public ApiResponse<Map<String, Object>> getSubDeptUser(Integer currentUserId) {
         if (currentUserId == null) {
@@ -173,6 +178,11 @@ public class UserService {
             Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
             if (deptOptional.isEmpty()) {
                 return ApiResponse.error(404, "部门不存在");
+            }
+            
+            // 验证邮箱格式
+            if (request.getEmail() == null || !EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+                return ApiResponse.error(400, "邮箱格式不正确");
             }
             
             // 密码加密
