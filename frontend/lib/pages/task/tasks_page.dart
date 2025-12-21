@@ -75,7 +75,7 @@ class _TasksPageState extends State<TasksPage> {
   void _addTask(Task newTask) {
     setState(() {
       _assignedTasks.add(newTask);
-      _selectedStatusFilters = {'0', '1', '2'};
+      _selectedStatusFilters = {'0', '1'};
     });
   }
 
@@ -140,9 +140,13 @@ class _TasksPageState extends State<TasksPage> {
             children: [
               Expanded(child: _buildStatusFilterChip('0', '进行中', Colors.green)),
               const SizedBox(width: 8.0), // Add spacing between chips
-              Expanded(child: _buildStatusFilterChip('1', '已延期', Colors.orange)),
+              Expanded(
+                child: _buildStatusFilterChip('1', '已延期', Colors.orange),
+              ),
               const SizedBox(width: 8.0),
-              Expanded(child: _buildStatusFilterChip('2', '已完成', Colors.purple)),
+              Expanded(
+                child: _buildStatusFilterChip('2', '已完成', Colors.purple),
+              ),
             ],
           ),
         ],

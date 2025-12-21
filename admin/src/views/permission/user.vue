@@ -131,7 +131,7 @@
         label-width="100px"
       >
         <el-form-item label="用户名" prop="userName">
-          <el-input v-model="temp.userName" />
+          <el-input v-model="temp.userName" :disabled="dialogStatus === 'update'" />
         </el-form-item>
         <el-form-item label="密码" prop="password" v-if="dialogStatus === 'create'">
           <el-input v-model="temp.password" type="password" />
