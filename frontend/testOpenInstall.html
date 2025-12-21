@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenInstall 渠道跳转测试</title>
+    <script type="text/javascript" charset="UTF-8" src="https://res.openinstall.com/openinstall-w0h9pp.js"></script>
+</head>
+<body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #f4f4f9;">
+
+    <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+        <h2 style="color: #333;">我的 App 跳转测试</h2>
+        <p style="color: #666;">点击下方按钮尝试唤起 App 并传递参数</p>
+        
+        <button id="downloadButton" style="margin-top: 20px; padding: 12px 24px; font-size: 16px; background-color: #007AFF; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background 0.3s;">
+            立即打开/下载 App
+        </button>
+    </div>
+
+    <script type="text/javascript">
+        // 解析当前 URL 里的参数（例如 index.html?roomID=101）
+        var data = OpenInstall.parseUrlParams();
+        
+        new OpenInstall({
+            appKey : "w0h9pp",
+            onready : function() {
+                // 初始化成功后，尝试自动弹出 Scheme 拉起（Android 环境常用）
+                this.schemeWakeup();
+                
+                var m = this, button = document.getElementById("downloadButton");
+                button.onclick = function() {
+                    // 核心方法：已安装则拉起，未安装则跳转下载
+                    m.wakeupOrInstall();
+                    return false;
+                }
+            }
+        }, data);
+    </script>
+</body>
+</html>
