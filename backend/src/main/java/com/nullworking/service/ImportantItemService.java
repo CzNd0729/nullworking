@@ -37,6 +37,11 @@ public class ImportantItemService {
                 return ApiResponse.error(404, "用户不存在");
             }
 
+            // 验证标题不能为空
+            if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
+                return ApiResponse.error(400, "事项标题不能为空");
+            }
+
             // 验证显示顺序
             Byte displayOrder;
             Integer itemCount = importantItemRepository.countByUser(user);
