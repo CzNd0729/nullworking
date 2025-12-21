@@ -199,3 +199,19 @@ CREATE TABLE `notification` (
   -- 索引：按时间倒序展示最新通知
   KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知表';
+
+
+14--创建短链接映射表（一个分析结果可能多次分享）
+CREATE TABLE `short_url` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `short_code` varchar(8) NOT NULL COMMENT '短码（6-8位唯一）',
+  `result_id` bigint NOT NULL COMMENT '关联的AI分析结果ID',
+  `user_id` bigint NOT NULL COMMENT '生成链接的用户ID（鉴权用）',
+  `expire_time` datetime NOT NULL COMMENT '过期时间（默认2小时）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `visit_count` int DEFAULT 0 COMMENT '访问次数',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_short_code` (`short_code`) COMMENT '短码唯一索引',
+  KEY `idx_result_id` (`result_id`) COMMENT '分析结果ID索引',
+  KEY `idx_expire_time` (`expire_time`) COMMENT '过期时间索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='短链接映射表';
