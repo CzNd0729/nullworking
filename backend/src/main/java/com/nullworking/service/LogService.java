@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,6 @@ import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
-import java.util.Objects;
 
 @Service
 public class LogService {
@@ -235,6 +235,26 @@ public class LogService {
 
         // 返回所有与任务关联的日志，不再过滤只返回当前用户的日志
         List<Log> allLogs = new ArrayList<>();
+
+        // 为每个执行者自动创建“接收任务”日志（临时返回，不存入数据库）
+        taskExecutorRelationRepository.findByTask_TaskId(taskId).forEach(relation -> {
+            User executor = relation.getExecutor();
+            Log receiveLog = new Log();
+            receiveLog.setUser(executor);
+            receiveLog.setTask(task);
+            receiveLog.setLogId(0);
+            receiveLog.setLogTitle("接收任务");
+            receiveLog.setLogContent("接收到\"" + task.getTaskTitle() + "\"任务");
+            receiveLog.setLogStatus(1); // 1表示已完成
+            receiveLog.setTaskProgress(0); // 进度为0%
+            receiveLog.setLogDate(task.getCreationTime().toLocalDate());
+            receiveLog.setStartTime(task.getCreationTime().toLocalTime());
+            receiveLog.setEndTime(task.getCreationTime().toLocalTime());
+            receiveLog.setCreationTime(task.getCreationTime());
+            receiveLog.setUpdateTime(task.getCreationTime());
+            allLogs.add(receiveLog);
+        });
+
         for (Log log : logs) {
             allLogs.add(log);
         }

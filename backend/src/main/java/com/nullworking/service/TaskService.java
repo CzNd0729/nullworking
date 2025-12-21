@@ -281,22 +281,6 @@ public class TaskService {
                 relation.setTask(savedTask);
                 relation.setExecutor(executor);
                 taskExecutorRelationRepository.save(relation);
-                
-                // 为每个执行者自动创建日志
-                Log log = new Log();
-                log.setUser(executor);
-                log.setTask(savedTask);
-                log.setLogTitle("接收任务");
-                log.setLogContent("接收到\"" + savedTask.getTaskTitle() + "\"任务");
-                log.setLogStatus(1); // 1表示已完成
-                log.setTaskProgress(0); // 进度为0%
-                log.setLogDate(LocalDate.now());
-                log.setStartTime(LocalTime.now());
-                log.setEndTime(LocalTime.now());
-                log.setCreationTime(LocalDateTime.now());
-                log.setUpdateTime(LocalDateTime.now());
-                
-                logRepository.save(log);
 
                 // 如果执行者不是创建者，则创建通知
                 if (!executorId.equals(creatorId)) {
