@@ -692,78 +692,70 @@ class _CreateAnalysisRequestPageState extends State<CreateAnalysisRequestPage> {
     );
   }
 
-  void _onAnalyze() async {
-    // 验证输入
-    final prompt = _promptController.text.trim();
-    if (prompt.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请输入提示词')));
+void _onAnalyze() async {
+  // 1. 处理提示词：为空则用固定默认值，不为空则用用户输入
+  String prompt = _promptController.text.trim();
+  if (prompt.isEmpty) {
+    prompt = '帮我分析这个人的工作情况'; // 统一默认提示词
+  }
+
+  // 2. 保留原有参数验证逻辑（日期/任务选择）
+  if (_analysisMode == 'time') {
+    if (_startDate == null || _endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择起始和截止日期')));
       return;
     }
+  } else if (_selectedTaskId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('请选择要分析的任务')));
+    return;
+  }
 
-    // 验证选择的参数
-    if (_analysisMode == 'time') {
-      if (_startDate == null || _endDate == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('请选择起始和截止日期')));
-        return;
-      }
-    } else if (_selectedTaskId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('请选择要分析的任务')));
-      return;
-    }
+  setState(() => _loading = true);
 
-    setState(() => _loading = true);
-
-    try {
-      // 构建请求参数
-      final requestData = _analysisMode == 'time'
-          ? {
-              'userIds': _selectedPeople.isEmpty
-                  ? _peopleMap.values.toList()
-                  : _selectedPeople
-                        .map((name) => _peopleMap[name])
-                        .where((id) => id != null)
-                        .map((id) => id!)
-                        .toList(),
-              'startDate': _startDate!.toIso8601String().split('T')[0],
-              'endDate': _endDate!.toIso8601String().split('T')[0],
-              'userPrompt': prompt,
-            }
-          : {'taskId': _selectedTaskId, 'userPrompt': prompt};
-
-      final analysisModeInt = _analysisMode == 'time' ? 0 : 1;
-      final resultId = await _aiAnalysisBusiness.logAnalysis(analysisModeInt, requestData);
-
-      if (mounted) {
-        if (resultId != null) {
-          if (resultId == "permission_denied") {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('权限不足，请联系管理员')),
-            );
-          } else {
-            Navigator.of(context).pop();
+  try {
+    // 3. 构建请求参数（使用处理后的 prompt）
+    final requestData = _analysisMode == 'time'
+        ? {
+            'userIds': _selectedPeople.isEmpty
+                ? _peopleMap.values.toList()
+                : _selectedPeople
+                      .map((name) => _peopleMap[name])
+                      .where((id) => id != null)
+                      .map((id) => id!)
+                      .toList(),
+            'startDate': _startDate!.toIso8601String().split('T')[0],
+            'endDate': _endDate!.toIso8601String().split('T')[0],
+            'userPrompt': prompt, // 这里用默认/用户输入的提示词
           }
-        } else {
+        : {'taskId': _selectedTaskId, 'userPrompt': prompt};
+
+    final analysisModeInt = _analysisMode == 'time' ? 0 : 1;
+    final resultId = await _aiAnalysisBusiness.logAnalysis(analysisModeInt, requestData);
+
+    // 后续异常处理、弹窗提示逻辑保持不变
+    if (mounted) {
+      if (resultId != null) {
+        if (resultId == "permission_denied") {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('分析请求失败，请稍后再试')),
+            const SnackBar(content: Text('权限不足，请联系管理员')),
           );
+        } else {
+          Navigator.of(context).pop();
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('分析请求失败，请稍后再试')),
+        );
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('分析过程出错: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('分析过程出错: $e')));
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _loading = false);
     }
   }
+}
 }

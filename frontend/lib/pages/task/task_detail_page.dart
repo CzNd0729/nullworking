@@ -297,11 +297,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     String status;
     switch (widget.task.taskStatus) {
       case '0':
-        if (DateTime.now().isAfter(widget.task.deadline)) {
-          status = '已延期';
-        } else {
-          status = '进行中';
-        }
+        status = '进行中';
         break;
       case '1':
         status = '已延期';

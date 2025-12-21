@@ -23,6 +23,7 @@ import com.nullworking.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -64,7 +65,7 @@ public class UserController {
 
     @Operation(summary = "添加新用户", description = "创建新用户，包括用户名、密码、角色、部门、真实姓名、电话号码和邮箱")
     @PostMapping("")
-    public ApiResponse<Integer> addUser(@RequestBody UserCreateRequest request, HttpServletRequest httpRequest) {
+    public ApiResponse<Integer> addUser(@Valid @RequestBody UserCreateRequest request, HttpServletRequest httpRequest) {
         // 检查是否为管理员
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
         if (currentUserId == null || currentUserId != 0) {
