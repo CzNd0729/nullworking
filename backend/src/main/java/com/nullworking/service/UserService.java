@@ -262,6 +262,10 @@ public class UserService {
             }
             
             if (request.getEmail() != null) {
+                // 验证邮箱不能为空
+                if (request.getEmail().trim().isEmpty()) {
+                    return ApiResponse.error(400, "邮箱不能为空");
+                }
                 user.setEmail(request.getEmail());
             }
             
@@ -383,6 +387,10 @@ public class UserService {
             }
 
             if (request.getEmail() != null) {
+                // 验证邮箱不能为空
+                if (request.getEmail().trim().isEmpty()) {
+                    return ApiResponse.error(400, "邮箱不能为空");
+                }
                 user.setEmail(request.getEmail());
             }
 
