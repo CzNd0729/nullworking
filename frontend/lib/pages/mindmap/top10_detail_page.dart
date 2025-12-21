@@ -35,6 +35,22 @@ class _Top10DetailPageState extends State<Top10DetailPage> {
   }
 
   void _onSave() {
+    if (_titleCtrl.text.trim().isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('提示'),
+          content: const Text('标题不能为空'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     final updated = {
       'title': _titleCtrl.text.trim(),
       'content': _contentCtrl.text.trim(),

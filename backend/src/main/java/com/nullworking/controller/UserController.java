@@ -148,8 +148,12 @@ public class UserController {
         String oldPassword = request.getOldPassword();
         String newPassword = request.getNewPassword();
 
-        if (oldPassword == null || newPassword == null) {
-            return ApiResponse.error(400, "旧密码和新密码不能为空");
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            return ApiResponse.error(400, "旧密码不能为空");
+        }
+        
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return ApiResponse.error(400, "新密码不能为空");
         }
 
         return userService.changePassword(currentUserId, oldPassword, newPassword);

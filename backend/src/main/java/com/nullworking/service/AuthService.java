@@ -117,6 +117,12 @@ public class AuthService {
         if (email == null || code == null || newPassword == null) {
             return ApiResponse.error(400, "参数不完整");
         }
+        
+        // 验证新密码不能为空
+        if (newPassword.trim().isEmpty()) {
+            return ApiResponse.error(400, "新密码不能为空");
+        }
+        
         boolean ok = verificationCodeService.verifyCode(email, code);
         if (!ok) {
             return ApiResponse.error(400, "验证码错误或已过期");
