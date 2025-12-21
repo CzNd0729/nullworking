@@ -146,9 +146,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       dotColor = Colors.grey;
       isDashedLine = true;
     }
-
     return InkWell(
-      onTap: log.logId == 0
+      onTap: log.logId == '0'
           ? null
           : () {
               Navigator.push(
