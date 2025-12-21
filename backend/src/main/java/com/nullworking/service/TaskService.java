@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -362,6 +363,51 @@ public class TaskService {
 
         } catch (Exception e) {
             return ApiResponse.error(500, "任务更新失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 定时检查并更新过期未完成的任务为"已延期"状态
+     */
+    @Scheduled(fixedRate = 60000) // 每分钟执行一次
+    @Transactional
+    public void checkAndUpdateExpiredTasks() {
+        LocalDateTime now = LocalDateTime.now();
+        // 状态排除：已完成(2)、已关闭(3)，只处理进行中(0)的任务
+        List<Byte> excludeStatuses = Arrays.asList((byte)2, (byte)3);
+        
+        // 查询所有：截止时间已过 + 状态为进行中的任务
+        List<Task> expiredTasks = taskRepository.findByDeadlineBeforeAndTaskStatusNotIn(now, excludeStatuses);
+        
+        for (Task task : expiredTasks) {
+            task.setTaskStatus((byte)1); // 设为"已延期"状态
+            taskRepository.save(task);
+            
+            // 可选：发送延期通知给创建者和执行者
+            sendExpireNotification(task);
+        }
+    }
+
+    /**
+     * 发送任务延期通知（可选功能）
+     */
+    private void sendExpireNotification(Task task) {
+        // 通知创建者
+        Integer creatorId = task.getCreator().getUserId();
+        String creatorMsg = String.format("您发布的任务\"%s\"已超过截止时间，已转为延期状态。", task.getTaskTitle());
+        notificationService.createNotification(creatorId, creatorMsg, "task", task.getTaskId());
+        
+        // 通知所有执行者
+        List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(task.getTaskId());
+        Set<Integer> notifiedUsers = new HashSet<>(executorIds);
+        notifiedUsers.add(creatorId); // 避免重复通知创建者（如果创建者也是执行者）
+        
+        for (Integer executorId : executorIds) {
+            if (!notifiedUsers.contains(executorId)) {
+                String executorMsg = String.format("您参与的任务\"%s\"已超过截止时间，已转为延期状态。", task.getTaskTitle());
+                notificationService.createNotification(executorId, executorMsg, "task", task.getTaskId());
+                notifiedUsers.add(executorId);
+            }
         }
     }
 }

@@ -14,4 +14,12 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 	List<Task> findByCreator_UserId(Integer userId);
 
 	List<Task> findByDeadlineBetweenAndIsDeadlineNotifiedFalseAndTaskStatusNot(LocalDateTime start, LocalDateTime end, Byte taskStatus);
+
+	/**
+     * 查询截止时间在指定时间之前，且状态不在排除列表中的任务
+     * @param deadline 截止时间上限（当前时间）
+     * @param excludeStatuses 要排除的状态（已完成、已关闭）
+     * @return 符合条件的任务列表
+     */
+    List<Task> findByDeadlineBeforeAndTaskStatusNotIn(LocalDateTime deadline, List<Byte> excludeStatuses);
 }
