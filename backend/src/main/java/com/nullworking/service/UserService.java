@@ -450,6 +450,10 @@ public class UserService {
                 return ApiResponse.error(404, "用户不存在");
             }
 
+            if (newPassword == null || newPassword.trim().isEmpty()) {
+                return ApiResponse.error(400, "新密码不能为空");
+            }
+
             User user = userOptional.get();
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
