@@ -10,12 +10,10 @@ import '../log/log_detail_page.dart';
 
 class TaskDetailPage extends StatefulWidget {
   final Task task;
-  // final bool isAssignedTask; // 删除此行
 
   const TaskDetailPage({
     super.key,
     required this.task,
-    // this.isAssignedTask = false, // 删除此行
   });
 
   @override
@@ -37,8 +35,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
   Future<void> _loadTaskLogs() async {
     try {
       setState(() => _isLoadingLogs = true);
-
-      // 移除 _debugMode 相关的逻辑和 MockData.generateTestLogs 调用
 
       final logs = await _logBusiness.getLogsByTaskId(widget.task.taskId);
       logs.sort((a, b) => b.logDate.compareTo(a.logDate));
@@ -116,6 +112,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     final reversedLogs = List<Log>.from(filteredLogs.reversed);
 
+    // 恢复原始Column结构，移除全局水平滚动
     return Column(
       children: List.generate(reversedLogs.length, (index) {
         final log = reversedLogs[index];
@@ -144,10 +141,10 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
     if (log.logStatus == 1) {
       dotColor = Colors.green;
-      isDashedLine = false; // 已完成日志用实线
+      isDashedLine = false;
     } else {
       dotColor = Colors.grey;
-      isDashedLine = true; // 未完成日志用虚线
+      isDashedLine = true;
     }
 
     return InkWell(
@@ -165,6 +162,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 时间轴圆点+线条（恢复原始结构，保证显示）
               Column(
                 children: [
                   Container(
@@ -194,57 +192,71 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ],
               ),
               const SizedBox(width: 16),
+
+              // 日志文本区域：单个条目内水平滚动，解决溢出
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      log.logTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      log.logContent,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width - 80,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          log.endTime,
+                          log.logTitle,
                           style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (log.userName != null &&
-                            log.userName!.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            log.userName!,
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 12,
-                            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          log.logContent,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
                           ),
-                        ],
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              log.endTime,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (log.userName != null &&
+                                log.userName!.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                log.userName!,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-              // 进度值独立显示在右侧
+
+              // 进度条：固定宽度+单行，解决换行问题
               if (log.taskProgress != null)
                 Container(
+                  width: 50,
+                  margin: const EdgeInsets.only(left: 8),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
@@ -255,7 +267,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   ),
                   child: Text(
                     '${log.taskProgress!}%',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
                   ),
                 ),
             ],
@@ -322,13 +340,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+          if (!widget.task.isParticipated)
             IconButton(
               icon: const Icon(Icons.edit, color: Colors.white),
               onPressed: () => _editTask(),
             ),
           if (!widget.task.isParticipated &&
-              widget.task.taskStatus != '2') // 如果任务是用户创建的（非参与的）且未完成，则显示删除按钮
+              widget.task.taskStatus != '2')
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
               onPressed: () => _confirmDeleteTask(),
@@ -440,7 +458,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      // 只有当用户是任务的负责人（参与者）时，才显示添加日志按钮
                       if (widget.task.isParticipated)
                         ElevatedButton.icon(
                           icon: const Icon(Icons.add, size: 18),
@@ -475,7 +492,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 ],
               ),
             ),
-            // 原来的按钮区域已移除
           ],
         ),
       ),
@@ -550,12 +566,12 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 class DashedLinePainter extends CustomPainter {
   final Color color;
   final bool isDashed;
-  final bool isBottom; // 添加 isBottom 参数
+  final bool isBottom;
 
   DashedLinePainter({
     required this.color,
     required this.isDashed,
-    this.isBottom = false, // 默认为 false
+    this.isBottom = false,
   });
 
   @override
@@ -567,7 +583,6 @@ class DashedLinePainter extends CustomPainter {
     if (isBottom) {
       return;
     }
-    // The margin of _buildTimelineItem is 32, so we extend the line by that amount.
     final totalHeight = size.height + 32.0;
 
     if (isDashed) {
