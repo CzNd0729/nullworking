@@ -223,6 +223,11 @@ public class UserService {
     // filePath: nullworking/service/UserService.java
 public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
     try {
+            // 不允许编辑管理员
+            if (userId == 0) {
+                return ApiResponse.error(400, "不允许编辑管理员");
+            }
+            
         Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
         if (userOptional.isEmpty()) {
             return ApiResponse.error(404, "用户不存在");

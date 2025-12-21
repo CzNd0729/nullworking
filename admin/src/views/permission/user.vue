@@ -105,12 +105,17 @@
       </el-table-column>
       <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
-          <el-button type="primary" size="mini" @click="handleUpdate(row)">
-            编辑
-          </el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
-            删除
-          </el-button>
+          <span v-if="row.userId === 0" style="color: #909399; font-size: 12px;">
+            系统默认角色，不可编辑
+          </span>
+          <template v-else>
+            <el-button type="primary" size="mini" @click="handleUpdate(row)">
+              编辑
+            </el-button>
+            <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
+              删除
+            </el-button>
+          </template>
         </template>
       </el-table-column>
         </el-table>
