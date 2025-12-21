@@ -297,7 +297,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     String status;
     switch (widget.task.taskStatus) {
       case '0':
-        status = '进行中';
+        if (DateTime.now().isAfter(widget.task.deadline)) {
+          status = '已延期';
+        } else {
+          status = '进行中';
+        }
         break;
       case '1':
         status = '已延期';
@@ -327,7 +331,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               icon: const Icon(Icons.edit, color: Colors.white),
               onPressed: () => _editTask(),
             ),
-          if (!widget.task.isParticipated) // 如果任务是用户创建的（非参与的），则显示修改和删除按钮
+          if (!widget.task.isParticipated &&
+              widget.task.taskStatus != '2') // 如果任务是用户创建的（非参与的）且未完成，则显示删除按钮
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
               onPressed: () => _confirmDeleteTask(),

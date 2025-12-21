@@ -102,6 +102,9 @@ public class TaskService {
             if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
                 return ApiResponse.error(403, "无权限删除此任务");
             }
+            if (Byte.valueOf((byte)2).equals(task.getTaskStatus())) {
+                return ApiResponse.error(403, "已完成的任务无法删除");
+            }
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
                 return ApiResponse.error(208, "任务已关闭");
             }

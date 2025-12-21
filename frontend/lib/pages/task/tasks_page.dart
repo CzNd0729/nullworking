@@ -140,9 +140,13 @@ class _TasksPageState extends State<TasksPage> {
             children: [
               Expanded(child: _buildStatusFilterChip('0', '进行中', Colors.green)),
               const SizedBox(width: 8.0), // Add spacing between chips
-              Expanded(child: _buildStatusFilterChip('1', '已延期', Colors.orange)),
+              Expanded(
+                child: _buildStatusFilterChip('1', '已延期', Colors.orange),
+              ),
               const SizedBox(width: 8.0),
-              Expanded(child: _buildStatusFilterChip('2', '已完成', Colors.purple)),
+              Expanded(
+                child: _buildStatusFilterChip('2', '已完成', Colors.purple),
+              ),
             ],
           ),
         ],
@@ -175,8 +179,13 @@ class _TasksPageState extends State<TasksPage> {
 
     switch (task.taskStatus) {
       case '0':
-        statusTag = '进行中';
-        statusColor = Colors.green;
+        if (DateTime.now().isAfter(task.deadline)) {
+          statusTag = '已延期';
+          statusColor = Colors.orange;
+        } else {
+          statusTag = '进行中';
+          statusColor = Colors.green;
+        }
         break;
       case '1':
         statusTag = '已延期';
