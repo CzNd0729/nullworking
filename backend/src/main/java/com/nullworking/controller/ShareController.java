@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * AI 分析结果短链接分享控制器
@@ -57,6 +59,7 @@ public class ShareController {
     /**
      * 网页版展示 AI 分析结果（用于 H5 打开短链接）
      */
+    @Operation(summary = "根据shortCode查询AI分析结果", description = "返回该分析结果")
     @GetMapping("/web/{shortCode}")
     public Map<String, Object> showWebResult(@PathVariable String shortCode) {
         Map<String, Object> response = new HashMap<>();
@@ -70,5 +73,25 @@ public class ShareController {
             response.put("errorMsg", e.getMessage());
         }
         return response;
+    }
+
+    /**
+    * 根据分析结果ID查询短链接（公开接口）
+    */
+    @Operation(summary = "根据resultId查询短链接", description = "返回该分析结果对应的有效短链接")
+    @GetMapping("/getShortUrlByResultId/{resultId}")
+    public ApiResponse<String> getShortUrlByResultId(
+            @PathVariable @NotNull(message = "分析结果ID不能为空") Integer resultId) {
+
+        try {
+            String shortUrl = shortUrlService.getPublicShortUrlByResultId(resultId);
+            return ApiResponse.success(shortUrl);
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(400, e.getMessage());
+        } catch (NoSuchElementException e) {
+            return ApiResponse.error(404, "该分析结果暂无有效短链接");
+        } catch (Exception e) {
+            return ApiResponse.error(500, "查询短链接失败: " + e.getMessage());
+        }
     }
 }

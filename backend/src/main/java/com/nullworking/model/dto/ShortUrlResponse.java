@@ -8,14 +8,7 @@ import lombok.Data;
  */
 @Data
 public class ShortUrlResponse {
-    /**
-     * 最终生成的OpenInstall格式短链接
-     */
     private String shortUrl;
-
-    /**
-     * 短链接有效期（默认2小时）
-     * 复用现有业务规则，无需额外配置
-     */
-    private Integer expireHours = 2;
+    // 修正为7天有效期（7*24=168小时）
+    private Integer expireHours = 168; 
 }

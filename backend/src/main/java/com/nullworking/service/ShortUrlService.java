@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -34,40 +35,57 @@ public class ShortUrlService {
 
     /**
      * 生成短链接（数据库版，带事务）
-     */
+     */// 添加方法：查询是否存在有效短链接
+    public Optional<ShortUrl> findValidShortUrlByResultId(Integer resultId) {
+        LocalDateTime now = LocalDateTime.now();
+        // 查询未过期且属于该resultId的短链接
+        return shortUrlRepository.findByResultIdAndExpireTimeAfter(resultId, now);
+    }
+
+    // 修改generateShortUrl方法，优先使用已有有效短链接
     @Transactional(rollbackFor = Exception.class)
     public ShortUrlResponse generateShortUrl(Integer resultId, Integer currentUserId) {
-        // 1. 校验用户权限：仅结果创建者可分享
+        // 1. 校验用户权限（原逻辑不变）
         AIAnalysisResult result = aiAnalysisResultRepository.findById(resultId)
                 .orElseThrow(() -> new IllegalArgumentException("分析结果不存在"));
         if (result.getUser() == null || result.getUser().getUserId() == null
                 || !result.getUser().getUserId().equals(currentUserId)) {
             throw new SecurityException("无权限分享该分析结果");
         }
+        // 2. 检查是否已有有效短链接，有则直接返回
+        Optional<ShortUrl> existingShortUrl = findValidShortUrlByResultId(resultId);
+        if (existingShortUrl.isPresent()) {
+            ShortUrl shortUrl = existingShortUrl.get();
+            ShortUrlResponse response = new ShortUrlResponse();
+        response.setShortUrl(buildShortUrl(shortUrl.getShortCode()));
+        return response;
+    }
 
-        // 2. 生成唯一短码（循环检测数据库是否已存在）
+        // 3. 生成新短码（原逻辑不变）
         String shortCode;
         do {
             shortCode = ShortCodeGenerator.generate();
         } while (shortUrlRepository.existsByShortCode(shortCode));
 
-        // 3. 构建短链接实体，存入数据库
+        // 4. 保存新短链接（原逻辑不变）
         ShortUrl shortUrl = new ShortUrl();
         shortUrl.setShortCode(shortCode);
         shortUrl.setResultId(resultId);
         shortUrl.setUserId(currentUserId);
         shortUrl.setExpireTime(LocalDateTime.now().plusDays(DEFAULT_EXPIRE_DAYS));
-        shortUrl.setVisitCount(0); // 初始访问次数为0
+        shortUrl.setVisitCount(0);
         shortUrlRepository.save(shortUrl);
 
-        // 4. 拼接OpenInstall短链接
+        // 5. 构建响应
         ShortUrlResponse response = new ShortUrlResponse();
-        response.setShortUrl(
-                openInstallConfig.getDefaultDomain()
-                        + "?shortCode=" + shortCode
-                        + "&resultId=" + resultId
-        );
+        response.setShortUrl(buildShortUrl(shortCode));
         return response;
+}
+
+// 新增：统一构建短链接的方法
+    private String buildShortUrl(String shortCode) {
+        // 只包含shortCode，避免暴露resultId
+        return openInstallConfig.getDefaultDomain() + "/api/share/web/" + shortCode;
     }
 
     /**
@@ -96,5 +114,26 @@ public class ShortUrlService {
         // 4. 查询并返回AI分析结果
         return aiAnalysisResultRepository.findById(shortUrl.getResultId())
                 .orElseThrow(() -> new IllegalArgumentException("分析结果不存在"));
+    }
+
+    /**
+    * 公开接口：根据resultId查询有效短链接（无需权限校验）
+    * @param resultId 分析结果ID
+    * @return 完整短链接URL
+    * @throws NoSuchElementException 当无有效短链接时抛出
+    */
+    public String getPublicShortUrlByResultId(Integer resultId) {
+    // 1. 仅校验分析结果存在性（不验证用户权限）
+     AIAnalysisResult result = aiAnalysisResultRepository.findById(resultId)
+                .orElseThrow(() -> new IllegalArgumentException("分析结果不存在"));
+
+     // 2. 查询未过期的短链接
+        Optional<ShortUrl> existingShortUrl = findValidShortUrlByResultId(resultId);
+        if (existingShortUrl.isPresent()) {
+           return buildShortUrl(existingShortUrl.get().getShortCode());
+        }
+
+        // 3. 无有效短链接时抛出异常
+        throw new NoSuchElementException("未找到有效短链接");
     }
 }
