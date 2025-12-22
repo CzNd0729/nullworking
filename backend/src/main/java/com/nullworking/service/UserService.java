@@ -265,6 +265,11 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             user.setPhoneNumber(request.getPhone().trim());
         }
         if (request.getEmail() != null && EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+            // 检查邮箱唯一性（排除自己）
+            User exist = userRepository.findByEmail(request.getEmail());
+            if (exist != null && !exist.getUserId().equals(userId)) {
+                return ApiResponse.error(409, "该邮箱已被其他账号占用");
+            }
             user.setEmail(request.getEmail());
         }
 
@@ -389,6 +394,11 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
                 // 验证邮箱不能为空
                 if (request.getEmail().trim().isEmpty()) {
                     return ApiResponse.error(400, "邮箱不能为空");
+                }
+                // 检查邮箱唯一性（排除自己）
+                User exist = userRepository.findByEmail(request.getEmail());
+                if (exist != null && !exist.getUserId().equals(currentUserId)) {
+                    return ApiResponse.error(409, "该邮箱已被其他账号占用");
                 }
                 user.setEmail(request.getEmail());
             }

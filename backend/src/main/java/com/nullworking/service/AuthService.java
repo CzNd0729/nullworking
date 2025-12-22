@@ -94,19 +94,23 @@ public class AuthService {
         return ApiResponse.success("注册成功");
     }
 
-    public ApiResponse<Void> sendPasswordResetCode(String email) {
-        if (email == null || email.trim().isEmpty()) {
-            return ApiResponse.error(400, "邮箱不能为空");
+    public ApiResponse<Void> sendPasswordResetCode(String emailOrUsername) {
+        if (emailOrUsername == null || emailOrUsername.trim().isEmpty()) {
+            return ApiResponse.error(400, "请输入用户名或邮箱");
         }
-        User user = userRepository.findByEmail(email);
+        // 允许输入用户名或邮箱，优先用户名精确查找
+        User user = userRepository.findByUserName(emailOrUsername);
         if (user == null) {
-            return ApiResponse.error(404, "未找到该邮箱对应的用户");
+            user = userRepository.findByEmail(emailOrUsername);
         }
-        String code = verificationCodeService.generateCode(email);
+        if (user == null) {
+            return ApiResponse.error(404, "未找到该用户");
+        }
+        String code = verificationCodeService.generateCode(user.getEmail());
         String subject = "重置密码验证码";
         String text = String.format("您的重置密码验证码是：%s，%d 分钟内有效。如非本人操作请忽略。", code, verificationCodeService.getExpireMinutes());
         try {
-            emailService.sendSimpleMail(email, subject, text);
+            emailService.sendSimpleMail(user.getEmail(), subject, text);
             return ApiResponse.success();
         } catch (Exception e) {
             return ApiResponse.error(500, "发送邮件失败: " + e.getMessage());
@@ -117,19 +121,21 @@ public class AuthService {
         if (email == null || code == null || newPassword == null) {
             return ApiResponse.error(400, "参数不完整");
         }
-        
         // 验证新密码不能为空
         if (newPassword.trim().isEmpty()) {
             return ApiResponse.error(400, "新密码不能为空");
         }
-        
-        boolean ok = verificationCodeService.verifyCode(email, code);
+        // 允许输入用户名或邮箱，优先用户名精确查找
+        User user = userRepository.findByUserName(email);
+        if (user == null) {
+            user = userRepository.findByEmail(email);
+        }
+        if (user == null) {
+            return ApiResponse.error(404, "未找到该用户");
+        }
+        boolean ok = verificationCodeService.verifyCode(user.getEmail(), code);
         if (!ok) {
             return ApiResponse.error(400, "验证码错误或已过期");
-        }
-        User user = userRepository.findByEmail(email);
-        if (user == null) {
-            return ApiResponse.error(404, "未找到该邮箱对应的用户");
         }
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         user.setPassword(encoder.encode(newPassword));

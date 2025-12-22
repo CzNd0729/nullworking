@@ -1,13 +1,13 @@
 package com.nullworking.model.dto;
 
 public class ForgotPasswordRequest {
-    private String email;
+    private String emailOrUsername;
 
-    public String getEmail() {
-        return email;
+    public String getEmailOrUsername() {
+        return emailOrUsername;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setEmailOrUsername(String emailOrUsername) {
+        this.emailOrUsername = emailOrUsername;
     }
 }

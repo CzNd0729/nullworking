@@ -57,7 +57,7 @@ public class AuthController {
 
     @PostMapping("/send-email-code")
     public ApiResponse<Void> sendPasswordResetCode(@RequestBody ForgotPasswordRequest request) {
-        return authService.sendPasswordResetCode(request.getEmail());
+        return authService.sendPasswordResetCode(request.getEmailOrUsername());
     }
 
     @PostMapping("/reset-password")
