@@ -8,7 +8,7 @@ import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
 import 'services/notification_services/push_notification_service.dart';
 import 'services/notification_services/unread_notification_service.dart'; // 新增导入
-import 'utils/navigator_key.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +21,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey,
       title: 'NullWorking',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -60,8 +59,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 2;
-  final UnreadNotificationService _unreadNotificationService =
-      UnreadNotificationService();
+  final UnreadNotificationService _unreadNotificationService = UnreadNotificationService();
 
   @override
   void initState() {
@@ -79,8 +77,7 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _unreadNotificationService
-          .refreshUnreadStatus(); // Refresh when app resumes
+      _unreadNotificationService.refreshUnreadStatus(); // Refresh when app resumes
     }
   }
 
