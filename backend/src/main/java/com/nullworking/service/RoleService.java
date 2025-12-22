@@ -163,6 +163,12 @@ public class RoleService {
             if (roleId == null) {
                 return ApiResponse.error(400, "角色ID不能为空");
             }
+            
+            // 不允许更新管理员角色
+            if (roleId == 1) {
+                return ApiResponse.error(400, "不允许更新管理员角色");
+            }
+            
             Role role = roleRepository.findById(Objects.requireNonNull(roleId)).orElse(null);
             if (role == null) {
                 return ApiResponse.error(404, "角色不存在");
@@ -265,6 +271,12 @@ public class RoleService {
             if (roleId == null) {
                 return ApiResponse.error(400, "角色ID不能为空");
             }
+            
+            // 不允许删除管理员角色
+            if (roleId == 1) {
+                return ApiResponse.error(400, "不允许删除管理员角色");
+            }
+            
             Role role = roleRepository.findById(roleId).orElse(null);
             if (role == null) {
                 return ApiResponse.error(404, "角色不存在");

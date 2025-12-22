@@ -50,6 +50,7 @@ public class AIService {
     private final LogRepository logRepository;
     private final TaskRepository taskRepository;
     private final String systemPrompt;
+    private final String model;
     private final ObjectMapper objectMapper;
     private final PermissionService permissionService;
     // private final UserService userService;
@@ -70,6 +71,7 @@ public class AIService {
             LogRepository logRepository,
             TaskRepository taskRepository,
             @Value("${ark.system.prompt}") String systemPrompt,
+            @Value("${volcengine.ark.model}") String model,
             ObjectMapper objectMapper,
             PermissionService permissionService,
             UserService userService,
@@ -84,6 +86,7 @@ public class AIService {
         this.logRepository = logRepository;
         this.taskRepository = taskRepository;
         this.systemPrompt = systemPrompt;
+        this.model = model;
         this.objectMapper = objectMapper;
 
         // 配置ObjectMapper以正确处理LocalDateTime
@@ -121,7 +124,7 @@ public class AIService {
         messages.add(userMessage);
 
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                .model("doubao-seed-1-6-thinking-250715") // 指定您创建的方舟推理接入点 ID
+                .model(model) // 指定您创建的方舟推理接入点 ID
                 .messages(messages)
                 .reasoningEffort("medium")
                 .build();

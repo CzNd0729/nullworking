@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.Objects;
 
 @Service
 public class UserService {
@@ -52,6 +52,10 @@ public class UserService {
     // private JwtUtil jwtUtil;
 
     // 所有的业务逻辑将在这里实现
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$"
+    );
 
     public ApiResponse<Map<String, Object>> getSubDeptUser(Integer currentUserId) {
         if (currentUserId == null) {
@@ -175,6 +179,11 @@ public class UserService {
                 return ApiResponse.error(404, "部门不存在");
             }
             
+            // 验证邮箱格式
+            if (request.getEmail() == null || !EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+                return ApiResponse.error(400, "邮箱格式不正确");
+            }
+            
             // 密码加密
             BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
             String encodedPassword = encoder.encode(request.getPassword());
@@ -211,68 +220,62 @@ public class UserService {
      * @param request 更新请求
      * @return 更新结果
      */
-    public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
-        try {
-            // 查找用户
-            Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
-            if (userOptional.isEmpty()) {
-                return ApiResponse.error(404, "用户不存在");
+    // filePath: nullworking/service/UserService.java
+public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
+    try {
+            // 不允许编辑管理员
+            if (userId == 0) {
+                return ApiResponse.error(400, "不允许编辑管理员");
             }
             
-            User user = userOptional.get();
-
-            // 强制要求角色与部门为必填
-            if (request.getRoleId() == null) {
-                return ApiResponse.error(400, "角色为必选项");
-            }
-            if (request.getDeptId() == null) {
-                return ApiResponse.error(400, "部门为必选项");
-            }
-
-            // 更新角色（必填校验后）
-            Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
-            if (roleOptional.isEmpty()) {
-                return ApiResponse.error(404, "角色不存在");
-            }
-            user.setRole(roleOptional.get());
-
-            // 更新部门（必填校验后）
-            Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
-            if (deptOptional.isEmpty()) {
-                return ApiResponse.error(404, "部门不存在");
-            }
-            user.setDepartment(deptOptional.get());
-            
-            // 更新其他字段
-            if (request.getUserName() != null && !request.getUserName().trim().isEmpty()) {
-                // 检查用户名是否已被其他用户使用
-                User existingUser = userRepository.findByUserName(request.getUserName());
-                if (existingUser != null && !existingUser.getUserId().equals(userId)) {
-                    return ApiResponse.error(400, "用户名已被使用");
-                }
-                user.setUserName(request.getUserName());
-            }
-            
-            if (request.getRealName() != null && !request.getRealName().trim().isEmpty()) {
-                user.setRealName(request.getRealName());
-            }
-            
-            if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
-                user.setPhoneNumber(request.getPhoneNumber());
-            }
-            
-            if (request.getEmail() != null) {
-                user.setEmail(request.getEmail());
-            }
-            
-            // 保存更新
-            userRepository.save(user);
-            
-            return ApiResponse.success();
-        } catch (Exception e) {
-            return ApiResponse.error(500, "更新用户失败: " + e.getMessage());
+        Optional<User> userOptional = userRepository.findById(Objects.requireNonNull(userId));
+        if (userOptional.isEmpty()) {
+            return ApiResponse.error(404, "用户不存在");
         }
+        
+        User user = userOptional.get();
+
+        // 强制要求角色与部门为必填
+        if (request.getRoleId() == null) {
+            return ApiResponse.error(400, "角色为必选项");
+        }
+        if (request.getDeptId() == null) {
+            return ApiResponse.error(400, "部门为必选项");
+        }
+
+        // 更新角色（必填校验后）
+        Optional<Role> roleOptional = roleRepository.findById(Objects.requireNonNull(request.getRoleId()));
+        if (roleOptional.isEmpty()) {
+            return ApiResponse.error(404, "角色不存在");
+        }
+        user.setRole(roleOptional.get());
+
+        // 更新部门（必填校验后）
+        Optional<Department> deptOptional = departmentRepository.findById(Objects.requireNonNull(request.getDeptId()));
+        if (deptOptional.isEmpty()) {
+            return ApiResponse.error(404, "部门不存在");
+        }
+        user.setDepartment(deptOptional.get());
+
+        // 更新其他允许修改的字段（真实姓名、电话、邮箱等）
+        if (request.getRealName() != null && !request.getRealName().trim().isEmpty()) {
+            user.setRealName(request.getRealName().trim());
+        }
+        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+            user.setPhoneNumber(request.getPhone().trim());
+        }
+        if (request.getEmail() != null && EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+            user.setEmail(request.getEmail());
+        }
+
+        // 注意：此处刻意不处理 userName 字段，禁止更新用户名
+
+        userRepository.save(user);
+        return ApiResponse.success();
+    } catch (Exception e) {
+        return ApiResponse.error(500, "更新用户失败: " + e.getMessage());
     }
+}
 
     /**
      * 删除用户
@@ -383,6 +386,10 @@ public class UserService {
             }
 
             if (request.getEmail() != null) {
+                // 验证邮箱不能为空
+                if (request.getEmail().trim().isEmpty()) {
+                    return ApiResponse.error(400, "邮箱不能为空");
+                }
                 user.setEmail(request.getEmail());
             }
 
@@ -448,6 +455,10 @@ public class UserService {
             Optional<User> userOptional = userRepository.findById(userId);
             if (userOptional.isEmpty()) {
                 return ApiResponse.error(404, "用户不存在");
+            }
+
+            if (newPassword == null || newPassword.trim().isEmpty()) {
+                return ApiResponse.error(400, "新密码不能为空");
             }
 
             User user = userOptional.get();
