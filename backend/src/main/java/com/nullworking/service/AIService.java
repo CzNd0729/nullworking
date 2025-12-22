@@ -341,8 +341,13 @@ public class AIService {
                 fullPrompt = request.getUserPrompt() + "\n\n以下是相关数据：\n" + jsonData; // 使用新的userPrompt字段
             } else if (mode == 1) { // 仅任务模式
                 // 根据taskId获取任务
-                Task task = taskRepository.findById(request.getTaskId())
-                        .orElseThrow(() -> new RuntimeException("Task not found for ID: " + request.getTaskId()));
+                Task task = taskRepository.findById(request.getTaskId()).orElse(null);
+                if (task == null) {
+                    analysisResult.setContent("任务不存在，无法进行分析。");
+                    analysisResult.setStatus(3); // 3: 分析失败
+                    aiAnalysisResultRepository.save(analysisResult);
+                    return;
+                }
 
                 // 获取与该任务关联的所有日志
                 List<Log> logs = logRepository.findByTaskTaskId(request.getTaskId());
@@ -413,15 +418,21 @@ public class AIService {
             // 模拟AI分析结果
             String aiResponse = getAIResponse(fullPrompt, null); // 这里可以根据实际情况传入imageUrl
 
-            // 解析AI响应并更新analysisResult
-            // 假设aiResponse包含一个JSON字符串
-            analysisResult.setContent(aiResponse);
+            // 乱码校验
+            boolean isValid = com.nullworking.util.ContentValidationUtil.isValidAnalysisContent(aiResponse);
+            if (!isValid) {
+                analysisResult.setContent("AI分析结果疑似乱码，已被系统拦截。");
+                analysisResult.setStatus(2); // 2: 乱码失败
+            } else {
+                analysisResult.setContent(aiResponse);
+                analysisResult.setStatus(1); // 1: 分析完成
+            }
 
         } catch (Exception e) {
             analysisResult.setContent("Error: " + e.getMessage());
+            analysisResult.setStatus(3); // 3: 分析失败
             e.printStackTrace();
         } finally {
-            analysisResult.setStatus(1); // 分析完成，无论成功失败都标记为完成
             aiAnalysisResultRepository.save(analysisResult);
         }
     }
@@ -432,6 +443,10 @@ public class AIService {
         // 权限校验：只能查看自己的分析结果
         if (!analysisResult.getUser().getUserId().equals(userId)) {
             throw new RuntimeException("权限不足：只能查看自己的分析结果。");
+        }
+        // 乱码校验：状态为2时禁止查看
+        if (analysisResult.getStatus() != null && analysisResult.getStatus() == 2) {
+            throw new RuntimeException("AI分析结果疑似乱码，无法查看。");
         }
         String content = analysisResult.getContent();
         if (content == null) {
