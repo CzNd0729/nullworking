@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
 import '../../services/business/speech_service.dart';
@@ -995,8 +996,56 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
   }
 
-  void _showAiAssistantSheet() {
+  Future<void> _showAiAssistantSheet() async {
     _forceUnfocus();
+
+    // 检查麦克风权限
+    var status = await Permission.microphone.status;
+    if (status.isDenied) {
+      // 如果被拒绝，向用户申请
+      status = await Permission.microphone.request();
+      if (status.isDenied) {
+        // 如果用户再次拒绝，可以提示用户到设置中开启（可选，这里先简单处理）
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('需要麦克风权限才能使用 AI 助手语音功能'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    if (status.isPermanentlyDenied) {
+      // 如果永久拒绝，提示跳转设置
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('权限受限'),
+            content: const Text('麦克风权限被永久拒绝，请在设置中手动开启以使用语音功能。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.pop(context);
+                },
+                child: const Text('去设置'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
