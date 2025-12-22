@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
 import 'package:nullworking/models/ai_analysis_result.dart';
 import 'package:nullworking/services/business/ai_analysis_business.dart';
+import 'package:nullworking/services/business/share_business.dart';
 
 class AIAnalysisResultPage extends StatefulWidget {
   final String resultId;
@@ -14,8 +17,10 @@ class AIAnalysisResultPage extends StatefulWidget {
 
 class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
   final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
+  final ShareBusiness _shareBusiness = ShareBusiness();
   AiAnalysisResult? _analysisResult;
   bool _isLoading = true;
+  bool _isSharing = false;
 
   final List<String> _chartColorPalette = const [
     '#4285F4', // Google Blue
@@ -644,6 +649,86 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     );
   }
 
+  Future<void> _handleShare() async {
+    setState(() {
+      _isSharing = true;
+    });
+
+    try {
+      final shortUrl = await _shareBusiness.generateShareUrl(int.parse(widget.resultId));
+      if (shortUrl != null) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1E1E1E),
+              title: const Text('分享链接', style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('链接已生成：', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    shortUrl,
+                    style: const TextStyle(
+                      color: Color(0xFF00D9A3),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: shortUrl));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('链接已复制到剪贴板'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text(
+                    '复制链接',
+                    style: TextStyle(color: Color(0xFF00D9A3)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    '确定',
+                    style: TextStyle(color: Color(0xFF00D9A3)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        _showErrorSnackBar('生成分享链接失败');
+      }
+    } catch (e) {
+      _showErrorSnackBar('生成分享链接异常: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -669,7 +754,26 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     final summary = (data['summary'] as String?) ?? '暂无分析概述';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('AI分析结果')),
+      appBar: AppBar(
+        title: const Text('AI分析结果'),
+        actions: [
+          if (_isSharing)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: _handleShare,
+              tooltip: '转发',
+            ),
+        ],
+      ),
       backgroundColor: Colors.grey[900],
       body: Center(
         child: ConstrainedBox(
