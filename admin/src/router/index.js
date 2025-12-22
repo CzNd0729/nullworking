@@ -10,6 +10,11 @@ export const constantRoutes = [
     hidden: true
   },
   {
+    path: '/link/:codeInfo',
+    component: () => import('@/views/OpenInstall'),
+    hidden: true
+  },
+  {
     path: '/',
     redirect: '/dashboard'
   },
@@ -74,6 +79,7 @@ export const constantRoutes = [
 ]
 
 const createRouter = () => new Router({
+  mode: 'history', // 开启 history 模式
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRoutes
 })

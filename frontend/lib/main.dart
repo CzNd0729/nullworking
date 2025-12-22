@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'pages/log/log_page.dart';
 import 'pages/task/tasks_page.dart';
 import 'pages/mindmap/mindmap_page.dart';
@@ -60,12 +61,28 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int _currentIndex = 2;
   final UnreadNotificationService _unreadNotificationService = UnreadNotificationService();
+  static const platform = MethodChannel('com.example.nullworking/openinstall');
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _unreadNotificationService.refreshUnreadStatus(); // Initial refresh
+    _initOpenInstall();
+  }
+
+  void _initOpenInstall() {
+    platform.setMethodCallHandler((call) async {
+      if (call.method == "onWakeUp") {
+        final Map<dynamic, dynamic> data = call.arguments;
+        debugPrint("收到 OpenInstall 唤醒参数: $data");
+        if (data.containsKey('code')) {
+          final String code = data['code'];
+          debugPrint("解析到 code: $code");
+          // 这里可以根据业务逻辑处理 code，例如跳转或保存
+        }
+      }
+    });
   }
 
   @override

@@ -18,9 +18,9 @@ public class OpenInstallConfig {
     private String appKey = "w0h9pp";
 
     /**
-     * OpenInstall默认测试域名
+     * 服务器地址
      */
-    private String defaultDomain = "https://app-w0h9pp.openinstall.com/w0h9pp";
+    private String defaultDomain = "http://58.87.76.10:8081/link";
     /**
      * 唤起APP的Scheme（与OpenInstall控制台配置一致：w0h9pp）
      */

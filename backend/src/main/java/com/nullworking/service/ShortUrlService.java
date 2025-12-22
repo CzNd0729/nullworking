@@ -85,7 +85,7 @@ public class ShortUrlService {
 // 新增：统一构建短链接的方法
     private String buildShortUrl(String shortCode) {
         // 只包含shortCode，避免暴露resultId
-        return openInstallConfig.getDefaultDomain() + "/api/share/web/" + shortCode;
+        return openInstallConfig.getDefaultDomain() + "/" + shortCode;
     }
 
     /**
