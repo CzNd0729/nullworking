@@ -68,6 +68,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     if (mounted) {
       setState(() {
         _analysisResult = result;
+        _analysisResult?.resultId=widget.resultId!;
         _isLoading = false;
       });
     }
