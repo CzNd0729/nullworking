@@ -7,9 +7,10 @@ import 'package:nullworking/services/business/ai_analysis_business.dart';
 import 'package:nullworking/services/business/share_business.dart';
 
 class AIAnalysisResultPage extends StatefulWidget {
-  final String resultId;
+  final String? resultId;
+  final Map<String, dynamic>? content;
 
-  const AIAnalysisResultPage({super.key, required this.resultId});
+  const AIAnalysisResultPage({super.key, this.resultId, this.content});
 
   @override
   State<AIAnalysisResultPage> createState() => _AIAnalysisResultPageState();
@@ -47,7 +48,23 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
     setState(() {
       _isLoading = true;
     });
-    final result = await _aiAnalysisBusiness.getResultById(widget.resultId);
+
+    AiAnalysisResult? result;
+    if (widget.content != null) {
+      // 如果直接传了内容，则直接构造结果
+      result = AiAnalysisResult(
+        resultId: widget.resultId ?? '',
+        prompt: {},
+        analysisTime: DateTime.now(),
+        status: 1, // 已完成
+        mode: 0,
+        content: widget.content!,
+      );
+    } else if (widget.resultId != null) {
+      // 否则根据 ID 加载
+      result = await _aiAnalysisBusiness.getResultById(widget.resultId!);
+    }
+
     if (mounted) {
       setState(() {
         _analysisResult = result;
@@ -650,12 +667,19 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
   }
 
   Future<void> _handleShare() async {
+    if (_analysisResult == null ||
+        _analysisResult!.resultId.isEmpty ||
+        int.tryParse(_analysisResult!.resultId) == null) {
+      _showErrorSnackBar('当前结果无法分享（无效的ID）');
+      return;
+    }
+
     setState(() {
       _isSharing = true;
     });
 
     try {
-      final shortUrl = await _shareBusiness.generateShareUrl(int.parse(widget.resultId));
+      final shortUrl = await _shareBusiness.generateShareUrl(int.parse(_analysisResult!.resultId));
       if (shortUrl != null) {
         if (mounted) {
           showDialog(
@@ -746,7 +770,7 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
         body: const Center(child: Text('未能加载分析结果')),
       );
     }
-    final data = _analysisResult!.content as Map<String, dynamic>? ?? {};
+    final data = _analysisResult!.content;
     final suggestions =
         (data['constructive_suggestions'] as List<dynamic>?) ?? [];
     final keywords = (data['keyword_statistics'] as List<dynamic>?) ?? [];
@@ -757,21 +781,23 @@ class _AIAnalysisResultPageState extends State<AIAnalysisResultPage> {
       appBar: AppBar(
         title: const Text('AI分析结果'),
         actions: [
-          if (_isSharing)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          if (_analysisResult!.resultId.isNotEmpty && int.tryParse(_analysisResult!.resultId) != null) ...[
+            if (_isSharing)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: _handleShare,
+                tooltip: '转发',
               ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: _handleShare,
-              tooltip: '转发',
-            ),
+          ],
         ],
       ),
       backgroundColor: Colors.grey[900],

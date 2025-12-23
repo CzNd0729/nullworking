@@ -37,6 +37,15 @@ class AiAnalysisBusiness {
     }
   }
 
+  Future<AiAnalysisResult?> getAnalysisByShortCode(String shortCode) async {
+    try {
+      return await _aiAnalysisApi.getAnalysisByShortCode(shortCode);
+    } catch (e) {
+      debugPrint('通过 ShortCode 获取分析结果失败：$e');
+      return null;
+    }
+  }
+
   Future<AiGeneratedTask?> createAiTask({
     required String text,
     String? taskTitle,

@@ -44,6 +44,18 @@ class AiAnalysisApi {
     return null;
   }
 
+  Future<AiAnalysisResult?> getAnalysisByShortCode(String shortCode) async {
+    final response = await _baseApi.get('api/share/web/$shortCode');
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['code'] == 200 && body['data'] != null) {
+        return AiAnalysisResult.fromJson(body['data']);
+      }
+    }
+    return null;
+  }
+
   Future<List<AiAnalysisResult>?> getResultList() async {
     final response = await _baseApi.get('api/analysis');
     if (response.statusCode == 200) {

@@ -6,12 +6,17 @@ import com.nullworking.model.ShortUrl;
 import com.nullworking.model.dto.ShortUrlResponse;
 import com.nullworking.repository.AIAnalysisResultRepository;
 import com.nullworking.repository.ShortUrlRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nullworking.util.ShortCodeGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -29,6 +34,9 @@ public class ShortUrlService {
 
     @Autowired
     private OpenInstallConfig openInstallConfig;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     // 默认过期天数（可配置化，也可放application.yml）
     private static final int DEFAULT_EXPIRE_DAYS = 7;
@@ -114,6 +122,29 @@ public class ShortUrlService {
         // 4. 查询并返回AI分析结果
         return aiAnalysisResultRepository.findById(shortUrl.getResultId())
                 .orElseThrow(() -> new IllegalArgumentException("分析结果不存在"));
+    }
+
+    /**
+     * 获取 Web 展示所需的 AI 分析结果数据
+     * 格式与 AIService.getAIAnalysisResult 保持一致
+     * @param shortCode 短链接码
+     * @return 解析后的 AI 分析结果内容
+     */
+    public Map<String, Object> getWebResultByShortCode(String shortCode) {
+        AIAnalysisResult result = parseShortCode(shortCode);
+        String content = result.getContent();
+        if (content == null) {
+            throw new RuntimeException("AI分析结果内容为空，shortCode: " + shortCode);
+        }
+        try {
+            return objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
+            // 如果不是 JSON 格式，则将原始 content 包装在 Map 中返回，以保持返回类型一致
+            Map<String, Object> fallback = new HashMap<>();
+            fallback.put("content", content);
+            fallback.put("analysisTime", result.getAnalysisTime());
+            return fallback;
+        }
     }
 
     /**

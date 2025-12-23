@@ -14,6 +14,7 @@ class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "com.example.nullworking/openinstall"
     private var methodChannel: MethodChannel? = null
+    private var pendingData: Any? = null
 
     // 使用 Adapter 替代 Listener 可以更稳定地处理双参数回调
     private val wakeupAdapter = object : AppWakeUpAdapter() {
@@ -22,9 +23,13 @@ class MainActivity : FlutterActivity() {
             val data = appData.data
             Log.d("OpenInstall", "唤醒成功，参数: $data")
 
-            // 将数据发送到 Flutter 端
-            runOnUiThread {
-                methodChannel?.invokeMethod("onWakeUp", data)
+            if (data != null) {
+                // 如果 Flutter 端还没准备好，先暂存数据
+                pendingData = data
+                // 尝试发送给 Flutter
+                runOnUiThread {
+                    methodChannel?.invokeMethod("onWakeUp", data)
+                }
             }
         }
     }
@@ -33,6 +38,15 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // 初始化 MethodChannel
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        
+        methodChannel?.setMethodCallHandler { call, result ->
+            if (call.method == "getPendingData") {
+                result.success(pendingData)
+                pendingData = null // 发送后清空
+            } else {
+                result.notImplemented()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

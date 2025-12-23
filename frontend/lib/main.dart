@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'pages/log/log_page.dart';
@@ -7,6 +9,8 @@ import 'pages/ai_analysis/ai_analysis_page.dart';
 import 'pages/profile/profile_page.dart';
 import 'pages/login/login_page.dart';
 import 'pages/splash_page.dart';
+import 'pages/ai_analysis/ai_analysis_result_page.dart';
+import 'services/business/ai_analysis_business.dart';
 import 'services/notification_services/push_notification_service.dart';
 import 'services/notification_services/unread_notification_service.dart'; // 新增导入
 
@@ -71,18 +75,57 @@ class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
     _initOpenInstall();
   }
 
-  void _initOpenInstall() {
+  void _initOpenInstall() async {
     platform.setMethodCallHandler((call) async {
       if (call.method == "onWakeUp") {
-        final Map<dynamic, dynamic> data = call.arguments;
-        debugPrint("收到 OpenInstall 唤醒参数: $data");
-        if (data.containsKey('code')) {
-          final String code = data['code'];
-          debugPrint("解析到 code: $code");
-          // 这里可以根据业务逻辑处理 code，例如跳转或保存
-        }
+        final data = call.arguments;
+        _processOpenInstallData(data);
       }
     });
+
+    // 主动检查是否有冷启动暂存的数据
+    try {
+      final data = await platform.invokeMethod('getPendingData');
+      if (data != null) {
+        _processOpenInstallData(data);
+      }
+    } catch (e) {
+      debugPrint("获取暂存数据失败: $e");
+    }
+  }
+
+  void _processOpenInstallData(dynamic data) {
+    debugPrint("收到 OpenInstall 唤醒参数: $data");
+    Map? dataMap;
+    if (data is Map) {
+      dataMap = data;
+    } else if (data is String) {
+      try {
+        dataMap = jsonDecode(data) as Map;
+      } catch (e) {
+        debugPrint("解析 JSON 失败: $e");
+      }
+    }
+
+    if (dataMap != null && dataMap.containsKey('code')) {
+      final String code = dataMap['code'].toString();
+      debugPrint("解析到 code: $code");
+      _handleShareCode(code);
+    }
+  }
+
+  Future<void> _handleShareCode(String code) async {
+    final AiAnalysisBusiness aiAnalysisBusiness = AiAnalysisBusiness();
+    final result = await aiAnalysisBusiness.getAnalysisByShortCode(code);
+    if (result != null && mounted) {
+      print(result.content);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AIAnalysisResultPage(resultId: result.resultId,content: result.content),
+        ),
+      );
+    }
   }
 
   @override
