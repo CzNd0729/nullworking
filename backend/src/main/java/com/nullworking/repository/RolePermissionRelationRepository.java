@@ -11,5 +11,6 @@ import com.nullworking.model.RolePermissionRelation;
 @Repository
 public interface RolePermissionRelationRepository extends JpaRepository<RolePermissionRelation, Integer> {
     List<RolePermissionRelation> findByRole_RoleId(Integer roleId);
+    List<RolePermissionRelation> findByPermission_PermissionId(Integer permissionId);
     Optional<RolePermissionRelation> findByRole_RoleIdAndPermission_PermissionId(Integer roleId, Integer permissionId);
 }
