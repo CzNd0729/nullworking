@@ -868,6 +868,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    print(_selectedAssignees);
+    if (_selectedAssignees.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择负责人'), backgroundColor: Colors.red),
+      );
+      return;
+    }
 
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1195,7 +1202,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           activeColor: const Color(0xFF00D9A3),
                         ),
                         Text(
-                          '分配给其他成员',
+                          '分配给下属员工',
                           style: TextStyle(
                             color: widget.taskToEdit != null
                                 ? Colors.white54
@@ -1276,9 +1283,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 50),
             ],
           ),
         ),
