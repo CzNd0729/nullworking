@@ -247,7 +247,7 @@ public class AIService {
         aiAnalysisResultRepository.save(analysisResult);
 
         // 异步执行AI分析
-        // self.performAIAnalysis(analysisResult.getResultId(), request, mode);
+        self.performAIAnalysis(analysisResult.getResultId(), request, mode);
 
         return ApiResponse.success(analysisResult.getResultId());
     }

@@ -1,7 +1,12 @@
 package com.nullworking.service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +24,6 @@ import com.nullworking.repository.PermissionRepository;
 import com.nullworking.repository.RolePermissionRelationRepository;
 import com.nullworking.repository.RoleRepository;
 import com.nullworking.repository.UserRepository;
-
-import java.util.Objects;
 
 @Service
 public class RoleService {
@@ -108,7 +111,7 @@ public class RoleService {
                     .orElseGet(() -> {
                         Permission newPermission = new Permission();
                         newPermission.setPermissionName(assignTaskPermissionName);
-                        newPermission.setPermissionDescription("允许将任务分配给" + savedRole.getRoleName());
+                        newPermission.setPermissionDescription("下级角色:" + savedRole.getRoleName());
                         newPermission.setCreationTime(LocalDateTime.now());
                         newPermission.setUpdateTime(LocalDateTime.now());
                         return permissionRepository.save(newPermission);
@@ -200,7 +203,7 @@ public class RoleService {
                     .orElseGet(() -> {
                         Permission newPermission = new Permission();
                         newPermission.setPermissionName(assignTaskPermissionName);
-                        newPermission.setPermissionDescription("允许将任务分配给 " + role.getRoleName() + ".");
+                        newPermission.setPermissionDescription("下级角色:" + role.getRoleName());
                         newPermission.setCreationTime(LocalDateTime.now());
                         newPermission.setUpdateTime(LocalDateTime.now());
                         return permissionRepository.save(newPermission);
@@ -301,6 +304,17 @@ public class RoleService {
                 }
                 rolePermissionRelationRepository.delete(relation);
             }
+
+            // 删除角色时，同时删除创建角色时附带的权限 (ASSIGN_TASK_TO_ROLE_NAME)
+            String assignTaskPermissionName = "ASSIGN_TASK_TO_" + role.getRoleName().toUpperCase();
+            permissionRepository.findByPermissionName(assignTaskPermissionName).ifPresent(permission -> {
+                // 删除该权限的所有关联关系
+                rolePermissionRelationRepository.findByPermission_PermissionId(permission.getPermissionId()).forEach(relation -> {
+                    rolePermissionRelationRepository.delete(relation);
+                });
+                // 删除权限本身
+                permissionRepository.delete(permission);
+            });
 
             // 删除角色
             roleRepository.delete(role);
