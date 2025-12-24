@@ -10,7 +10,7 @@
         class="logout-button"
         @click="logout"
       >
-        登出
+        退出登录
       </el-button>
     </div>
   </div>
