@@ -173,8 +173,8 @@ export default {
     },
     async handleCreate() {
       this.resetTemp()
-      // 确保权限列表已加载
-      await this.getPermissionsList()
+      // 每次打开创建对话框时都强制刷新权限列表，确保获取最新数据
+      await this.getPermissionsList(true)
       this.dialogStatus = 'create'
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -195,6 +195,8 @@ export default {
           createRole(tempData).then(() => {
             this.dialogFormVisible = false
             this.$message.success('添加角色成功')
+            // 清空权限列表缓存，确保下次加载时获取最新数据
+            this.permissionsList = []
             this.getList()
           }).catch(error => {
             console.error("Error creating role:", error)
@@ -216,8 +218,8 @@ export default {
         this.temp.description = latestRole.roleDescription;
       }
 
-      // 先加载权限列表，确保权限列表已加载完成
-      await this.getPermissionsList();
+      // 每次打开编辑对话框时都重新加载权限列表，确保获取最新数据
+      await this.getPermissionsList(true);
 
       // 权限列表加载完成后再设置选中的权限
       const rolePermissionIds = latestRole.permissionIds || [];
@@ -278,6 +280,8 @@ export default {
       }).then(() => {
         deleteRole(row.roleId).then(() => {
           this.list.splice(index, 1)
+          // 清空权限列表缓存，确保下次打开对话框时获取最新数据
+          this.permissionsList = []
           this.$message.success('删除成功')
         }).catch(error => {
           console.error("Error deleting role:", error)
@@ -287,23 +291,23 @@ export default {
         this.$message.info('已取消删除')
       })
     },
-    getPermissionsList() {
-      // 如果权限列表已经加载过，直接返回 Promise.resolve
-      if (this.permissionsList && this.permissionsList.length > 0) {
-        return Promise.resolve()
+    getPermissionsList(forceReload = false) {
+      // 如果强制重新加载或者权限列表未加载，则重新加载权限列表
+      if (forceReload || !this.permissionsList || this.permissionsList.length === 0) {
+        return listPermissions().then(response => {
+          if (response.data && response.data.permissions) {
+            this.permissionsList = response.data.permissions
+          } else {
+            this.permissionsList = []
+          }
+        }).catch(error => {
+          console.error("Error fetching permissions:", error)
+          this.$message.error('获取权限列表失败')
+          throw error // 抛出错误以便调用者处理
+        })
       }
-      // 否则加载权限列表
-      return listPermissions().then(response => {
-        if (response.data && response.data.permissions) {
-          this.permissionsList = response.data.permissions
-        } else {
-          this.permissionsList = []
-        }
-      }).catch(error => {
-        console.error("Error fetching permissions:", error)
-        this.$message.error('获取权限列表失败')
-        throw error // 抛出错误以便调用者处理
-      })
+      // 如果权限列表已经加载过且不需要强制重新加载，直接返回 Promise.resolve
+      return Promise.resolve()
     }
   }
 }
