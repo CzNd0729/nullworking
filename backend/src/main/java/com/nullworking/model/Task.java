@@ -31,7 +31,7 @@ public class Task {
     private String taskTitle;
 
     @Lob
-    @Column(name = "Task_Content", nullable = false)
+    @Column(name = "Task_Content", nullable = false, columnDefinition = "TEXT")
     private String taskContent;
 
     @Column(name = "Priority", nullable = false)
