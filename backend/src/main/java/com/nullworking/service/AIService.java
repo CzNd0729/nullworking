@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import com.nullworking.model.Log;
 import com.nullworking.model.Task;
@@ -453,19 +454,35 @@ public class AIService {
             throw new RuntimeException("AI分析结果内容为空，ID: " + resultId);
         }
         try {
-            Map<String, Object> resultMap = objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
+            // ========== 核心修改：使用LinkedHashMap保证插入顺序 ==========
+            // 步骤1：初始化有序Map（LinkedHashMap），保证字段顺序
+            Map<String, Object> resultMap = new LinkedHashMap<>();
             
-            // 从数据库的 prompt 字段（全量请求 JSON）中提取用户提示词并加入结果中
+            // 步骤2：解析prompt并按顺序放入（prompt字段整体在前）
             String promptJson = analysisResult.getPrompt();
-            if (promptJson != null) {
+            if (promptJson != null && !promptJson.isEmpty()) {
                 try {
-                    Map<String, Object> requestMap = objectMapper.readValue(promptJson, new TypeReference<Map<String, Object>>() {});
-                    resultMap.put("userPrompt", requestMap.get("userPrompt"));
+                    // 解析prompt为有序Map，保留其原有字段顺序
+                    Map<String, Object> promptMap = objectMapper.readValue(
+                            promptJson, 
+                            new TypeReference<LinkedHashMap<String, Object>>() {} // 关键：解析为LinkedHashMap
+                    );
+                    // 按prompt原有顺序，将所有字段放入结果Map（先放）
+                    resultMap.putAll(promptMap);
                 } catch (Exception e) {
-                    // 忽略解析错误
+                    throw new RuntimeException("AI分析结果prompt JSON解析失败，ID: " + resultId, e);
                 }
             }
             
+            // 步骤3：解析content并按顺序放入（content字段整体在后）
+            // 解析content为有序Map，保留其原有字段顺序
+            Map<String, Object> contentMap = objectMapper.readValue(
+                    content, 
+                    new TypeReference<LinkedHashMap<String, Object>>() {} // 关键：解析为LinkedHashMap
+            );
+            // 按content原有顺序，将所有字段放入结果Map（后放）
+            resultMap.putAll(contentMap);
+
             return resultMap;
         } catch (JsonProcessingException e) {
             throw new RuntimeException("AI分析结果JSON解析失败，ID: " + resultId, e);
