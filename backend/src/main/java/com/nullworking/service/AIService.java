@@ -421,7 +421,7 @@ public class AIService {
             // 乱码校验
             boolean isValid = com.nullworking.util.ContentValidationUtil.isValidAnalysisContent(aiResponse);
             if (!isValid) {
-                analysisResult.setContent("AI分析结果疑似乱码，已被系统拦截。");
+                analysisResult.setContent(aiResponse);
                 analysisResult.setStatus(2); // 2: 乱码失败
             } else {
                 analysisResult.setContent(aiResponse);
