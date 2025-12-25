@@ -453,7 +453,20 @@ public class AIService {
             throw new RuntimeException("AI分析结果内容为空，ID: " + resultId);
         }
         try {
-            return objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
+            Map<String, Object> resultMap = objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
+            
+            // 从数据库的 prompt 字段（全量请求 JSON）中提取用户提示词并加入结果中
+            String promptJson = analysisResult.getPrompt();
+            if (promptJson != null) {
+                try {
+                    Map<String, Object> requestMap = objectMapper.readValue(promptJson, new TypeReference<Map<String, Object>>() {});
+                    resultMap.put("userPrompt", requestMap.get("userPrompt"));
+                } catch (Exception e) {
+                    // 忽略解析错误
+                }
+            }
+            
+            return resultMap;
         } catch (JsonProcessingException e) {
             throw new RuntimeException("AI分析结果JSON解析失败，ID: " + resultId, e);
         }
