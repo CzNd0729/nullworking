@@ -1,9 +1,9 @@
 package com.nullworking.service;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +26,7 @@ public class VerificationCodeService {
         return expireMinutes;
     }
 
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     public String generateCode(String email) {
         String code = String.format("%06d", random.nextInt(1_000_000));

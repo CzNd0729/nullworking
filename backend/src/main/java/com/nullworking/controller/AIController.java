@@ -85,7 +85,6 @@ public class AIController {
     @PostMapping("/analysis")
     public ApiResponse<Integer> startAIAnalysis(@RequestBody AIAnalysisRequest request, @RequestParam Integer mode, HttpServletRequest httpRequest) {
         Integer currentUserId = JwtUtil.extractUserIdFromRequest(httpRequest, jwtUtil);
-        System.out.println(request);
         if (currentUserId == null) {
             return ApiResponse.error(401, "未授权");
         }
