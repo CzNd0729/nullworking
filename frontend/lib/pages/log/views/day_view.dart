@@ -101,7 +101,8 @@ class _DayViewState extends State<DayView> {
   double _calculateLogHeight(String startTime, String endTime) {
     final start = _calculateLogPosition(startTime);
     final end = _calculateLogPosition(endTime);
-    return (end - start) * 60; // 每小时60逻辑像素
+    final height = (end - start) * 60; // 每小时60逻辑像素
+    return height < 30 ? 30 : height; // 设置最小高度为30，防止内容溢出
   }
 
   // 检查两个日志是否时间重叠
@@ -214,7 +215,9 @@ class _DayViewState extends State<DayView> {
             top: startPosition,
             left: 60 + (column * columnWidth), // 时间轴宽度 + 列偏移
             width: columnWidth - 8, // 减去边距
-            child: SizedBox(height: height, child: _buildLogItem(log)),
+            // 使用 ConstrainedBox 确保即使外部 SizedBox 给了高度限制，内部也有基本展示空间
+            // 或者直接让 SizedBox 承载计算出的（带有最小值的）高度
+            child: _buildLogItem(log, height),
           );
         }).toList(),
       ],
@@ -222,7 +225,7 @@ class _DayViewState extends State<DayView> {
   }
 
   // 构建日志项
-  Widget _buildLogItem(Log log) {
+  Widget _buildLogItem(Log log, double height) {
     Color statusColor;
     String timeRange = '${log.startTime} - ${log.endTime}';
 
@@ -237,6 +240,10 @@ class _DayViewState extends State<DayView> {
         statusColor = Colors.grey;
     }
 
+    // 根据高度决定显示哪些内容
+    bool showContent = height > 80;
+    bool showTitle = height > 45;
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -247,58 +254,64 @@ class _DayViewState extends State<DayView> {
         );
       },
       child: Container(
+        height: height,
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFF2C2C2C),
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(), // 禁止滚动，只为防止溢出报错
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    timeRange,
-                    style: TextStyle(color: statusColor, fontSize: 11),
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      timeRange,
+                      style: TextStyle(color: statusColor, fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              log.logTitle,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+                ],
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (log.logContent.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Expanded(
-                child: Text(
-                  log.logContent,
-                  style: const TextStyle(color: Colors.white60, fontSize: 11),
-                  maxLines: 3,
+              if (showTitle) ...[
+                const SizedBox(height: 2),
+                Text(
+                  log.logTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              ],
+              if (showContent && log.logContent.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  log.logContent,
+                  style: const TextStyle(color: Colors.white60, fontSize: 10),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
