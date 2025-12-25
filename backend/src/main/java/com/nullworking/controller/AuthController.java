@@ -48,13 +48,6 @@ public class AuthController {
         return authService.login(loginRequest.getUserName(), loginRequest.getPassword());
     }
 
-    @Deprecated
-    @Operation(summary = "用户注册", description = "注册新用户，需填写真实姓名，密码加密存储")
-    @PostMapping("/register")
-    public ApiResponse<String> register(@RequestBody RegisterRequest registerRequest) {
-        return authService.register(registerRequest);
-    }
-
     @PostMapping("/send-email-code")
     public ApiResponse<Void> sendPasswordResetCode(@RequestBody ForgotPasswordRequest request) {
         return authService.sendPasswordResetCode(request.getEmailOrUsername());

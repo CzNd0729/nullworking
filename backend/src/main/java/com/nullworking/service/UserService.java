@@ -57,6 +57,15 @@ public class UserService {
             "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$"
     );
 
+    /**
+     * 验证邮箱格式
+     * @param email 邮箱地址
+     * @return 格式是否正确
+     */
+    private boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email).matches();
+    }
+
     public ApiResponse<Map<String, Object>> getSubDeptUser(Integer currentUserId) {
         if (currentUserId == null) {
             return ApiResponse.error(400, "当前用户ID不能为空");
@@ -180,7 +189,7 @@ public class UserService {
             }
             
             // 验证邮箱格式
-            if (request.getEmail() == null || !EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+            if (!isValidEmail(request.getEmail())) {
                 return ApiResponse.error(400, "邮箱格式不正确");
             }
             
@@ -264,7 +273,7 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
             user.setPhoneNumber(request.getPhone().trim());
         }
-        if (request.getEmail() != null && EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
+        if (request.getEmail() != null && isValidEmail(request.getEmail())) {
             // 检查邮箱唯一性（排除自己）
             User exist = userRepository.findByEmail(request.getEmail());
             if (exist != null && !exist.getUserId().equals(userId)) {
@@ -391,9 +400,9 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             }
 
             if (request.getEmail() != null) {
-                // 验证邮箱不能为空
-                if (request.getEmail().trim().isEmpty()) {
-                    return ApiResponse.error(400, "邮箱不能为空");
+                // 验证邮箱格式
+                if (!isValidEmail(request.getEmail())) {
+                    return ApiResponse.error(400, "邮箱格式不正确");
                 }
                 // 检查邮箱唯一性（排除自己）
                 User exist = userRepository.findByEmail(request.getEmail());
