@@ -14,12 +14,17 @@ import com.nullworking.repository.RoleRepository;
 // import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Base64;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -47,6 +52,9 @@ public class UserService {
 
     @Autowired
     private PermissionService permissionService;
+
+    @Value("${jwt.secret}")
+    private String jwtSecret; // 复用JWT密钥作为加密密钥，不修改配置文件
 
     // @Autowired
     // private JwtUtil jwtUtil;
@@ -110,10 +118,10 @@ public class UserService {
                 Map<String, Object> userMap = new HashMap<>();
                 userMap.put("userId", user.getUserId());
                 userMap.put("realName", user.getRealName());
-                // 账号、联系方式
+                // 账号、联系方式（解密后返回）
                 userMap.put("userName", user.getUserName());
-                userMap.put("phoneNumber", user.getPhoneNumber());
-                userMap.put("email", user.getEmail());
+                userMap.put("phoneNumber", decryptData(user.getPhoneNumber()));
+                userMap.put("email", decryptData(user.getEmail()));
                 
                 // 获取角色名称
                 String roleName = user.getRole() != null ? user.getRole().getRoleName() : null;
@@ -193,8 +201,9 @@ public class UserService {
             user.setUserName(request.getUserName());
             user.setPassword(encodedPassword);
             user.setRealName(request.getRealName().trim());
-            user.setPhoneNumber(request.getPhone().trim());
-            user.setEmail(request.getEmail());
+            // 电话号和邮箱加密存储（仿照密码加密方式，使用Java标准库）
+            user.setPhoneNumber(encryptData(request.getPhone().trim()));
+            user.setEmail(encryptData(request.getEmail()));
             user.setCreationTime(LocalDateTime.now());
             // 默认状态：0=正常
             user.setStatus((byte) 0);
@@ -262,15 +271,18 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             user.setRealName(request.getRealName().trim());
         }
         if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
-            user.setPhoneNumber(request.getPhone().trim());
+            // 电话号加密存储
+            user.setPhoneNumber(encryptData(request.getPhone().trim()));
         }
         if (request.getEmail() != null && EMAIL_PATTERN.matcher(request.getEmail()).matches()) {
-            // 检查邮箱唯一性（排除自己）
-            User exist = userRepository.findByEmail(request.getEmail());
+            // 检查邮箱唯一性（排除自己）- 查询前先加密
+            String encryptedEmail = encryptData(request.getEmail());
+            User exist = userRepository.findByEmail(encryptedEmail);
             if (exist != null && !exist.getUserId().equals(userId)) {
                 return ApiResponse.error(409, "该邮箱已被其他账号占用");
             }
-            user.setEmail(request.getEmail());
+            // 邮箱加密存储
+            user.setEmail(encryptedEmail);
         }
 
         // 注意：此处刻意不处理 userName 字段，禁止更新用户名
@@ -354,8 +366,9 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             Map<String, Object> userProfile = new HashMap<>();
             userProfile.put("userId", user.getUserId());
             userProfile.put("realName", user.getRealName());
-            userProfile.put("email", user.getEmail());
-            userProfile.put("phoneNumber", user.getPhoneNumber());
+            // 电话号和邮箱解密后返回
+            userProfile.put("email", decryptData(user.getEmail()));
+            userProfile.put("phoneNumber", decryptData(user.getPhoneNumber()));
             userProfile.put("roleId", user.getRole() != null ? user.getRole().getRoleId() : null);
             userProfile.put("deptId", user.getDepartment() != null ? user.getDepartment().getDepartmentId() : null);
             userProfile.put("roleName", user.getRole() != null ? user.getRole().getRoleName() : null);
@@ -387,7 +400,8 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             }
 
             if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
-                user.setPhoneNumber(request.getPhoneNumber());
+                // 电话号加密存储
+                user.setPhoneNumber(encryptData(request.getPhoneNumber().trim()));
             }
 
             if (request.getEmail() != null) {
@@ -395,12 +409,14 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
                 if (request.getEmail().trim().isEmpty()) {
                     return ApiResponse.error(400, "邮箱不能为空");
                 }
-                // 检查邮箱唯一性（排除自己）
-                User exist = userRepository.findByEmail(request.getEmail());
+                // 检查邮箱唯一性（排除自己）- 查询前先加密
+                String encryptedEmail = encryptData(request.getEmail());
+                User exist = userRepository.findByEmail(encryptedEmail);
                 if (exist != null && !exist.getUserId().equals(currentUserId)) {
                     return ApiResponse.error(409, "该邮箱已被其他账号占用");
                 }
-                user.setEmail(request.getEmail());
+                // 邮箱加密存储
+                user.setEmail(encryptedEmail);
             }
 
             // 保存更新
@@ -484,6 +500,57 @@ public ApiResponse<Void> updateUser(Integer userId, UserUpdateRequest request) {
             return ApiResponse.success();
         } catch (Exception e) {
             return ApiResponse.error(500, "修改密码失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 加密敏感数据（电话号、邮箱）- 仿照密码加密方式，使用Java标准库，不新建类
+     */
+    private String encryptData(String data) {
+        if (data == null || data.isEmpty() || jwtSecret == null || jwtSecret.isEmpty()) {
+            return data;
+        }
+        try {
+            // 使用JWT密钥生成AES密钥（取前32字节）
+            byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+            byte[] aesKey = new byte[32];
+            System.arraycopy(keyBytes, 0, aesKey, 0, Math.min(keyBytes.length, 32));
+            SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+            byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(encryptedBytes);
+        } catch (Exception e) {
+            // 加密失败时返回原值，避免影响业务
+            return data;
+        }
+    }
+
+    /**
+     * 解密敏感数据（电话号、邮箱）
+     */
+    private String decryptData(String data) {
+        if (data == null || data.isEmpty() || jwtSecret == null || jwtSecret.isEmpty()) {
+            return data;
+        }
+        // 判断是否为加密数据：加密后的Base64字符串通常较长且不包含常见字符（如@、-等）
+        // 如果数据看起来像未加密的（包含@符号的邮箱或纯数字的电话号），直接返回
+        if (data.contains("@") || (data.length() <= 16 && data.matches("^[0-9\\-+\\s]+$"))) {
+            return data; // 看起来是未加密的数据
+        }
+        try {
+            // 使用JWT密钥生成AES密钥（取前32字节）
+            byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+            byte[] aesKey = new byte[32];
+            System.arraycopy(keyBytes, 0, aesKey, 0, Math.min(keyBytes.length, 32));
+            SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec);
+            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(data));
+            return new String(decryptedBytes, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            // 解密失败时返回原值（可能是旧数据未加密）
+            return data;
         }
     }
 

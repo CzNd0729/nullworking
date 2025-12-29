@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -12,6 +13,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.nullworking.common.ApiResponse;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.RegisterRequest;
 import com.nullworking.repository.UserRepository;
@@ -34,6 +40,9 @@ public class AuthService {
 
     @Autowired
     private VerificationCodeService verificationCodeService;
+
+    @Value("${jwt.secret}")
+    private String jwtSecret; // 复用JWT密钥作为加密密钥，不修改配置文件
 
     // 所有的业务逻辑将在这里实现
 
@@ -84,8 +93,9 @@ public class AuthService {
         user.setUserName(request.getUserName());
         user.setPassword(encodedPassword);
         user.setRealName(request.getRealName().trim());
-        user.setPhoneNumber(request.getPhone());
-        user.setEmail(request.getEmail());
+        // 电话号和邮箱加密存储（仿照密码加密方式，使用Java标准库）
+        user.setPhoneNumber(encryptData(request.getPhone()));
+        user.setEmail(encryptData(request.getEmail()));
         user.setCreationTime(LocalDateTime.now());
         // 默认状态：0=正常
         user.setStatus((byte) 0);
@@ -101,16 +111,20 @@ public class AuthService {
         // 允许输入用户名或邮箱，优先用户名精确查找
         User user = userRepository.findByUserName(emailOrUsername);
         if (user == null) {
-            user = userRepository.findByEmail(emailOrUsername);
+            // 查询邮箱前先加密（仿照密码验证方式）
+            String encryptedEmail = encryptData(emailOrUsername);
+            user = userRepository.findByEmail(encryptedEmail);
         }
         if (user == null) {
             return ApiResponse.error(404, "未找到该用户");
         }
-        String code = verificationCodeService.generateCode(user.getEmail());
+        // 使用解密后的邮箱发送邮件
+        String decryptedEmail = decryptData(user.getEmail());
+        String code = verificationCodeService.generateCode(decryptedEmail);
         String subject = "重置密码验证码";
         String text = String.format("您的重置密码验证码是：%s，%d 分钟内有效。如非本人操作请忽略。", code, verificationCodeService.getExpireMinutes());
         try {
-            emailService.sendSimpleMail(user.getEmail(), subject, text);
+            emailService.sendSimpleMail(decryptedEmail, subject, text);
             return ApiResponse.success();
         } catch (Exception e) {
             return ApiResponse.error(500, "发送邮件失败: " + e.getMessage());
@@ -128,12 +142,16 @@ public class AuthService {
         // 允许输入用户名或邮箱，优先用户名精确查找
         User user = userRepository.findByUserName(email);
         if (user == null) {
-            user = userRepository.findByEmail(email);
+            // 查询邮箱前先加密（仿照密码验证方式）
+            String encryptedEmail = encryptData(email);
+            user = userRepository.findByEmail(encryptedEmail);
         }
         if (user == null) {
             return ApiResponse.error(404, "未找到该用户");
         }
-        boolean ok = verificationCodeService.verifyCode(user.getEmail(), code);
+        // 验证码验证需要使用解密后的邮箱
+        String decryptedEmail = decryptData(user.getEmail());
+        boolean ok = verificationCodeService.verifyCode(decryptedEmail, code);
         if (!ok) {
             return ApiResponse.error(400, "验证码错误或已过期");
         }
@@ -141,5 +159,56 @@ public class AuthService {
         user.setPassword(encoder.encode(newPassword));
         userRepository.save(user);
         return ApiResponse.success("密码重置成功");
+    }
+
+    /**
+     * 加密敏感数据（电话号、邮箱）- 仿照密码加密方式，使用Java标准库，不新建类
+     */
+    private String encryptData(String data) {
+        if (data == null || data.isEmpty() || jwtSecret == null || jwtSecret.isEmpty()) {
+            return data;
+        }
+        try {
+            // 使用JWT密钥生成AES密钥（取前32字节）
+            byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+            byte[] aesKey = new byte[32];
+            System.arraycopy(keyBytes, 0, aesKey, 0, Math.min(keyBytes.length, 32));
+            SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+            byte[] encryptedBytes = cipher.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(encryptedBytes);
+        } catch (Exception e) {
+            // 加密失败时返回原值，避免影响业务
+            return data;
+        }
+    }
+
+    /**
+     * 解密敏感数据（电话号、邮箱）
+     */
+    private String decryptData(String data) {
+        if (data == null || data.isEmpty() || jwtSecret == null || jwtSecret.isEmpty()) {
+            return data;
+        }
+        // 判断是否为加密数据：加密后的Base64字符串通常较长且不包含常见字符（如@、-等）
+        // 如果数据看起来像未加密的（包含@符号的邮箱或纯数字的电话号），直接返回
+        if (data.contains("@") || (data.length() <= 16 && data.matches("^[0-9\\-+\\s]+$"))) {
+            return data; // 看起来是未加密的数据
+        }
+        try {
+            // 使用JWT密钥生成AES密钥（取前32字节）
+            byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+            byte[] aesKey = new byte[32];
+            System.arraycopy(keyBytes, 0, aesKey, 0, Math.min(keyBytes.length, 32));
+            SecretKeySpec keySpec = new SecretKeySpec(aesKey, "AES");
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, keySpec);
+            byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(data));
+            return new String(decryptedBytes, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            // 解密失败时返回原值（可能是旧数据未加密）
+            return data;
+        }
     }
 }
