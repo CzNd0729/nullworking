@@ -267,10 +267,10 @@ class _AIAnalysisPageState extends State<AIAnalysisPage> {
                 '时间范围: ${analysisResult.prompt['startDate'] ?? '未知'} 至 ${analysisResult.prompt['endDate'] ?? '未知'}',
                 style: TextStyle(color: Colors.grey[500], fontSize: 14),
               ),
-              Text(
-                '分析人员: ${(_getUserNamesFromIds(analysisResult.prompt['userIds'] as List<dynamic>?))}',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
-              ),
+              // Text(
+              //   '分析人员: ${(_getUserNamesFromIds(analysisResult.prompt['userIds'] as List<dynamic>?))}',
+              //   style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              // ),
             ] else if (analysisResult.mode == 1) ...[
               // 按任务分析
               Text(

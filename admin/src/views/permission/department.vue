@@ -251,8 +251,10 @@ export default {
         parentDept: null
       }
     },
-    handleCreate() {
+    async handleCreate() {
       this.resetTemp()
+      // 每次打开创建对话框时都重新加载部门列表，确保获取最新数据
+      await this.loadAllDepartments()
       this.dialogStatus = 'create'
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -299,7 +301,7 @@ export default {
         }
       })
     },
-    handleUpdate(row) {
+    async handleUpdate(row) {
       this.temp = Object.assign({}, row) // copy obj
       // Map departmentId to deptId if needed, and ensure correct field names
       if (row.departmentId !== undefined) {
@@ -315,6 +317,8 @@ export default {
       if (row.parentId !== undefined && row.parentDept === undefined) {
         this.temp.parentDept = row.parentId
       }
+      // 每次打开编辑对话框时都重新加载部门列表，确保获取最新数据
+      await this.loadAllDepartments()
       this.dialogStatus = 'update'
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -331,9 +335,11 @@ export default {
             deptDescription: this.temp.deptDescription,
             parentDept: this.temp.parentDept
           }
-          updateDept(this.temp.departmentId, tempData).then(() => {
+          updateDept(this.temp.departmentId, tempData).then(async () => {
             this.dialogFormVisible = false
             this.$message.success('更新部门成功')
+            // 重新加载部门列表，确保父部门下拉框显示最新数据
+            await this.loadAllDepartments()
             this.getList() // Refresh the list
           }).catch(error => {
             console.error("Error updating department:", error)
@@ -348,8 +354,10 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        deleteDept(row.departmentId).then(() => {
+        deleteDept(row.departmentId).then(async () => {
           this.$message.success('删除部门成功')
+          // 重新加载部门列表，确保父部门下拉框显示最新数据（已删除的部门不再显示）
+          await this.loadAllDepartments()
           this.getList() // Refresh the list
         }).catch(error => {
           this.$message.error(error.response?.data?.message || '删除部门失败')

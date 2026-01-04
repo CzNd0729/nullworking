@@ -28,7 +28,7 @@ public class AIAnalysisResult {
     private LocalDateTime analysisTime;
 
     @Column(name = "Status", nullable = false)
-    private Integer status; // 0: 分析中, 1: 分析完成
+    private Integer status; // 0: 分析中, 1: 分析完成，2: 分析失败（乱码）3: 分析失败（其他原因）
 
     @Column(name = "Mode", nullable = false)
     private Integer mode; // 0: 用户+时间模式, 1: 仅任务模式

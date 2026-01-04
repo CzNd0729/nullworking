@@ -1,3 +1,26 @@
+class AiGeneratedTask {
+  final String taskTitle;
+  final String taskContent;
+  final DateTime deadline;
+  final String priority;
+
+  AiGeneratedTask({
+    required this.taskTitle,
+    required this.taskContent,
+    required this.deadline,
+    required this.priority,
+  });
+
+  factory AiGeneratedTask.fromJson(Map<String, dynamic> json) {
+    return AiGeneratedTask(
+      taskTitle: json['taskTitle'] as String,
+      taskContent: json['taskContent'] as String,
+      deadline: DateTime.parse(json['deadline'] as String),
+      priority: json['priority'] as String,
+    );
+  }
+}
+
 class AiAnalysisResult {
   String resultId;
   Map<String, dynamic> prompt;

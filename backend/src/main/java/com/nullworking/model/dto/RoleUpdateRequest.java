@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public class RoleUpdateRequest {
-    @JsonProperty("roleId")
-    private Integer roleId;
-
     @JsonProperty("roleName")
     private String roleName;
 
@@ -17,14 +14,6 @@ public class RoleUpdateRequest {
     private List<Integer> permissionIds;
 
     // Getters and Setters
-    public Integer getRoleId() {
-        return roleId;
-    }
-
-    public void setRoleId(Integer roleId) {
-        this.roleId = roleId;
-    }
-
     public String getRoleName() {
         return roleName;
     }

@@ -50,6 +50,12 @@ public class User {
     @Column(name = "huawei_push_token", length = 255)
     private String huaweiPushToken;
 
+    /**
+     * 用户状态：0=正常，1=已删除（离职等，软删除）
+     */
+    @Column(name = "Status", nullable = false)
+    private Byte status;
+
     // Getters and Setters
     public Integer getUserId() {
         return userId;
@@ -129,5 +135,13 @@ public class User {
 
     public void setHuaweiPushToken(String huaweiPushToken) {
         this.huaweiPushToken = huaweiPushToken;
+    }
+
+    public Byte getStatus() {
+        return status;
+    }
+
+    public void setStatus(Byte status) {
+        this.status = status;
     }
 }

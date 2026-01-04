@@ -136,14 +136,17 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
+          Row(
             children: [
-              _buildStatusFilterChip('0', '进行中', Colors.green),
-              _buildStatusFilterChip('1', '已延期', Colors.orange),
-              _buildStatusFilterChip('2', '已完成', Colors.purple),
-              _buildStatusFilterChip('3', '已关闭', Colors.red),
+              Expanded(child: _buildStatusFilterChip('0', '进行中', Colors.green)),
+              const SizedBox(width: 8.0), // Add spacing between chips
+              Expanded(
+                child: _buildStatusFilterChip('1', '已延期', Colors.orange),
+              ),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: _buildStatusFilterChip('2', '已完成', Colors.purple),
+              ),
             ],
           ),
         ],

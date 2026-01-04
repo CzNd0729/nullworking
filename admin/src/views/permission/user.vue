@@ -56,6 +56,10 @@
             >
               <i :class="node.expanded ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"></i>
             </el-button>
+            <span 
+              v-else
+              class="node-toggle-placeholder"
+            ></span>
             <span class="node-label" @click.stop="handleDeptNodeClick(data)">{{ node.label }}</span>
           </span>
         </el-tree>
@@ -105,12 +109,17 @@
       </el-table-column>
       <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
-          <el-button type="primary" size="mini" @click="handleUpdate(row)">
-            编辑
-          </el-button>
-          <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
-            删除
-          </el-button>
+          <span v-if="row.userId === 0" style="color: #909399; font-size: 12px;">
+            系统默认角色，不可编辑
+          </span>
+          <template v-else>
+            <el-button type="primary" size="mini" @click="handleUpdate(row)">
+              编辑
+            </el-button>
+            <el-button size="mini" type="danger" @click="handleDelete(row,$index)">
+              删除
+            </el-button>
+          </template>
         </template>
       </el-table-column>
         </el-table>
@@ -126,7 +135,7 @@
         label-width="100px"
       >
         <el-form-item label="用户名" prop="userName">
-          <el-input v-model="temp.userName" />
+          <el-input v-model="temp.userName" :disabled="dialogStatus === 'update'" />
         </el-form-item>
         <el-form-item label="密码" prop="password" v-if="dialogStatus === 'create'">
           <el-input v-model="temp.password" type="password" />
@@ -218,6 +227,10 @@ export default {
         password: [{ required: true, message: '密码不能为空', trigger: 'blur' }],
         realName: [{ required: true, message: '真实姓名不能为空', trigger: 'blur' }],
         phone: [{ required: true, message: '电话号码不能为空', trigger: 'blur' }],
+        email: [
+          { required: true, message: '邮箱不能为空', trigger: 'blur' },
+          { type: 'email', message: '请输入正确的邮箱格式', trigger: ['blur', 'change'] }
+        ],
         roleId: [{ required: true, message: '角色为必选项', trigger: 'change' }],
         deptId: [{ required: true, message: '部门为必选项', trigger: 'change' }]
       }
@@ -333,18 +346,47 @@ export default {
         } else {
           this.deptTreeData = []
         }
-        // 加载后根据实际展开状态更新按钮
-        this.$nextTick(() => this.updateTreeAllExpanded())
+        // 加载后根据实际展开状态更新按钮，并设置节点缩进
+        this.$nextTick(() => {
+          this.updateTreeAllExpanded()
+          this.updateTreeIndent()
+        })
       } catch (error) {
         console.error('Failed to load department tree:', error)
         this.deptTreeData = []
       }
     },
+    updateTreeIndent() {
+      // 遍历所有树节点，根据实际层级设置padding-left
+      const tree = this.$refs.deptTree
+      if (!tree || !tree.store || !tree.store.nodesMap) return
+      
+      const nodesMap = tree.store.nodesMap
+      Object.keys(nodesMap).forEach(key => {
+        const node = nodesMap[key]
+        if (node && node.$el) {
+          const contentEl = node.$el.querySelector('.el-tree-node__content')
+          if (contentEl && node.level !== undefined) {
+            // 根据节点层级设置缩进：
+            // 根节点(level=0): 0px（让文字从左边开始）
+            // 第一层子节点(level=1): 30px（确保文字在父节点文字右侧）
+            // 第二层子节点(level=2): 50px
+            // 第三层子节点(level=3): 70px
+            // 每层增加20px缩进，第一层基础缩进为30px
+            const paddingLeft = node.level === 0 ? 0 : 30 + (node.level - 1) * 20
+            contentEl.style.paddingLeft = paddingLeft + 'px'
+          }
+        }
+      })
+    },
     toggleNodeExpand(node) {
       // 切换单个节点展开/折叠
       if (!node) return
       node.expanded = !node.expanded
-      this.$nextTick(() => this.updateTreeAllExpanded())
+      this.$nextTick(() => {
+        this.updateTreeAllExpanded()
+        this.updateTreeIndent()
+      })
     },
     toggleAllExpand() {
       // 全部展开或折叠
@@ -357,13 +399,18 @@ export default {
         if (n) n.expanded = expandTo
       })
       this.treeAllExpanded = expandTo
-      this.$nextTick(() => this.updateTreeAllExpanded())
+      this.$nextTick(() => {
+        this.updateTreeAllExpanded()
+        this.updateTreeIndent()
+      })
     },
     onNodeExpand() {
       this.updateTreeAllExpanded()
+      this.$nextTick(() => this.updateTreeIndent())
     },
     onNodeCollapse() {
       this.updateTreeAllExpanded()
+      this.$nextTick(() => this.updateTreeIndent())
     },
     updateTreeAllExpanded() {
       const tree = this.$refs.deptTree
@@ -642,6 +689,17 @@ export default {
 
 .custom-tree-node .node-toggle-btn {
   padding: 0 4px;
+  width: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-tree-node .node-toggle-placeholder {
+  width: 20px;
+  min-width: 20px;
+  display: inline-block;
 }
 
 /* 隐藏 Element UI 树的默认展开箭头，仅保留自定义的箭头 */
@@ -652,5 +710,8 @@ export default {
 .dept-tree /deep/ .el-tree-node__expand-icon {
   display: none !important;
 }
+
+/* 增加子部门的缩进通过JavaScript动态设置，见updateTreeIndent方法 */
+/* 这样可以确保所有节点（包括叶子节点）都能正确应用缩进 */
 </style>
 

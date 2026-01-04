@@ -3,8 +3,6 @@ package com.nullworking.model.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class DepartmentUpdateRequest {
-    @JsonProperty("deptId")
-    private Integer deptId;
 
     @JsonProperty("deptName")
     private String deptName;
@@ -14,15 +12,6 @@ public class DepartmentUpdateRequest {
 
     @JsonProperty("deptDescription")
     private String deptDescription;
-
-    // Getters and Setters
-    public Integer getDeptId() {
-        return deptId;
-    }
-
-    public void setDeptId(Integer deptId) {
-        this.deptId = deptId;
-    }
 
     public String getDeptName() {
         return deptName;

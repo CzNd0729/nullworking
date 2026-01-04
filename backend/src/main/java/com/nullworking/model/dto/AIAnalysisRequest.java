@@ -1,9 +1,9 @@
 package com.nullworking.model.dto;
 
+import java.util.List;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
-import java.util.List;
 
 @Data
 public class AIAnalysisRequest {

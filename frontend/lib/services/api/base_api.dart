@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'auth_service.dart';
 
 class BaseApi {
-  static const String _baseUrl = 'http://58.87.76.10:8080';
+  static const String _baseUrl = 'https://58.87.76.10';
   final AuthService _authService = AuthService(); // Use the singleton instance
 
   Future<Map<String, String>> _getHeaders({bool authenticated = true}) async {

@@ -1,6 +1,272 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../models/task.dart';
 import '../../services/business/task_business.dart';
+import '../../services/business/speech_service.dart';
+import '../../services/business/ai_analysis_business.dart';
+import '../../models/ai_analysis_result.dart';
+
+class _AiAssistantSheetContent extends StatefulWidget {
+  final SpeechService aiSpeechService;
+  final TextEditingController descriptionController;
+  final String initialAiAssistantText;
+  final Function(String) onUpdateExternalText;
+  final Function(bool) onListeningStatusChanged;
+  final ScrollController scrollController;
+  final Function(AiGeneratedTask) onAiTaskGenerated;
+  final String? taskTitle;
+  final String? taskContent;
+  final String? priority;
+  final DateTime? deadline;
+
+  const _AiAssistantSheetContent({
+    required this.aiSpeechService,
+    required this.descriptionController,
+    required this.initialAiAssistantText,
+    required this.onUpdateExternalText,
+    required this.scrollController,
+    required this.onListeningStatusChanged,
+    required this.onAiTaskGenerated,
+    this.taskTitle,
+    this.taskContent,
+    this.priority,
+    this.deadline,
+  });
+
+  @override
+  _AiAssistantSheetContentState createState() => _AiAssistantSheetContentState();
+}
+
+class _AiAssistantSheetContentState extends State<_AiAssistantSheetContent> {
+  late String sheetAiAssistantText;
+  late TextEditingController textController;
+  late Function(String)? originalOnResult;
+  final AiAnalysisBusiness _aiAnalysisBusiness = AiAnalysisBusiness();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    sheetAiAssistantText = widget.initialAiAssistantText;
+    
+    textController = TextEditingController(text: sheetAiAssistantText);
+    textController.addListener(_handleTextChange);
+
+    // 赋值时不再报错
+    originalOnResult = widget.aiSpeechService.onResult;
+    
+    widget.aiSpeechService.onResult = _handleSpeechResult;
+  }
+  
+  void _handleSpeechResult(String result) {
+    if (mounted) {
+      setState(() {
+        sheetAiAssistantText = result;
+        textController.text = result; 
+        widget.onUpdateExternalText(result); 
+      });
+    }
+  }
+  
+  void _handleTextChange() {
+    if (mounted) {
+      setState(() {
+        sheetAiAssistantText = textController.text;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.aiSpeechService.isListening) {
+      widget.aiSpeechService.stopListening();
+    }
+    
+    // 在恢复时，需要处理 originalOnResult 可能为 null 的情况
+    // 假设 SpeechService.onResult 接受 null
+    widget.aiSpeechService.onResult = originalOnResult;
+    
+    textController.removeListener(_handleTextChange);
+    textController.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isListening = widget.aiSpeechService.isListening;
+    final hasContent = sheetAiAssistantText.trim().isNotEmpty;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E), 
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10.0,
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + 32.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(
+            child: SizedBox(
+              width: 40,
+              height: 4,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.all(Radius.circular(2)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'AI 助手',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: TextFormField(
+                controller: textController,
+                maxLines: null,
+                scrollController: widget.scrollController,
+                keyboardType: TextInputType.multiline,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: '对我说点什么吧，或者直接在这里输入...',
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+          ),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: 60,
+                width: 60,
+                child: FloatingActionButton(
+                  heroTag: 'mic_assist_button',
+                  onPressed: () {
+                    if (!mounted) return;
+                    setState(() {
+                      if (isListening) {
+                        widget.aiSpeechService.stopListening();
+                      } else {
+                        sheetAiAssistantText = '';
+                        textController.text = ''; 
+                        widget.aiSpeechService.startListening();
+                      }
+                    });
+                  },
+                  backgroundColor: isListening
+                      ? Colors.red 
+                      : const Color(0xFF00D9A3),
+                  elevation: 5,
+                  child: Icon(
+                    isListening ? Icons.mic : Icons.mic_none,
+                    color: Colors.black,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 40),
+              SizedBox(
+                height: 60,
+                width: 60,
+                child: FloatingActionButton(
+                  heroTag: 'check_assist_button',
+                  onPressed: (hasContent && !_isLoading)
+                      ? () async {
+                          setState(() {
+                            _isLoading = true;
+                          });
+                          try {
+                            print(widget.priority);
+                            final aiTask = await _aiAnalysisBusiness.createAiTask(
+                                text: sheetAiAssistantText,
+                                taskTitle: widget.taskTitle,
+                                taskContent: widget.taskContent,
+                                priority: widget.priority != '' ? int.parse(widget.priority!.substring(1)).toString() : null,
+                                deadline: widget.deadline?.toIso8601String());
+                            if (mounted) {
+                              if (aiTask != null) {
+                                widget.onAiTaskGenerated(aiTask);
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('AI 任务生成失败！'),
+                                      backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('AI 任务生成异常！'),
+                                    backgroundColor: Colors.red),
+                              );
+                            }
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
+                          }
+                        }
+                      : null,
+                  backgroundColor: (hasContent && !_isLoading)
+                      ? const Color(0xFF8B5CF6)
+                      : Colors.grey.shade700,
+                  elevation: 5,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class CreateTaskPage extends StatefulWidget {
   final Task? taskToEdit;
@@ -22,15 +288,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final FocusNode _titleFocusNode = FocusNode();
   final FocusNode _descriptionFocusNode = FocusNode();
 
-  String _selectedPriority = 'P1';
+  String _selectedPriority = '';
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   bool _isLoading = false;
   bool _isAssigned = false;
   List<Map<String, dynamic>> _selectedAssignees = [];
   List<Map<String, dynamic>> _teamMembers = [];
-
   final TaskBusiness _taskBusiness = TaskBusiness();
+  String _aiAssistantText = '';
+  bool _isAiAssistantListening = false;
+  late SpeechService _aiSpeechService;
   String? _currentUserId;
   String? _currentUserName;
 
@@ -40,6 +308,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.text = _selectedPriority;
     _loadCurrentUserData();
     _fetchTeamMembers();
+
+    _aiSpeechService = SpeechService(
+      onResult: (result) {
+        setState(() {
+          _aiAssistantText = result;
+        });
+      },
+
+      onListeningStatusChanged: (status) {
+        setState(() {
+          _isAiAssistantListening = status;
+        });
+      },
+    );
+    _aiSpeechService.initialize(appIdIos: '6a5ecb24', appIdAndroid: '6a5ecb24');
 
     if (widget.taskToEdit != null) {
       _titleController.text = widget.taskToEdit!.taskTitle;
@@ -92,6 +375,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _selectedAssignees = [];
       _isAssigned = false;
       _updateAssigneeText();
+      _aiAssistantText = '';
     });
     _forceUnfocus();
   }
@@ -116,6 +400,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _priorityController.dispose();
     _titleFocusNode.dispose();
     _descriptionFocusNode.dispose();
+    _aiSpeechService.stopListening();
     super.dispose();
   }
 
@@ -179,7 +464,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 小时选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -225,7 +509,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // 分钟选择器
                     SizedBox(
                       width: 60,
                       height: 150,
@@ -585,6 +868,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    print(_selectedAssignees);
+    if (_selectedAssignees.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请选择负责人'), backgroundColor: Colors.red),
+      );
+      return;
+    }
 
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -629,7 +919,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             ),
           );
           _resetFormState();
-          Navigator.pop(context, resultTask); // 修改为返回 true
+          Navigator.pop(context, resultTask);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -680,10 +970,152 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  void _fillFormWithAiTask(AiGeneratedTask aiTask) {
+    setState(() {
+      _titleController.text = aiTask.taskTitle;
+      _descriptionController.text = aiTask.taskContent;
+      _selectedDate = aiTask.deadline;
+      _selectedTime = TimeOfDay.fromDateTime(aiTask.deadline);
+      _updateDueDateText();
+      
+      switch (aiTask.priority.toUpperCase()) {
+        case '0':
+        case 'P0':
+          _selectedPriority = 'P0';
+          break;
+        case '1':
+        case 'P1':
+          _selectedPriority = 'P1';
+          break;
+        case '2':
+        case 'P2':
+          _selectedPriority = 'P2';
+          break;
+        case '3':
+        case 'P3':
+          _selectedPriority = 'P3';
+          break;
+        default:
+          _selectedPriority = 'P1'; // 默认值
+          break;
+      }
+      _priorityController.text = _selectedPriority;
+    });
+  }
+
+  Future<void> _showAiAssistantSheet() async {
+    _forceUnfocus();
+
+    // 检查麦克风权限
+    var status = await Permission.microphone.status;
+    if (status.isDenied) {
+      // 如果被拒绝，向用户申请
+      status = await Permission.microphone.request();
+      if (status.isDenied) {
+        // 如果用户再次拒绝，可以提示用户到设置中开启（可选，这里先简单处理）
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('需要麦克风权限才能使用 AI 助手语音功能'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    if (status.isPermanentlyDenied) {
+      // 如果永久拒绝，提示跳转设置
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('权限受限'),
+            content: const Text('麦克风权限被永久拒绝，请在设置中手动开启以使用语音功能。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              TextButton(
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.pop(context);
+                },
+                child: const Text('去设置'),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.25,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) {
+          return _AiAssistantSheetContent(
+            aiSpeechService: _aiSpeechService,
+            descriptionController: _descriptionController,
+            initialAiAssistantText: _aiAssistantText,
+            scrollController: scrollController,
+            onUpdateExternalText: (newText) {
+              if (mounted) {
+                setState(() {
+                  _aiAssistantText = newText;
+                });
+              }
+            },
+            onListeningStatusChanged: (status) {
+              if (mounted) {
+                setState(() {
+                  _isAiAssistantListening = status;
+                });
+              }
+            },
+            onAiTaskGenerated: (aiTask) {
+              _fillFormWithAiTask(aiTask);
+            },
+            taskTitle: _titleController.text.isNotEmpty ? _titleController.text : null,
+            taskContent: _descriptionController.text.isNotEmpty ? _descriptionController.text : null,
+            priority: _selectedPriority,
+            deadline: _selectedDate != null && _selectedTime != null
+                ? DateTime(
+                    _selectedDate!.year,
+                    _selectedDate!.month,
+                    _selectedDate!.day,
+                    _selectedTime!.hour,
+                    _selectedTime!.minute,
+                  )
+                : null,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF000000),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 90.0),
+        child: FloatingActionButton(
+          onPressed: _showAiAssistantSheet,
+          backgroundColor: const Color(0xFF8B5CF6),
+          child: const Icon(Icons.assistant, color: Colors.white),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       appBar: AppBar(
         title: Text(
           widget.taskToEdit == null ? '新建任务' : '编辑任务',
@@ -698,6 +1130,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+        ],
       ),
       body: Form(
         key: _formKey,
@@ -768,7 +1202,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           activeColor: const Color(0xFF00D9A3),
                         ),
                         Text(
-                          '分配给其他成员',
+                          '分配给下属员工',
                           style: TextStyle(
                             color: widget.taskToEdit != null
                                 ? Colors.white54
@@ -811,7 +1245,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   _buildSelectableField(
                     label: '优先级',
                     controller: _priorityController,
-                    hintText: 'P1',
+                    hintText: '请选择优先级',
                     icon: Icons.list,
                     onTap: _selectPriority,
                     readOnly: true,
@@ -849,9 +1283,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
-                        ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 50),
             ],
           ),
         ),

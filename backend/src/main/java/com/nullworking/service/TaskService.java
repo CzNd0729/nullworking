@@ -1,6 +1,8 @@
 package com.nullworking.service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,9 +14,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.scheduling.annotation.Scheduled; 
 
 import com.nullworking.common.ApiResponse;
 import com.nullworking.model.Task;
@@ -22,16 +24,10 @@ import com.nullworking.model.TaskExecutorRelation;
 import com.nullworking.model.User;
 import com.nullworking.model.dto.TaskPublishRequest;
 import com.nullworking.model.dto.TaskUpdateRequest;
+import com.nullworking.repository.LogRepository;
 import com.nullworking.repository.TaskExecutorRelationRepository;
 import com.nullworking.repository.TaskRepository;
 import com.nullworking.repository.UserRepository;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit; 
-import com.nullworking.model.Log;
-import com.nullworking.repository.LogRepository;
-import com.nullworking.service.NotificationService;
 
 @Service
 public class TaskService {
@@ -53,6 +49,9 @@ public class TaskService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private PermissionService permissionService;
 
     // 所有的业务逻辑将在这里实现
 
@@ -97,6 +96,9 @@ public class TaskService {
             Task task = taskOpt.get();
             if (task.getCreator() == null || task.getCreator().getUserId() == null || !task.getCreator().getUserId().equals(userId)) {
                 return ApiResponse.error(403, "无权限删除此任务");
+            }
+            if (Byte.valueOf((byte)2).equals(task.getTaskStatus())) {
+                return ApiResponse.error(403, "已完成的任务无法删除");
             }
             if (Byte.valueOf((byte)3).equals(task.getTaskStatus())) {
                 return ApiResponse.error(208, "任务已关闭");
@@ -236,11 +238,21 @@ public class TaskService {
                 return ApiResponse.error(404, "创建者不存在");
             }
 
+            List<Integer> executorIds = request.getExecutorIds();
+            if (executorIds.size() > 1 && executorIds.contains(creatorId)) {
+                return ApiResponse.error(400, "不能上下级同时执行任务");
+            }
+
+            boolean selfAssignOnly = executorIds.size() == 1 && executorIds.get(0).equals(creatorId);
+
             // 验证执行者是否都存在
             for (Integer executorId : request.getExecutorIds()) {
                 Optional<User> executorOpt = userRepository.findById(executorId);
                 if (executorOpt.isEmpty()) {
                     return ApiResponse.error(404, "执行者ID " + executorId + " 不存在");
+                }
+                if (!selfAssignOnly && !permissionService.canAssignTaskToUser(creatorId, executorOpt.get())) {
+                    return ApiResponse.error(403, "无权限分配任务给 " + executorOpt.get().getRealName());
                 }
             }
 
@@ -264,22 +276,6 @@ public class TaskService {
                 relation.setTask(savedTask);
                 relation.setExecutor(executor);
                 taskExecutorRelationRepository.save(relation);
-                
-                // 为每个执行者自动创建日志
-                Log log = new Log();
-                log.setUser(executor);
-                log.setTask(savedTask);
-                log.setLogTitle("接收任务");
-                log.setLogContent("接收到\"" + savedTask.getTaskTitle() + "\"任务");
-                log.setLogStatus(1); // 1表示已完成
-                log.setTaskProgress(0); // 进度为0%
-                log.setLogDate(LocalDate.now());
-                log.setStartTime(LocalTime.now());
-                log.setEndTime(LocalTime.now());
-                log.setCreationTime(LocalDateTime.now());
-                log.setUpdateTime(LocalDateTime.now());
-                
-                logRepository.save(log);
 
                 // 如果执行者不是创建者，则创建通知
                 if (!executorId.equals(creatorId)) {
@@ -361,6 +357,50 @@ public class TaskService {
 
         } catch (Exception e) {
             return ApiResponse.error(500, "任务更新失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 定时检查并更新过期未完成的任务为"已延期"状态
+     */
+    @Scheduled(fixedRate = 60000) // 每分钟执行一次
+    @Transactional
+    public void checkAndUpdateExpiredTasks() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Byte> excludeStatuses = Arrays.asList((byte)1 , (byte)2, (byte)3);
+        
+        // 查询所有：截止时间已过 + 状态为进行中的任务
+        List<Task> expiredTasks = taskRepository.findByDeadlineBeforeAndTaskStatusNotIn(now, excludeStatuses);
+        
+        for (Task task : expiredTasks) {
+            task.setTaskStatus((byte)1); // 设为"已延期"状态
+            taskRepository.save(task);
+            
+            // 可选：发送延期通知给创建者和执行者
+            sendExpireNotification(task);
+        }
+    }
+
+    /**
+     * 发送任务延期通知（可选功能）
+     */
+    private void sendExpireNotification(Task task) {
+        // 通知创建者
+        Integer creatorId = task.getCreator().getUserId();
+        String creatorMsg = String.format("您发布的任务\"%s\"已超过截止时间，已转为延期状态。", task.getTaskTitle());
+        notificationService.createNotification(creatorId, creatorMsg, "task", task.getTaskId());
+        
+        // 通知所有执行者
+        List<Integer> executorIds = taskExecutorRelationRepository.findAllExecutorIdsByTaskId(task.getTaskId());
+        Set<Integer> notifiedUsers = new HashSet<>(executorIds);
+        notifiedUsers.add(creatorId); // 避免重复通知创建者（如果创建者也是执行者）
+        
+        for (Integer executorId : executorIds) {
+            if (!notifiedUsers.contains(executorId)) {
+                String executorMsg = String.format("您参与的任务\"%s\"已超过截止时间，已转为延期状态。", task.getTaskTitle());
+                notificationService.createNotification(executorId, executorMsg, "task", task.getTaskId());
+                notifiedUsers.add(executorId);
+            }
         }
     }
 }
