@@ -1,16 +1,34 @@
-# nullworking
+# 无隙工作 (nullWorking) —— 智能化日志与任务管理系统
 
-A new Flutter project.
+无隙工作是一款集成 AI 分析、任务调度与个人日志管理的综合性办公协作系统 。该项目通过自动关联日志与任务，结合 AI 深度分析用户工作状态，实现任务流转的闭环管理，提升团队协作效率 。
 
-## Getting Started
+## ✨ 核心功能
 
-This project is a starting point for a Flutter application.
+### 1. 智能日志管理
+* **多维记录**：支持用户记录个人日志，录入任务优先级、进度及完成情况。
+* **视图展示**：支持月视图、周视图、日视图展示，方便追溯工作轨迹。
+* **自动关联**：日志内容与特定任务自动关联，确保工作量化。
+* **多媒体支持**：支持图片上传（腾讯云 COS）及百度地图地理位置存证。
 
-A few resources to get you started if this is your first Flutter project:
+### 2. 任务派发与跟踪
+* **闭环管理**：支持任务的发布、接收、执行、汇报及完成的全流程流转。
+* **灵活调度**：管理员可设置负责人、截止时间及优先级。
+* **实时同步**：任务信息与日志自动整合，实时反馈 50% - 100% 的执行进度。
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 3. AI 驱动的数据分析
+* **智能诊断**：基于日志数据分析工作趋势，自动生成工作清单及建设性建议。
+* **性格匹配分析**：支持结合 MBTI 特性（如 INTJ、ESFP、INFP）对员工工作细节与效率进行深度诊断。
+* **可视化看板**：自动生成任务进度对比图、每日任务推进趋势图及工作关键词占比饼图。
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 4. 全局信息展示面板
+* **公司层面**：展示公司 10 大重要事项（如融资公告、战略合作）及任务调度。
+* **个人层面**：展示个人 10 大重要事项及个人日志摘要。
+
+### 5. 用户与权限管理
+* **多级角色**：支持创始人、管理员、部门主管、团队长、普通员工等五级角色。
+* **差异化权限**：不同角色具备全量修改、仅查看或请示反馈等差异化功能。
+
+## 🛠 扩展功能
+* **系统级通知**：在任务发布、即将到期或完成后发送系统通知推送。
+* **语音 AI 助手**：识别用户语音指令，辅助填写任务标题及详细描述，支持多轮对话。
+* **短链接分享**：生成 AI 分析报告的分享短链接，支持从浏览器直接跳转唤起 APP。
